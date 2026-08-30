@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/field";
 import { formatJalali, formatRial, parseAmount, toFaDigits } from "@/lib/format";
-import { customerBalance, useInvoiceStore, type Customer, type PaymentDirection } from "@/lib/store";
+import { partyBalance, useInvoiceStore, type Customer, type PaymentDirection } from "@/lib/store";
 
 export function CustomerLedger() {
   const customers = useInvoiceStore((s) => s.customers);
@@ -24,7 +24,7 @@ export function CustomerLedger() {
   const rows = useMemo(
     () =>
       customers
-        .map((c) => ({ customer: c, balance: customerBalance(invoices, payments, c.id) }))
+        .map((c) => ({ customer: c, balance: partyBalance(invoices, payments, c.id) }))
         .sort((a, b) => b.balance - a.balance),
     [customers, invoices, payments],
   );
@@ -35,12 +35,12 @@ export function CustomerLedger() {
     <div className="grid gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>دفتر بدهی و بستانکاری</CardTitle>
-          <CardDescription>مبلغ مثبت یعنی مشتری بدهکار است</CardDescription>
+          <CardTitle>دفتر بدهی و بستانکاری طرف‌حساب‌ها</CardTitle>
+          <CardDescription>مبلغ مثبت یعنی طرف‌حساب بدهکار است</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-2">
           {rows.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">هنوز مشتری‌ای ثبت نشده.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">هنوز طرف‌حسابی ثبت نشده.</p>
           ) : (
             rows.map((r) => (
               <button
@@ -88,7 +88,7 @@ function CustomerLedgerDetail({ customer, onClose }: { customer: Customer; onClo
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
 
-  const balance = customerBalance(invoices, payments, customer.id);
+  const balance = partyBalance(invoices, payments, customer.id);
   const customerPayments = payments
     .filter((p) => p.customerId === customer.id)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -131,14 +131,14 @@ function CustomerLedgerDetail({ customer, onClose }: { customer: Customer; onClo
             className="flex-1"
             onClick={() => setDirection("receipt")}
           >
-            دریافت از مشتری
+            دریافت از طرف‌حساب
           </Button>
           <Button
             variant={direction === "payment" ? "default" : "outline"}
             className="flex-1"
             onClick={() => setDirection("payment")}
           >
-            پرداخت به مشتری
+            پرداخت به طرف‌حساب
           </Button>
         </div>
         <Field label="مبلغ (ریال)">

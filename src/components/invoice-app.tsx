@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  BarChart3,
+  BookUser,
   FileCheck2,
+  Menu,
+  Package,
+  PackageSearch,
   Pencil,
   Plus,
   Printer,
   Save,
+  Settings as SettingsIcon,
   Trash2,
   Users,
+  Wallet,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,11 +36,15 @@ import { HomeScreen } from "@/components/home-screen";
 import { FinancePanel } from "@/components/finance-panel";
 import { CustomerLedger } from "@/components/customer-ledger";
 import { ReportsPanel } from "@/components/reports-panel";
+import { InventoryPanel } from "@/components/inventory-panel";
+import { PaymentsPanel } from "@/components/payments-panel";
+import { SettingsHub, type SettingsView } from "@/components/settings-hub";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
   invoiceSums,
   useInvoiceStore,
   type Customer,
+  type DocDirection,
   type DocKind,
   type Invoice,
   type Product,
@@ -40,27 +52,64 @@ import {
 
 export type View =
   | "home"
-  | "quote"
-  | "invoice"
+  | "sale-quote"
+  | "sale-invoice"
+  | "purchase-quote"
+  | "purchase-invoice"
   | "products"
-  | "customers"
+  | "parties"
   | "history"
   | "finance"
   | "ledger"
+  | "payments"
+  | "inventory"
   | "reports"
-  | "settings";
+  | "settings"
+  | "settings-business"
+  | "settings-invoice"
+  | "settings-software";
+
+const DOC_VIEWS: Record<string, { kind: DocKind; direction: DocDirection }> = {
+  "sale-quote": { kind: "quote", direction: "sale" },
+  "sale-invoice": { kind: "invoice", direction: "sale" },
+  "purchase-quote": { kind: "quote", direction: "purchase" },
+  "purchase-invoice": { kind: "invoice", direction: "purchase" },
+};
+
+function docView(kind: DocKind, direction: DocDirection): View {
+  return `${direction}-${kind}` as View;
+}
 
 const VIEW_TITLES: Record<Exclude<View, "home">, string> = {
-  quote: "پیش‌فاکتور جدید",
-  invoice: "فاکتور جدید",
-  products: "کالاها",
-  customers: "مشتریان",
+  "sale-quote": "پیش‌فاکتور فروش",
+  "sale-invoice": "فاکتور فروش",
+  "purchase-quote": "پیش‌فاکتور خرید",
+  "purchase-invoice": "فاکتور خرید",
+  products: "کالا و خدمات",
+  parties: "طرف حساب‌ها",
   history: "سوابق اسناد",
   finance: "هزینه‌ها و درآمدها",
   ledger: "بدهی و بستانکاری",
+  payments: "دریافت و پرداخت",
+  inventory: "ورود و خروج کالا",
   reports: "گزارش‌ها",
-  settings: "مشخصات فروشنده",
+  settings: "تنظیمات",
+  "settings-business": "نام کسب‌وکار",
+  "settings-invoice": "تنظیمات فاکتور",
+  "settings-software": "تنظیمات نرم‌افزار",
 };
+
+const SIDEBAR_ITEMS: { view: View; title: string; icon: typeof Users }[] = [
+  { view: "parties", title: "طرف حساب‌ها", icon: BookUser },
+  { view: "products", title: "کالا و خدمات", icon: Package },
+  { view: "inventory", title: "ورود و خروج کالا", icon: PackageSearch },
+  { view: "payments", title: "دریافت و پرداخت", icon: Wallet },
+  { view: "ledger", title: "بدهی و بستانکاری", icon: BookUser },
+  { view: "finance", title: "هزینه‌ها و درآمدها", icon: Wallet },
+  { view: "reports", title: "گزارش‌ها", icon: BarChart3 },
+  { view: "history", title: "سوابق اسناد", icon: Printer },
+  { view: "settings", title: "تنظیمات", icon: SettingsIcon },
+];
 
 const emptyProduct = (): Omit<Product, "id"> => ({
   code: "",
@@ -83,6 +132,7 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
 
 export function InvoiceApp() {
   const [view, setView] = useState<View>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [shouldPrint, setShouldPrint] = useState(false);
   const seller = useInvoiceStore((s) => s.seller);
@@ -107,9 +157,13 @@ export function InvoiceApp() {
   }
 
   function navigate(next: View) {
-    if (next === "quote" || next === "invoice") startNewDocument(next);
+    const doc = DOC_VIEWS[next];
+    if (doc) startNewDocument(doc.kind, doc.direction);
     setView(next);
+    setSidebarOpen(false);
   }
+
+  const doc = DOC_VIEWS[view];
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -117,13 +171,16 @@ export function InvoiceApp() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           {view === "home" ? (
             <>
-              <div>
+              <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
+                <Menu className="size-5" />
+              </Button>
+              <div className="text-center">
                 <p className="text-xs font-medium tracking-wide text-muted-foreground">
                   سامانه جامع حسابداری
                 </p>
                 <h1 className="text-xl font-semibold text-balance">دیوان</h1>
               </div>
-              <Badge variant="secondary">حسابداری شخصی</Badge>
+              <Badge variant="secondary">شخصی</Badge>
             </>
           ) : (
             <>
@@ -131,29 +188,84 @@ export function InvoiceApp() {
                 <ArrowRight className="size-5" />
               </Button>
               <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
-              <span className="size-9" />
+              <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
+                <Menu className="size-5" />
+              </Button>
             </>
           )}
         </div>
       </header>
 
+      {sidebarOpen ? (
+        <div className="no-print fixed inset-0 z-50 flex justify-end">
+          <button
+            aria-label="بستن منو"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="relative flex h-full w-72 max-w-[80vw] flex-col bg-card px-3 py-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between px-2">
+              <span className="font-semibold">منوی دیوان</span>
+              <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setSidebarOpen(false)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+            <nav className="grid gap-1">
+              <button
+                onClick={() => {
+                  setView("home");
+                  setSidebarOpen(false);
+                }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"
+              >
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Menu className="size-4" />
+                </span>
+                صفحه اصلی
+              </button>
+              {SIDEBAR_ITEMS.map((it) => (
+                <button
+                  key={it.view}
+                  onClick={() => navigate(it.view)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"
+                >
+                  <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <it.icon className="size-4" />
+                  </span>
+                  {it.title}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      ) : null}
+
       <main className="no-print mx-auto max-w-6xl px-4 py-5 pb-24">
         {view === "home" ? <HomeScreen onNavigate={navigate} /> : null}
-        {view === "quote" || view === "invoice" ? (
-          <Composer kind={view} onPrint={printSheet} onDone={() => setView("home")} />
+        {doc ? (
+          <Composer
+            kind={doc.kind}
+            direction={doc.direction}
+            onPrint={printSheet}
+            onDone={() => setView("home")}
+          />
         ) : null}
         {view === "products" ? <ProductManager /> : null}
-        {view === "customers" ? <CustomerManager /> : null}
+        {view === "parties" ? <CustomerManager /> : null}
         {view === "history" ? (
-          <HistoryPanel
-            onOpen={(kind) => setView(kind)}
-            onPrint={printSheet}
-          />
+          <HistoryPanel onOpen={(kind, direction) => setView(docView(kind, direction))} onPrint={printSheet} />
         ) : null}
         {view === "finance" ? <FinancePanel /> : null}
         {view === "ledger" ? <CustomerLedger /> : null}
+        {view === "payments" ? <PaymentsPanel /> : null}
+        {view === "inventory" ? <InventoryPanel /> : null}
         {view === "reports" ? <ReportsPanel /> : null}
-        {view === "settings" ? <SellerPanel /> : null}
+        {view === "settings" ? (
+          <SettingsHub onOpen={(v: SettingsView) => setView(`settings-${v}` as View)} />
+        ) : null}
+        {view === "settings-business" ? <BusinessSettingsPanel /> : null}
+        {view === "settings-invoice" ? <InvoiceSettingsPanel /> : null}
+        {view === "settings-software" ? <SoftwareSettingsPanel /> : null}
       </main>
 
       {printInvoice ? (
@@ -167,10 +279,12 @@ export function InvoiceApp() {
 
 function Composer({
   kind,
+  direction,
   onPrint,
   onDone,
 }: {
   kind: DocKind;
+  direction: DocDirection;
   onPrint: (invoice: Invoice) => void;
   onDone: () => void;
 }) {
@@ -189,7 +303,7 @@ function Composer({
   const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
   const addCustomer = useInvoiceStore((s) => s.addCustomer);
   const addProduct = useInvoiceStore((s) => s.addProduct);
-  const docLabel = kind === "quote" ? "پیش‌فاکتور" : "فاکتور";
+  const docLabel = (kind === "quote" ? "پیش‌فاکتور" : "فاکتور") + " " + (direction === "sale" ? "فروش" : "خرید");
 
   const [itemOpen, setItemOpen] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -264,7 +378,7 @@ function Composer({
   function persist() {
     const inv = saveInvoice();
     if (!inv) {
-      toast.error("نام مشتری و حداقل یک کالا لازم است");
+      toast.error("نام طرف‌حساب و حداقل یک کالا لازم است");
       return null;
     }
     toast.success(`${docLabel} ${toFaDigits(inv.number)} ذخیره شد`);
@@ -297,7 +411,7 @@ function Composer({
               <CardDescription>تاریخ {formatJalali(draft.date)}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => startNewDocument(kind)}>
+              <Button variant="outline" onClick={() => startNewDocument(kind, direction)}>
                 {docLabel} تازه
               </Button>
               <Button variant="secondary" onClick={() => void persist()}>
@@ -324,7 +438,7 @@ function Composer({
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3">
-            <Field label="انتخاب مشتری ذخیره‌شده">
+            <Field label="انتخاب طرف‌حساب ذخیره‌شده">
               <select
                 className="flex h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
                 value={draft.customer.id}
@@ -340,11 +454,11 @@ function Composer({
                 ))}
               </select>
             </Field>
-            <Field label="نام مشتری">
+            <Field label="نام طرف‌حساب">
               <Input
                 value={draft.customer.name}
                 onChange={(e) => setDraftCustomer({ ...draft.customer, name: e.target.value })}
-                placeholder="نام مشتری را وارد کنید"
+                placeholder="نام طرف‌حساب را وارد کنید"
               />
             </Field>
             <Field label="شناسه ملی">
@@ -388,16 +502,16 @@ function Composer({
               type="button"
               onClick={() => {
                 if (!draft.customer.name.trim()) {
-                  toast.error("ابتدا نام مشتری را بنویسید");
+                  toast.error("ابتدا نام طرف‌حساب را بنویسید");
                   return;
                 }
                 const id = addCustomer({ ...draft.customer });
                 setDraftCustomer({ ...draft.customer, id });
-                toast.success("مشتری در دفتر ذخیره شد");
+                toast.success("طرف‌حساب در دفتر ذخیره شد");
               }}
             >
               <Users className="size-4" />
-              ذخیره این مشتری
+              ذخیره این طرف‌حساب
             </Button>
           </div>
         </CardContent>
@@ -737,15 +851,15 @@ function CustomerManager() {
   }
   function save() {
     if (!form.name.trim()) {
-      toast.error("نام مشتری لازم است");
+      toast.error("نام طرف‌حساب لازم است");
       return;
     }
     if (editing) {
       updateCustomer(editing, form);
-      toast.success("مشتری به‌روز شد");
+      toast.success("طرف‌حساب به‌روز شد");
     } else {
       addCustomer(form);
-      toast.success("مشتری اضافه شد");
+      toast.success("طرف‌حساب اضافه شد");
     }
     setOpen(false);
   }
@@ -755,12 +869,12 @@ function CustomerManager() {
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle>دفتر مشتریان</CardTitle>
-            <CardDescription>نام و مشخصات خریدار را نگه دارید</CardDescription>
+            <CardTitle>دفتر طرف‌حساب‌ها</CardTitle>
+            <CardDescription>نام و مشخصات طرف‌حساب را نگه دارید</CardDescription>
           </div>
           <Button onClick={openNew}>
             <Plus className="size-4" />
-            مشتری جدید
+            طرف‌حساب جدید
           </Button>
         </div>
       </CardHeader>
@@ -805,10 +919,10 @@ function CustomerManager() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "ویرایش مشتری" : "مشتری جدید"}</DialogTitle>
+            <DialogTitle>{editing ? "ویرایش طرف‌حساب" : "طرف‌حساب جدید"}</DialogTitle>
           </DialogHeader>
           <CustomerFields form={form} setForm={setForm} />
-          <Button onClick={save}>ذخیره مشتری</Button>
+          <Button onClick={save}>ذخیره طرف‌حساب</Button>
         </DialogContent>
       </Dialog>
     </Card>
@@ -824,7 +938,7 @@ function CustomerFields({
 }) {
   return (
     <div className="grid gap-3">
-      <Field label="نام مشتری">
+      <Field label="نام طرف‌حساب">
         <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
@@ -864,31 +978,47 @@ function HistoryPanel({
   onOpen,
   onPrint,
 }: {
-  onOpen: (kind: DocKind) => void;
+  onOpen: (kind: DocKind, direction: DocDirection) => void;
   onPrint: (invoice: Invoice) => void;
 }) {
   const invoices = useInvoiceStore((s) => s.invoices);
   const loadInvoice = useInvoiceStore((s) => s.loadInvoice);
   const removeInvoice = useInvoiceStore((s) => s.removeInvoice);
   const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
-  const [filter, setFilter] = useState<"all" | DocKind>("all");
+  const [kindFilter, setKindFilter] = useState<"all" | DocKind>("all");
+  const [dirFilter, setDirFilter] = useState<"all" | DocDirection>("all");
 
-  const rows = invoices.filter((i) => filter === "all" || i.kind === filter);
+  const rows = invoices.filter(
+    (i) =>
+      (kindFilter === "all" || i.kind === kindFilter) &&
+      (dirFilter === "all" || i.direction === dirFilter),
+  );
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>سوابق اسناد</CardTitle>
         <CardDescription>برای چاپ یا ویرایش، سند را باز کنید</CardDescription>
-        <div className="mt-2 flex gap-2">
-          <Button size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} onClick={() => setKindFilter("all")}>
             همه
           </Button>
-          <Button size="sm" variant={filter === "quote" ? "default" : "outline"} onClick={() => setFilter("quote")}>
+          <Button size="sm" variant={kindFilter === "quote" ? "default" : "outline"} onClick={() => setKindFilter("quote")}>
             پیش‌فاکتورها
           </Button>
-          <Button size="sm" variant={filter === "invoice" ? "default" : "outline"} onClick={() => setFilter("invoice")}>
+          <Button size="sm" variant={kindFilter === "invoice" ? "default" : "outline"} onClick={() => setKindFilter("invoice")}>
             فاکتورها
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={dirFilter === "all" ? "default" : "outline"} onClick={() => setDirFilter("all")}>
+            فروش و خرید
+          </Button>
+          <Button size="sm" variant={dirFilter === "sale" ? "default" : "outline"} onClick={() => setDirFilter("sale")}>
+            فروش
+          </Button>
+          <Button size="sm" variant={dirFilter === "purchase" ? "default" : "outline"} onClick={() => setDirFilter("purchase")}>
+            خرید
           </Button>
         </div>
       </CardHeader>
@@ -904,7 +1034,7 @@ function HistoryPanel({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Badge variant={inv.kind === "invoice" ? "default" : "secondary"}>
-                    {inv.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"}
+                    {inv.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"} {inv.direction === "sale" ? "فروش" : "خرید"}
                   </Badge>
                   {inv.convertedToId ? <Badge variant="outline">تبدیل شده</Badge> : null}
                 </div>
@@ -921,7 +1051,7 @@ function HistoryPanel({
                   size="sm"
                   onClick={() => {
                     loadInvoice(inv.id);
-                    onOpen(inv.kind);
+                    onOpen(inv.kind, inv.direction);
                   }}
                 >
                   ویرایش
@@ -964,19 +1094,59 @@ function HistoryPanel({
   );
 }
 
-function SellerPanel() {
+function BusinessSettingsPanel() {
   const seller = useInvoiceStore((s) => s.seller);
   const setSeller = useInvoiceStore((s) => s.setSeller);
   return (
     <Card>
       <CardHeader>
-        <CardTitle>مشخصات فروشنده</CardTitle>
-        <CardDescription>این اطلاعات روی همه فاکتورها چاپ می‌شود</CardDescription>
+        <CardTitle>نام کسب‌وکار</CardTitle>
+        <CardDescription>این اطلاعات روی همه اسناد چاپ می‌شود</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
-        <Field label="نام فروشنده" >
+        <Field label="نام کسب‌وکار">
           <Input value={seller.name} onChange={(e) => setSeller({ ...seller, name: e.target.value })} />
         </Field>
+        <Field label="تلفن">
+          <Input value={seller.phone} onChange={(e) => setSeller({ ...seller, phone: e.target.value })} />
+        </Field>
+        <Field label="شهر">
+          <Input value={seller.city} onChange={(e) => setSeller({ ...seller, city: e.target.value })} />
+        </Field>
+        <Field label="کدپستی">
+          <Input
+            value={seller.postalCode}
+            onChange={(e) => setSeller({ ...seller, postalCode: e.target.value })}
+          />
+        </Field>
+        <Field label="نشانی">
+          <Input value={seller.address} onChange={(e) => setSeller({ ...seller, address: e.target.value })} />
+        </Field>
+        <div>
+          <Button
+            onClick={() => {
+              setSeller({ ...seller });
+              toast.success("مشخصات کسب‌وکار ذخیره شد");
+            }}
+          >
+            ذخیره
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InvoiceSettingsPanel() {
+  const seller = useInvoiceStore((s) => s.seller);
+  const setSeller = useInvoiceStore((s) => s.setSeller);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>تنظیمات فاکتور</CardTitle>
+        <CardDescription>کدهای رسمی که در سربرگ فاکتور چاپ می‌شود</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
         <Field label="شناسه ملی">
           <Input
             value={seller.nationalId}
@@ -995,40 +1165,38 @@ function SellerPanel() {
             onChange={(e) => setSeller({ ...seller, registrationNo: e.target.value })}
           />
         </Field>
-        <Field label="کدپستی">
-          <Input
-            value={seller.postalCode}
-            onChange={(e) => setSeller({ ...seller, postalCode: e.target.value })}
-          />
-        </Field>
-        <Field label="تلفن">
-          <Input
-            value={seller.phone}
-            onChange={(e) => setSeller({ ...seller, phone: e.target.value })}
-          />
-        </Field>
         <Field label="کد رهگیری">
           <Input
             value={seller.trackingCode}
             onChange={(e) => setSeller({ ...seller, trackingCode: e.target.value })}
           />
         </Field>
-        <Field label="نشانی" >
-          <Input
-            value={seller.address}
-            onChange={(e) => setSeller({ ...seller, address: e.target.value })}
-          />
-        </Field>
-        <div >
+        <div>
           <Button
             onClick={() => {
               setSeller({ ...seller });
-              toast.success("مشخصات فروشنده ذخیره شد");
+              toast.success("تنظیمات فاکتور ذخیره شد");
             }}
           >
-            ذخیره مشخصات
+            ذخیره
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SoftwareSettingsPanel() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>تنظیمات نرم‌افزار</CardTitle>
+        <CardDescription>این بخش هنوز خالی است</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="rounded-xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">
+          به‌زودی گزینه‌هایی مثل پشتیبان‌گیری و بازیابی اطلاعات به این بخش اضافه می‌شود.
+        </p>
       </CardContent>
     </Card>
   );

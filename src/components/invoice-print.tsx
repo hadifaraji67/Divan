@@ -3,18 +3,22 @@ import { invoiceSums, type Invoice, type Seller } from "@/lib/store";
 
 export function InvoicePrint({ invoice, seller }: { invoice: Invoice; seller: Seller }) {
   const sums = invoiceSums(invoice.items);
+  const isPurchase = invoice.direction === "purchase";
+  const sellerParty = isPurchase ? invoice.customer : seller;
+  const buyerParty = isPurchase ? seller : invoice.customer;
+  const docLabel = (invoice.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور") + " " + (isPurchase ? "خرید" : "فروش");
   return (
     <div id="invoice-print" className="invoice-sheet" dir="rtl">
       <header className="sheet-head">
         <div className="sheet-meta">
           <div>
-            شماره {invoice.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"}: <b>{toFaDigits(invoice.number)}</b>
+            شماره {docLabel}: <b>{toFaDigits(invoice.number)}</b>
           </div>
           <div>
             تاریخ: <b>{formatJalali(invoice.date)}</b>
           </div>
         </div>
-        <h1>{invoice.kind === "invoice" ? "فاکتور فروش کالا و خدمات" : "پیش فاکتور فروش کالا و خدمات"}</h1>
+        <h1>{docLabel} کالا و خدمات</h1>
         <div className="sheet-logo">
           <div className="mark">P</div>
           <div className="mark-name">{seller.name}</div>
@@ -25,29 +29,32 @@ export function InvoicePrint({ invoice, seller }: { invoice: Invoice; seller: Se
         <div className="box-title">مشخصات فروشنده</div>
         <div className="grid3">
           <div>
-            <span>نام شخص حقیقی / حقوقی:</span> {seller.name}
+            <span>نام شخص حقیقی / حقوقی:</span> {sellerParty.name}
           </div>
           <div>
-            <span>شماره اقتصادی:</span> {toFaDigits(seller.economicCode)}
+            <span>شماره اقتصادی:</span> {toFaDigits(sellerParty.economicCode || "—")}
           </div>
           <div>
-            <span>شماره ثبت:</span> {toFaDigits(seller.registrationNo)}
+            <span>شماره ثبت:</span> {toFaDigits(sellerParty.registrationNo || "—")}
           </div>
           <div>
-            <span>شناسه ملی:</span> {toFaDigits(seller.nationalId)}
+            <span>شناسه ملی:</span> {toFaDigits(sellerParty.nationalId || "—")}
           </div>
           <div>
-            <span>کدپستی:</span> {toFaDigits(seller.postalCode)}
+            <span>کدپستی:</span> {toFaDigits(sellerParty.postalCode || "—")}
           </div>
           <div>
-            <span>تلفن:</span> {toFaDigits(seller.phone)}
+            <span>تلفن:</span> {toFaDigits(sellerParty.phone || "—")}
           </div>
           <div className="span2">
-            <span>نشانی:</span> {seller.province} — {seller.city} — {seller.address}
+            <span>نشانی:</span>{" "}
+            {[sellerParty.province, sellerParty.city, sellerParty.address].filter(Boolean).join(" — ") || "—"}
           </div>
-          <div>
-            <span>کد رهگیری:</span> {toFaDigits(seller.trackingCode)}
-          </div>
+          {!isPurchase ? (
+            <div>
+              <span>کد رهگیری:</span> {toFaDigits(seller.trackingCode)}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -55,28 +62,26 @@ export function InvoicePrint({ invoice, seller }: { invoice: Invoice; seller: Se
         <div className="box-title">مشخصات خریدار</div>
         <div className="grid3">
           <div>
-            <span>نام شخص حقیقی / حقوقی:</span> {invoice.customer.name || "—"}
+            <span>نام شخص حقیقی / حقوقی:</span> {buyerParty.name || "—"}
           </div>
           <div>
-            <span>شماره اقتصادی:</span> {toFaDigits(invoice.customer.economicCode || "—")}
+            <span>شماره اقتصادی:</span> {toFaDigits(buyerParty.economicCode || "—")}
           </div>
           <div>
-            <span>شماره ثبت:</span> {toFaDigits(invoice.customer.registrationNo || "—")}
+            <span>شماره ثبت:</span> {toFaDigits(buyerParty.registrationNo || "—")}
           </div>
           <div>
-            <span>شناسه ملی:</span> {toFaDigits(invoice.customer.nationalId || "—")}
+            <span>شناسه ملی:</span> {toFaDigits(buyerParty.nationalId || "—")}
           </div>
           <div>
-            <span>کدپستی:</span> {toFaDigits(invoice.customer.postalCode || "—")}
+            <span>کدپستی:</span> {toFaDigits(buyerParty.postalCode || "—")}
           </div>
           <div>
-            <span>تلفن:</span> {toFaDigits(invoice.customer.phone || "—")}
+            <span>تلفن:</span> {toFaDigits(buyerParty.phone || "—")}
           </div>
           <div className="span3">
             <span>نشانی:</span>{" "}
-            {[invoice.customer.province, invoice.customer.city, invoice.customer.address]
-              .filter(Boolean)
-              .join(" — ") || "—"}
+            {[buyerParty.province, buyerParty.city, buyerParty.address].filter(Boolean).join(" — ") || "—"}
           </div>
         </div>
       </section>

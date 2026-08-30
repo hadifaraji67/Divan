@@ -46,7 +46,9 @@ export function ReportsPanel() {
       if (inv.kind !== "invoice") continue;
       const j = gregorianToJalali(new Date(inv.date));
       if (j.y !== year) continue;
-      rows[j.m - 1].income += invoiceSums(inv.items).payable;
+      const total = invoiceSums(inv.items).payable;
+      if (inv.direction === "sale") rows[j.m - 1].income += total;
+      else rows[j.m - 1].expense += total;
     }
     for (const t of transactions) {
       const j = gregorianToJalali(new Date(t.date));
@@ -74,7 +76,7 @@ export function ReportsPanel() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <CardTitle>گزارش مالی</CardTitle>
-              <CardDescription>فروش (فاکتور نهایی) + تراکنش‌های دستی</CardDescription>
+              <CardDescription>فروش/خرید (فاکتور نهایی) + تراکنش‌های دستی</CardDescription>
             </div>
             <div className="flex items-center gap-1">
               {years.slice(0, 3).map((y) => (
