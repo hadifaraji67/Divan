@@ -8,13 +8,13 @@ export function InvoicePrint({ invoice, seller }: { invoice: Invoice; seller: Se
       <header className="sheet-head">
         <div className="sheet-meta">
           <div>
-            شماره فاکتور: <b>{toFaDigits(invoice.number)}</b>
+            شماره {invoice.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"}: <b>{toFaDigits(invoice.number)}</b>
           </div>
           <div>
             تاریخ: <b>{formatJalali(invoice.date)}</b>
           </div>
         </div>
-        <h1>پیش فاکتور فروش کالا و خدمات</h1>
+        <h1>{invoice.kind === "invoice" ? "فاکتور فروش کالا و خدمات" : "پیش فاکتور فروش کالا و خدمات"}</h1>
         <div className="sheet-logo">
           <div className="mark">P</div>
           <div className="mark-name">{seller.name}</div>

@@ -38,22 +38,56 @@ export type LineItem = {
   discount: number;
 };
 
+/** "quote" = پیش‌فاکتور (not yet a commitment), "invoice" = فاکتور نهایی (counts toward sales/debt). */
+export type DocKind = "quote" | "invoice";
+
 export type Invoice = {
   id: string;
+  kind: DocKind;
   number: number;
   date: string;
   customer: Customer;
   items: LineItem[];
   notes: string;
   createdAt: string;
+  /** Set on a quote once it has been converted — points at the resulting invoice. */
+  convertedToId?: string;
+  /** Set on an invoice that was created by converting a quote. */
+  convertedFromId?: string;
 };
 
 export type Draft = {
+  kind: DocKind;
   number: number;
   date: string;
   customer: Customer;
   items: LineItem[];
   notes: string;
+};
+
+export type TransactionType = "income" | "expense";
+
+export type Transaction = {
+  id: string;
+  type: TransactionType;
+  category: string;
+  amount: number;
+  date: string;
+  description: string;
+  createdAt: string;
+};
+
+/** A cash movement against a customer's balance — receipts reduce their debt. */
+export type PaymentDirection = "receipt" | "payment";
+
+export type Payment = {
+  id: string;
+  customerId: string;
+  amount: number;
+  date: string;
+  direction: PaymentDirection;
+  note: string;
+  createdAt: string;
 };
 
 const emptyCustomer = (): Customer => ({
@@ -87,8 +121,12 @@ const seedProducts: Product[] = [];
 
 const seedCustomers: Customer[] = [];
 
-function newDraft(number: number): Draft {
+export const EXPENSE_CATEGORIES = ["اجاره", "حقوق", "خرید کالا", "قبوض", "حمل و نقل", "سایر"];
+export const INCOME_CATEGORIES = ["فروش نقدی", "دریافتی از مشتری", "سایر درآمد"];
+
+function newDraft(number: number, kind: DocKind = "invoice"): Draft {
   return {
+    kind,
     number,
     date: new Date().toISOString(),
     customer: emptyCustomer(),
@@ -106,6 +144,9 @@ type State = {
   products: Product[];
   customers: Customer[];
   invoices: Invoice[];
+  transactions: Transaction[];
+  payments: Payment[];
+  nextQuoteNumber: number;
   nextInvoiceNumber: number;
   draft: Draft;
   viewingId: string | null;
@@ -123,11 +164,16 @@ type State = {
   removeDraftItem: (id: string) => void;
   setDraftNotes: (notes: string) => void;
   setDraftDate: (iso: string) => void;
-  resetDraft: () => void;
+  startNewDocument: (kind: DocKind) => void;
   loadInvoice: (id: string) => void;
   saveInvoice: () => Invoice | null;
   removeInvoice: (id: string) => void;
+  convertQuoteToInvoice: (id: string) => Invoice | null;
   setViewingId: (id: string | null) => void;
+  addTransaction: (t: Omit<Transaction, "id" | "createdAt">) => void;
+  removeTransaction: (id: string) => void;
+  addPayment: (p: Omit<Payment, "id" | "createdAt">) => void;
+  removePayment: (id: string) => void;
 };
 
 export function invoiceSums(items: LineItem[]) {
@@ -146,6 +192,17 @@ export function invoiceSums(items: LineItem[]) {
   );
 }
 
+/** Outstanding balance for a customer: unpaid invoice totals minus net receipts. Positive = customer owes us. */
+export function customerBalance(invoices: Invoice[], payments: Payment[], customerId: string) {
+  const invoiced = invoices
+    .filter((i) => i.kind === "invoice" && i.customer.id === customerId)
+    .reduce((sum, i) => sum + invoiceSums(i.items).payable, 0);
+  const net = payments
+    .filter((p) => p.customerId === customerId)
+    .reduce((sum, p) => sum + (p.direction === "receipt" ? p.amount : -p.amount), 0);
+  return invoiced - net;
+}
+
 export const useInvoiceStore = create<State>()(
   persist(
     (set, get) => ({
@@ -153,8 +210,11 @@ export const useInvoiceStore = create<State>()(
       products: seedProducts,
       customers: seedCustomers,
       invoices: [],
+      transactions: [],
+      payments: [],
+      nextQuoteNumber: 1,
       nextInvoiceNumber: 1,
-      draft: newDraft(1),
+      draft: newDraft(1, "invoice"),
       viewingId: null,
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
@@ -208,17 +268,17 @@ export const useInvoiceStore = create<State>()(
         }),
       setDraftNotes: (notes) => set({ draft: { ...get().draft, notes } }),
       setDraftDate: (date) => set({ draft: { ...get().draft, date } }),
-      resetDraft: () =>
-        set({
-          draft: newDraft(get().nextInvoiceNumber),
-          viewingId: null,
-        }),
+      startNewDocument: (kind) => {
+        const number = kind === "quote" ? get().nextQuoteNumber : get().nextInvoiceNumber;
+        set({ draft: newDraft(number, kind), viewingId: null });
+      },
       loadInvoice: (id) => {
         const inv = get().invoices.find((x) => x.id === id);
         if (!inv) return;
         set({
           viewingId: id,
           draft: {
+            kind: inv.kind,
             number: inv.number,
             date: inv.date,
             customer: { ...inv.customer },
@@ -228,18 +288,22 @@ export const useInvoiceStore = create<State>()(
         });
       },
       saveInvoice: () => {
-        const { draft, invoices, viewingId, nextInvoiceNumber } = get();
+        const { draft, invoices, viewingId, nextQuoteNumber, nextInvoiceNumber } = get();
         if (!draft.customer.name.trim() || draft.items.length === 0) return null;
         const now = new Date().toISOString();
         if (viewingId) {
+          const existing = invoices.find((i) => i.id === viewingId);
           const updated: Invoice = {
             id: viewingId,
+            kind: draft.kind,
             number: draft.number,
             date: draft.date,
             customer: { ...draft.customer },
             items: draft.items.map((i) => ({ ...i })),
             notes: draft.notes,
-            createdAt: invoices.find((i) => i.id === viewingId)?.createdAt ?? now,
+            createdAt: existing?.createdAt ?? now,
+            convertedToId: existing?.convertedToId,
+            convertedFromId: existing?.convertedFromId,
           };
           set({
             invoices: invoices.map((i) => (i.id === viewingId ? updated : i)),
@@ -248,7 +312,8 @@ export const useInvoiceStore = create<State>()(
         }
         const created: Invoice = {
           id: uid(),
-          number: nextInvoiceNumber,
+          kind: draft.kind,
+          number: draft.kind === "quote" ? nextQuoteNumber : nextInvoiceNumber,
           date: draft.date,
           customer: { ...draft.customer },
           items: draft.items.map((i) => ({ ...i })),
@@ -257,8 +322,9 @@ export const useInvoiceStore = create<State>()(
         };
         set({
           invoices: [created, ...invoices],
-          nextInvoiceNumber: nextInvoiceNumber + 1,
-          draft: { ...draft, number: nextInvoiceNumber },
+          nextQuoteNumber: draft.kind === "quote" ? nextQuoteNumber + 1 : nextQuoteNumber,
+          nextInvoiceNumber: draft.kind === "invoice" ? nextInvoiceNumber + 1 : nextInvoiceNumber,
+          draft: { ...draft, number: created.number },
           viewingId: created.id,
         });
         return created;
@@ -268,7 +334,50 @@ export const useInvoiceStore = create<State>()(
           invoices: get().invoices.filter((x) => x.id !== id),
           viewingId: get().viewingId === id ? null : get().viewingId,
         }),
+      convertQuoteToInvoice: (id) => {
+        const { invoices, nextInvoiceNumber } = get();
+        const quote = invoices.find((x) => x.id === id && x.kind === "quote");
+        if (!quote || quote.convertedToId) return null;
+        const now = new Date().toISOString();
+        const invoice: Invoice = {
+          id: uid(),
+          kind: "invoice",
+          number: nextInvoiceNumber,
+          date: now,
+          customer: { ...quote.customer },
+          items: quote.items.map((i) => ({ ...i })),
+          notes: quote.notes,
+          createdAt: now,
+          convertedFromId: quote.id,
+        };
+        set({
+          invoices: [
+            invoice,
+            ...invoices.map((x) => (x.id === id ? { ...x, convertedToId: invoice.id } : x)),
+          ],
+          nextInvoiceNumber: nextInvoiceNumber + 1,
+        });
+        return invoice;
+      },
       setViewingId: (viewingId) => set({ viewingId }),
+      addTransaction: (t) =>
+        set({
+          transactions: [
+            { ...t, id: uid(), createdAt: new Date().toISOString() },
+            ...get().transactions,
+          ],
+        }),
+      removeTransaction: (id) =>
+        set({ transactions: get().transactions.filter((x) => x.id !== id) }),
+      addPayment: (p) =>
+        set({
+          payments: [
+            { ...p, id: uid(), createdAt: new Date().toISOString() },
+            ...get().payments,
+          ],
+        }),
+      removePayment: (id) =>
+        set({ payments: get().payments.filter((x) => x.id !== id) }),
     }),
     {
       name: "ansar-invoice-v2",
@@ -277,7 +386,10 @@ export const useInvoiceStore = create<State>()(
         seller: s.seller,
         products: s.products,
         customers: s.customers,
-        invoices: s.invoices,
+        invoices: s.invoices.map((i) => ({ ...i, kind: i.kind ?? "invoice" })),
+        transactions: s.transactions,
+        payments: s.payments,
+        nextQuoteNumber: s.nextQuoteNumber,
         nextInvoiceNumber: s.nextInvoiceNumber,
       }),
     },

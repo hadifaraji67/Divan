@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  FilePlus,
-  History,
-  Package,
+  ArrowRight,
+  FileCheck2,
   Pencil,
   Plus,
   Printer,
   Save,
-  Settings,
   Trash2,
   Users,
 } from "lucide-react";
@@ -23,18 +21,46 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Field } from "@/components/field";
 import { InvoicePrint } from "@/components/invoice-print";
+import { HomeScreen } from "@/components/home-screen";
+import { FinancePanel } from "@/components/finance-panel";
+import { CustomerLedger } from "@/components/customer-ledger";
+import { ReportsPanel } from "@/components/reports-panel";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
   invoiceSums,
   useInvoiceStore,
   type Customer,
+  type DocKind,
   type Invoice,
   type Product,
 } from "@/lib/store";
+
+export type View =
+  | "home"
+  | "quote"
+  | "invoice"
+  | "products"
+  | "customers"
+  | "history"
+  | "finance"
+  | "ledger"
+  | "reports"
+  | "settings";
+
+const VIEW_TITLES: Record<Exclude<View, "home">, string> = {
+  quote: "پیش‌فاکتور جدید",
+  invoice: "فاکتور جدید",
+  products: "کالاها",
+  customers: "مشتریان",
+  history: "سوابق اسناد",
+  finance: "هزینه‌ها و درآمدها",
+  ledger: "بدهی و بستانکاری",
+  reports: "گزارش‌ها",
+  settings: "مشخصات فروشنده",
+};
 
 const emptyProduct = (): Omit<Product, "id"> => ({
   code: "",
@@ -56,10 +82,11 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
 });
 
 export function InvoiceApp() {
-  const [tab, setTab] = useState("invoice");
+  const [view, setView] = useState<View>("home");
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [shouldPrint, setShouldPrint] = useState(false);
   const seller = useInvoiceStore((s) => s.seller);
+  const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
 
   useEffect(() => {
     void useInvoiceStore.persist.rehydrate();
@@ -79,58 +106,54 @@ export function InvoiceApp() {
     setShouldPrint(true);
   }
 
+  function navigate(next: View) {
+    if (next === "quote" || next === "invoice") startNewDocument(next);
+    setView(next);
+  }
+
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <header className="no-print border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div>
-            <p className="text-xs font-medium tracking-wide text-muted-foreground">سامانه جامع حسابداری</p>
-            <h1 className="text-xl font-semibold text-balance">دیوان</h1>
-          </div>
-          <Badge variant="secondary">پیش‌فاکتور رسمی</Badge>
+          {view === "home" ? (
+            <>
+              <div>
+                <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                  سامانه جامع حسابداری
+                </p>
+                <h1 className="text-xl font-semibold text-balance">دیوان</h1>
+              </div>
+              <Badge variant="secondary">حسابداری شخصی</Badge>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={() => setView("home")}>
+                <ArrowRight className="size-5" />
+              </Button>
+              <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
+              <span className="size-9" />
+            </>
+          )}
         </div>
       </header>
 
       <main className="no-print mx-auto max-w-6xl px-4 py-5 pb-24">
-        <Tabs value={tab} onValueChange={setTab} dir="rtl">
-          <TabsList>
-            <TabsTrigger value="invoice">
-              <FilePlus className="size-4" />
-              فاکتور جدید
-            </TabsTrigger>
-            <TabsTrigger value="products">
-              <Package className="size-4" />
-              کالاها
-            </TabsTrigger>
-            <TabsTrigger value="customers">
-              <Users className="size-4" />
-              مشتریان
-            </TabsTrigger>
-            <TabsTrigger value="history">
-              <History className="size-4" />
-              سوابق
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings className="size-4" />
-              فروشنده
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="invoice">
-            <Composer onPrint={printSheet} />
-          </TabsContent>
-          <TabsContent value="products">
-            <ProductManager />
-          </TabsContent>
-          <TabsContent value="customers">
-            <CustomerManager />
-          </TabsContent>
-          <TabsContent value="history">
-            <HistoryPanel onOpen={() => setTab("invoice")} onPrint={printSheet} />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SellerPanel />
-          </TabsContent>
-        </Tabs>
+        {view === "home" ? <HomeScreen onNavigate={navigate} /> : null}
+        {view === "quote" || view === "invoice" ? (
+          <Composer kind={view} onPrint={printSheet} onDone={() => setView("home")} />
+        ) : null}
+        {view === "products" ? <ProductManager /> : null}
+        {view === "customers" ? <CustomerManager /> : null}
+        {view === "history" ? (
+          <HistoryPanel
+            onOpen={(kind) => setView(kind)}
+            onPrint={printSheet}
+          />
+        ) : null}
+        {view === "finance" ? <FinancePanel /> : null}
+        {view === "ledger" ? <CustomerLedger /> : null}
+        {view === "reports" ? <ReportsPanel /> : null}
+        {view === "settings" ? <SellerPanel /> : null}
       </main>
 
       {printInvoice ? (
@@ -142,7 +165,15 @@ export function InvoiceApp() {
   );
 }
 
-function Composer({ onPrint }: { onPrint: (invoice: Invoice) => void }) {
+function Composer({
+  kind,
+  onPrint,
+  onDone,
+}: {
+  kind: DocKind;
+  onPrint: (invoice: Invoice) => void;
+  onDone: () => void;
+}) {
   const draft = useInvoiceStore((s) => s.draft);
   const products = useInvoiceStore((s) => s.products);
   const customers = useInvoiceStore((s) => s.customers);
@@ -154,9 +185,11 @@ function Composer({ onPrint }: { onPrint: (invoice: Invoice) => void }) {
   const removeDraftItem = useInvoiceStore((s) => s.removeDraftItem);
   const setDraftNotes = useInvoiceStore((s) => s.setDraftNotes);
   const saveInvoice = useInvoiceStore((s) => s.saveInvoice);
-  const resetDraft = useInvoiceStore((s) => s.resetDraft);
+  const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
+  const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
   const addCustomer = useInvoiceStore((s) => s.addCustomer);
   const addProduct = useInvoiceStore((s) => s.addProduct);
+  const docLabel = kind === "quote" ? "پیش‌فاکتور" : "فاکتور";
 
   const [itemOpen, setItemOpen] = useState(false);
   const [itemForm, setItemForm] = useState({
@@ -234,8 +267,21 @@ function Composer({ onPrint }: { onPrint: (invoice: Invoice) => void }) {
       toast.error("نام مشتری و حداقل یک کالا لازم است");
       return null;
     }
-    toast.success(`فاکتور ${toFaDigits(inv.number)} ذخیره شد`);
+    toast.success(`${docLabel} ${toFaDigits(inv.number)} ذخیره شد`);
     return inv;
+  }
+
+  function convertToInvoice() {
+    if (!viewingId) return;
+    const saved = saveInvoice();
+    const id = saved?.id ?? viewingId;
+    const invoice = convertQuoteToInvoice(id);
+    if (!invoice) {
+      toast.error("این پیش‌فاکتور قبلاً به فاکتور تبدیل شده است");
+      return;
+    }
+    toast.success(`فاکتور ${toFaDigits(invoice.number)} ساخته شد`);
+    onDone();
   }
 
   return (
@@ -245,19 +291,25 @@ function Composer({ onPrint }: { onPrint: (invoice: Invoice) => void }) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <CardTitle>
-                {viewingId ? "ویرایش فاکتور" : "صدور فاکتور"}{" "}
+                {viewingId ? `ویرایش ${docLabel}` : `صدور ${docLabel}`}{" "}
                 <span className="tabular-nums">{toFaDigits(draft.number)}</span>
               </CardTitle>
               <CardDescription>تاریخ {formatJalali(draft.date)}</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={resetDraft}>
-                فاکتور تازه
+              <Button variant="outline" onClick={() => startNewDocument(kind)}>
+                {docLabel} تازه
               </Button>
               <Button variant="secondary" onClick={() => void persist()}>
                 <Save className="size-4" />
                 ذخیره
               </Button>
+              {kind === "quote" ? (
+                <Button variant="secondary" onClick={convertToInvoice}>
+                  <FileCheck2 className="size-4" />
+                  تبدیل به فاکتور
+                </Button>
+              ) : null}
               <Button
                 onClick={() => {
                   const inv = persist();
@@ -812,47 +864,81 @@ function HistoryPanel({
   onOpen,
   onPrint,
 }: {
-  onOpen: () => void;
+  onOpen: (kind: DocKind) => void;
   onPrint: (invoice: Invoice) => void;
 }) {
   const invoices = useInvoiceStore((s) => s.invoices);
   const loadInvoice = useInvoiceStore((s) => s.loadInvoice);
   const removeInvoice = useInvoiceStore((s) => s.removeInvoice);
+  const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
+  const [filter, setFilter] = useState<"all" | DocKind>("all");
+
+  const rows = invoices.filter((i) => filter === "all" || i.kind === filter);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>فاکتورهای ذخیره‌شده</CardTitle>
-        <CardDescription>برای چاپ یا ویرایش، فاکتور را باز کنید</CardDescription>
+        <CardTitle>سوابق اسناد</CardTitle>
+        <CardDescription>برای چاپ یا ویرایش، سند را باز کنید</CardDescription>
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant={filter === "all" ? "default" : "outline"} onClick={() => setFilter("all")}>
+            همه
+          </Button>
+          <Button size="sm" variant={filter === "quote" ? "default" : "outline"} onClick={() => setFilter("quote")}>
+            پیش‌فاکتورها
+          </Button>
+          <Button size="sm" variant={filter === "invoice" ? "default" : "outline"} onClick={() => setFilter("invoice")}>
+            فاکتورها
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="grid gap-2">
-        {invoices.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">هنوز فاکتوری ذخیره نشده.</p>
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">هنوز سندی ذخیره نشده.</p>
         ) : (
-          invoices.map((inv) => (
+          rows.map((inv) => (
             <div
               key={inv.id}
               className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
             >
-              <div>
-                <p className="font-medium">
-                  فاکتور {toFaDigits(inv.number)} — {inv.customer.name}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant={inv.kind === "invoice" ? "default" : "secondary"}>
+                    {inv.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"}
+                  </Badge>
+                  {inv.convertedToId ? <Badge variant="outline">تبدیل شده</Badge> : null}
+                </div>
+                <p className="mt-1 font-medium">
+                  {toFaDigits(inv.number)} — {inv.customer.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {formatJalali(inv.date)} · {formatRial(invoiceSums(inv.items).payable)} ریال
                 </p>
               </div>
-              <div className="flex">
+              <div className="flex flex-wrap justify-end">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     loadInvoice(inv.id);
-                    onOpen();
+                    onOpen(inv.kind);
                   }}
                 >
                   ویرایش
                 </Button>
+                {inv.kind === "quote" && !inv.convertedToId ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="تبدیل به فاکتور"
+                    onClick={() => {
+                      const created = convertQuoteToInvoice(inv.id);
+                      if (created) toast.success(`فاکتور ${toFaDigits(created.number)} ساخته شد`);
+                    }}
+                  >
+                    <FileCheck2 className="size-4" />
+                  </Button>
+                ) : null}
                 <Button
                   variant="ghost"
                   size="icon"
