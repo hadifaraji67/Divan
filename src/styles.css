@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-background: #f3efe6;
+  --color-foreground: #1c1914;
+  --color-card: #fbf8f1;
+  --color-card-foreground: #1c1914;
+  --color-primary: #1b3654;
+  --color-primary-foreground: #f7f4ec;
+  --color-secondary: #e8e2d6;
+  --color-secondary-foreground: #1c1914;
+  --color-muted: #ebe6db;
+  --color-muted-foreground: #6b6458;
+  --color-accent: #1b3654;
+  --color-accent-foreground: #f7f4ec;
+  --color-destructive: #9f2d2d;
+  --color-destructive-foreground: #faf7f2;
+  --color-border: #d8d0c3;
+  --color-input: #d8d0c3;
+  --color-ring: #1b3654;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --font-sans: "Vazirmatn", "Tahoma", system-ui, sans-serif;
+  --shadow-border: 0 0 0 1px rgb(28 25 20 / 0.06), 0 1px 2px -1px rgb(28 25 20 / 0.06),
+    0 2px 4px 0 rgb(28 25 20 / 0.04);
+  --shadow-border-hover: 0 0 0 1px rgb(28 25 20 / 0.08), 0 1px 2px -1px rgb(28 25 20 / 0.08),
+    0 2px 4px 0 rgb(28 25 20 / 0.06);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+.print-only {
+  display: none;
+}
+
+.invoice-sheet {
+  background: #fff;
+  color: #111;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.invoice-sheet .sheet-head {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.invoice-sheet h1 {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.invoice-sheet .sheet-meta {
+  font-size: 11px;
+}
+
+.invoice-sheet .sheet-logo {
+  text-align: left;
+}
+
+.invoice-sheet .mark {
+  width: 36px;
+  height: 36px;
+  margin-inline-start: auto;
+  border-radius: 8px;
+  background: #1b3654;
+  color: #f7f4ec;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.invoice-sheet .mark-name {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.invoice-sheet .box {
+  border: 1px solid #222;
+  margin-bottom: 8px;
+}
+
+.invoice-sheet .box-title {
+  background: #1b3654;
+  color: #f7f4ec;
+  padding: 4px 8px;
+  font-weight: 600;
+}
+
+.invoice-sheet .grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px 10px;
+  padding: 8px;
+}
+
+.invoice-sheet .grid3 span {
+  color: #555;
+  margin-left: 4px;
+}
+
+.invoice-sheet .span2 {
+  grid-column: span 2;
+}
+
+.invoice-sheet .span3 {
+  grid-column: span 3;
+}
+
+.invoice-sheet table.items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+.invoice-sheet table.items th,
+.invoice-sheet table.items td {
+  border: 1px solid #222;
+  padding: 4px;
+  text-align: center;
+}
+
+.invoice-sheet table.items th {
+  background: #1b3654;
+  color: #f7f4ec;
+  font-weight: 600;
+  font-size: 9px;
+}
+
+.invoice-sheet table.items td.name {
+  text-align: right;
+}
+
+.invoice-sheet .total-row {
+  font-weight: 700;
+  background: #f3efe6;
+}
+
+.invoice-sheet .sheet-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 28px;
+  text-align: center;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* The app shell is hidden above the mobile breakpoint (md:hidden) so the
+     desktop-block notice can take over the screen. That must not affect
+     printing (e.g. printing to PDF from a wide print-preview pane), so we
+     force it visible again for the print media type specifically. */
+  .app-shell {
+    display: block !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .invoice-sheet {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
