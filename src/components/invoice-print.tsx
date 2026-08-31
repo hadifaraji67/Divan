@@ -1,7 +1,14 @@
 import { formatJalali, formatRial, lineTotals, toFaDigits } from "@/lib/format";
 import { invoiceSums, type Invoice, type Seller } from "@/lib/store";
 
-export function InvoicePrint({ invoice, seller }: { invoice: Invoice; seller: Seller }) {
+export function InvoicePrint({
+  invoice,
+  seller,
+}: {
+  invoice: Invoice;
+  seller: Seller;
+  format?: "A4" | "A5";
+}) {
   const sums = invoiceSums(invoice.items);
   const isPurchase = invoice.direction === "purchase";
   const sellerParty = isPurchase ? invoice.customer : seller;

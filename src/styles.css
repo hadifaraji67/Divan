@@ -189,6 +189,11 @@
     margin: 10mm;
   }
 
+  @page a5 {
+    size: A5;
+    margin: 6mm;
+  }
+
   html,
   body {
     background: #fff !important;
@@ -206,12 +211,26 @@
     display: none !important;
   }
 
+  /* Toast notifications (sonner) float above the page and were being
+     captured in printed/PDF output — always hide them while printing. */
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
   .print-only {
     display: block !important;
   }
 
   .invoice-sheet {
     font-size: 10px;
+  }
+
+  .format-a5 {
+    page: a5;
+  }
+
+  .format-a5 .invoice-sheet {
+    font-size: 8px;
   }
 }
 

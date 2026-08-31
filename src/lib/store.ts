@@ -184,6 +184,9 @@ type State = Counters & {
   stockMovements: StockMovement[];
   draft: Draft;
   viewingId: string | null;
+  isAuthenticated: boolean;
+  login: (username: string, password: string) => boolean;
+  logout: () => void;
   setSeller: (seller: Seller) => void;
   addProduct: (p: Omit<Product, "id">) => string;
   updateProduct: (id: string, p: Partial<Product>) => void;
@@ -268,6 +271,13 @@ export const useInvoiceStore = create<State>()(
       nextPurchaseInvoiceNumber: 1,
       draft: newDraft(1, "invoice", "sale"),
       viewingId: null,
+      isAuthenticated: false,
+      login: (username, password) => {
+        const ok = username === "admin" && password === "admin";
+        if (ok) set({ isAuthenticated: true });
+        return ok;
+      },
+      logout: () => set({ isAuthenticated: false }),
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
         const id = uid();
@@ -443,6 +453,7 @@ export const useInvoiceStore = create<State>()(
         nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
         nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
         nextPurchaseInvoiceNumber: s.nextPurchaseInvoiceNumber,
+        isAuthenticated: s.isAuthenticated,
       }),
     },
   ),

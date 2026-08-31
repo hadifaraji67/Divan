@@ -4,7 +4,9 @@ import {
   BarChart3,
   BookUser,
   FileCheck2,
+  LogOut,
   Menu,
+  MoreVertical,
   Package,
   PackageSearch,
   Pencil,
@@ -39,6 +41,7 @@ import { ReportsPanel } from "@/components/reports-panel";
 import { InventoryPanel } from "@/components/inventory-panel";
 import { PaymentsPanel } from "@/components/payments-panel";
 import { SettingsHub, type SettingsView } from "@/components/settings-hub";
+import { LoginScreen } from "@/components/login-screen";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
   invoiceSums,
@@ -131,9 +134,14 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
 });
 
 export function InvoiceApp() {
+  const isAuthenticated = useInvoiceStore((s) => s.isAuthenticated);
+  const logout = useInvoiceStore((s) => s.logout);
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
+  const [printFormat, setPrintFormat] = useState<"A4" | "A5">("A4");
+  const [pendingPrint, setPendingPrint] = useState<Invoice | null>(null);
   const [shouldPrint, setShouldPrint] = useState(false);
   const seller = useInvoiceStore((s) => s.seller);
   const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
@@ -151,17 +159,49 @@ export function InvoiceApp() {
     return () => window.clearTimeout(id);
   }, [shouldPrint, printInvoice]);
 
-  function printSheet(invoice: Invoice) {
-    setPrintInvoice(invoice);
+  // Make the phone's back button/gesture navigate inside the app instead of
+  // closing it: every screen change pushes a history entry, and going back
+  // just pops to the previous one.
+  useEffect(() => {
+    window.history.replaceState({ view: "home" }, "");
+    function onPopState(e: PopStateEvent) {
+      setSidebarOpen(false);
+      setMenuOpen(false);
+      setView((e.state?.view as View | undefined) ?? "home");
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function goTo(next: View) {
+    window.history.pushState({ view: next }, "");
+    setView(next);
+  }
+
+  function goBack() {
+    window.history.back();
+  }
+
+  function requestPrint(invoice: Invoice) {
+    setPendingPrint(invoice);
+  }
+
+  function runPrint(format: "A4" | "A5") {
+    if (!pendingPrint) return;
+    setPrintFormat(format);
+    setPrintInvoice(pendingPrint);
+    setPendingPrint(null);
     setShouldPrint(true);
   }
 
   function navigate(next: View) {
     const doc = DOC_VIEWS[next];
     if (doc) startNewDocument(doc.kind, doc.direction);
-    setView(next);
+    goTo(next);
     setSidebarOpen(false);
   }
+
+  if (!isAuthenticated) return <LoginScreen />;
 
   const doc = DOC_VIEWS[view];
 
@@ -170,40 +210,65 @@ export function InvoiceApp() {
       <header className="no-print border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           {view === "home" ? (
-            <>
-              <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
-                <Menu className="size-5" />
-              </Button>
-              <div className="text-center">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">
-                  سامانه جامع حسابداری
-                </p>
-                <h1 className="text-xl font-semibold text-balance">دیوان</h1>
-              </div>
-              <Badge variant="secondary">شخصی</Badge>
-            </>
+            <span className="size-9" />
           ) : (
-            <>
-              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={() => setView("home")}>
-                <ArrowRight className="size-5" />
-              </Button>
-              <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
-              <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
-                <Menu className="size-5" />
-              </Button>
-            </>
+            <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
+              <ArrowRight className="size-5" />
+            </Button>
           )}
+          {view === "home" ? (
+            <div className="text-center">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground">سامانه جامع حسابداری</p>
+              <h1 className="text-xl font-semibold text-balance">دیوان</h1>
+            </div>
+          ) : (
+            <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
+          )}
+          <div className="relative flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
+              <Menu className="size-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="گزینه‌های بیشتر"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <MoreVertical className="size-5" />
+            </Button>
+            {menuOpen ? (
+              <>
+                <button
+                  aria-label="بستن"
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-rose-600 hover:bg-muted"
+                  >
+                    <LogOut className="size-4" />
+                    خروج
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
       </header>
 
       {sidebarOpen ? (
-        <div className="no-print fixed inset-0 z-50 flex justify-end">
+        <div className="no-print fixed inset-0 z-50">
           <button
             aria-label="بستن منو"
             className="absolute inset-0 bg-black/40"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative flex h-full w-72 max-w-[80vw] flex-col bg-card px-3 py-4 shadow-xl">
+          <aside className="absolute inset-y-0 right-0 flex h-full w-72 max-w-[80vw] flex-col bg-card px-3 py-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between px-2">
               <span className="font-semibold">منوی دیوان</span>
               <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setSidebarOpen(false)}>
@@ -213,7 +278,7 @@ export function InvoiceApp() {
             <nav className="grid gap-1">
               <button
                 onClick={() => {
-                  setView("home");
+                  goTo("home");
                   setSidebarOpen(false);
                 }}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"
@@ -246,14 +311,14 @@ export function InvoiceApp() {
           <Composer
             kind={doc.kind}
             direction={doc.direction}
-            onPrint={printSheet}
-            onDone={() => setView("home")}
+            onPrint={requestPrint}
+            onDone={() => goTo("home")}
           />
         ) : null}
         {view === "products" ? <ProductManager /> : null}
         {view === "parties" ? <CustomerManager /> : null}
         {view === "history" ? (
-          <HistoryPanel onOpen={(kind, direction) => setView(docView(kind, direction))} onPrint={printSheet} />
+          <HistoryPanel onOpen={(kind, direction) => goTo(docView(kind, direction))} onPrint={requestPrint} />
         ) : null}
         {view === "finance" ? <FinancePanel /> : null}
         {view === "ledger" ? <CustomerLedger /> : null}
@@ -261,18 +326,44 @@ export function InvoiceApp() {
         {view === "inventory" ? <InventoryPanel /> : null}
         {view === "reports" ? <ReportsPanel /> : null}
         {view === "settings" ? (
-          <SettingsHub onOpen={(v: SettingsView) => setView(`settings-${v}` as View)} />
+          <SettingsHub onOpen={(v: SettingsView) => goTo(`settings-${v}` as View)} />
         ) : null}
+
         {view === "settings-business" ? <BusinessSettingsPanel /> : null}
         {view === "settings-invoice" ? <InvoiceSettingsPanel /> : null}
         {view === "settings-software" ? <SoftwareSettingsPanel /> : null}
       </main>
 
       {printInvoice ? (
-        <div className="print-only">
-          <InvoicePrint invoice={printInvoice} seller={seller} />
+        <div className={`print-only ${printFormat === "A5" ? "format-a5" : ""}`}>
+          <InvoicePrint invoice={printInvoice} seller={seller} format={printFormat} />
         </div>
       ) : null}
+
+      <Dialog open={!!pendingPrint} onOpenChange={(v) => !v && setPendingPrint(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>قالب چاپ</DialogTitle>
+            <DialogDescription>اندازه‌ی کاغذ را برای چاپ یا خروجی PDF انتخاب کنید</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => runPrint("A4")}
+              className="rounded-xl border border-border p-4 text-center hover:bg-muted"
+            >
+              <p className="font-semibold">A4</p>
+              <p className="text-xs text-muted-foreground">استاندارد</p>
+            </button>
+            <button
+              onClick={() => runPrint("A5")}
+              className="rounded-xl border border-border p-4 text-center hover:bg-muted"
+            >
+              <p className="font-semibold">A5</p>
+              <p className="text-xs text-muted-foreground">کوچک</p>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
