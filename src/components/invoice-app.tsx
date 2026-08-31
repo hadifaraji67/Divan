@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookUser,
   FileCheck2,
+  Inbox,
   LogOut,
   Menu,
   MoreVertical,
@@ -41,6 +42,7 @@ import { ReportsPanel } from "@/components/reports-panel";
 import { InventoryPanel } from "@/components/inventory-panel";
 import { PaymentsPanel } from "@/components/payments-panel";
 import { SettingsHub, type SettingsView } from "@/components/settings-hub";
+import { SmsImportPanel } from "@/components/sms-import-panel";
 import { LoginScreen } from "@/components/login-screen";
 import { APP_VERSION } from "@/lib/version";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
@@ -68,6 +70,7 @@ export type View =
   | "payments"
   | "inventory"
   | "reports"
+  | "sms-import"
   | "settings"
   | "settings-business"
   | "settings-invoice"
@@ -97,6 +100,7 @@ const VIEW_TITLES: Record<Exclude<View, "home">, string> = {
   payments: "دریافت و پرداخت",
   inventory: "ورود و خروج کالا",
   reports: "گزارش‌ها",
+  "sms-import": "وارد کردن از پیامک بانکی",
   settings: "تنظیمات",
   "settings-business": "نام کسب‌وکار",
   "settings-invoice": "تنظیمات فاکتور",
@@ -111,6 +115,7 @@ const SIDEBAR_ITEMS: { view: View; title: string; icon: typeof Users }[] = [
   { view: "ledger", title: "بدهی و بستانکاری", icon: BookUser },
   { view: "finance", title: "هزینه‌ها و درآمدها", icon: Wallet },
   { view: "reports", title: "گزارش‌ها", icon: BarChart3 },
+  { view: "sms-import", title: "وارد کردن از پیامک بانکی", icon: Inbox },
   { view: "history", title: "سوابق اسناد", icon: Printer },
   { view: "settings", title: "تنظیمات", icon: SettingsIcon },
 ];
@@ -327,6 +332,7 @@ export function InvoiceApp() {
         {view === "payments" ? <PaymentsPanel /> : null}
         {view === "inventory" ? <InventoryPanel /> : null}
         {view === "reports" ? <ReportsPanel /> : null}
+        {view === "sms-import" ? <SmsImportPanel /> : null}
         {view === "settings" ? (
           <SettingsHub onOpen={(v: SettingsView) => goTo(`settings-${v}` as View)} />
         ) : null}
