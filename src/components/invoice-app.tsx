@@ -42,6 +42,7 @@ import { InventoryPanel } from "@/components/inventory-panel";
 import { PaymentsPanel } from "@/components/payments-panel";
 import { SettingsHub, type SettingsView } from "@/components/settings-hub";
 import { LoginScreen } from "@/components/login-screen";
+import { APP_VERSION } from "@/lib/version";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
   invoiceSums,
@@ -209,13 +210,16 @@ export function InvoiceApp() {
     <div className="min-h-dvh bg-background text-foreground">
       <header className="no-print border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          {view === "home" ? (
-            <span className="size-9" />
-          ) : (
-            <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
-              <ArrowRight className="size-5" />
+          <div className="flex items-center gap-1">
+            {view === "home" ? null : (
+              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
+                <ArrowRight className="size-5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
+              <Menu className="size-5" />
             </Button>
-          )}
+          </div>
           {view === "home" ? (
             <div className="text-center">
               <p className="text-xs font-medium tracking-wide text-muted-foreground">سامانه جامع حسابداری</p>
@@ -225,9 +229,6 @@ export function InvoiceApp() {
             <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
           )}
           <div className="relative flex items-center gap-1">
-            <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
-              <Menu className="size-5" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -301,6 +302,7 @@ export function InvoiceApp() {
                 </button>
               ))}
             </nav>
+            <p className="mt-auto pt-4 text-center text-xs text-muted-foreground">نسخه {APP_VERSION}</p>
           </aside>
         </div>
       ) : null}
@@ -1278,17 +1280,74 @@ function InvoiceSettingsPanel() {
 }
 
 function SoftwareSettingsPanel() {
+  const users = useInvoiceStore((s) => s.users);
+  const addUser = useInvoiceStore((s) => s.addUser);
+  const removeUser = useInvoiceStore((s) => s.removeUser);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  function save() {
+    if (!username.trim() || !password) {
+      toast.error("نام کاربری و رمز عبور را وارد کنید");
+      return;
+    }
+    const ok = addUser(username.trim(), password);
+    if (!ok) {
+      toast.error("این نام کاربری قبلاً ثبت شده است");
+      return;
+    }
+    toast.success("کاربر اضافه شد");
+    setUsername("");
+    setPassword("");
+  }
+
+  function remove(id: string, name: string) {
+    const ok = removeUser(id);
+    if (!ok) {
+      toast.error("باید حداقل یک کاربر باقی بماند");
+      return;
+    }
+    toast.success(`${name} حذف شد`);
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>تنظیمات نرم‌افزار</CardTitle>
-        <CardDescription>این بخش هنوز خالی است</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="rounded-xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">
-          به‌زودی گزینه‌هایی مثل پشتیبان‌گیری و بازیابی اطلاعات به این بخش اضافه می‌شود.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>کاربران</CardTitle>
+          <CardDescription>افرادی که می‌توانند وارد برنامه شوند</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center justify-between rounded-xl bg-muted/70 p-3">
+              <span className="font-medium">{u.username}</span>
+              <Button variant="ghost" size="icon" aria-label="حذف کاربر" onClick={() => remove(u.id, u.username)}>
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>افزودن کاربر</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Field label="نام کاربری">
+            <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+          </Field>
+          <Field label="رمز عبور">
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          <Button onClick={save}>
+            <Plus className="size-4" />
+            افزودن کاربر
+          </Button>
+        </CardContent>
+      </Card>
+
+      <p className="text-center text-xs text-muted-foreground">نسخه‌ی برنامه: {APP_VERSION}</p>
+    </div>
   );
 }

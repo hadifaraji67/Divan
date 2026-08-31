@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
 import { useInvoiceStore } from "@/lib/store";
+import { APP_VERSION } from "@/lib/version";
 
 export function LoginScreen() {
   const login = useInvoiceStore((s) => s.login);
@@ -65,6 +66,7 @@ export function LoginScreen() {
             </form>
           </CardContent>
         </Card>
+        <p className="mt-4 text-center text-xs text-muted-foreground">نسخه {APP_VERSION}</p>
       </div>
     </div>
   );

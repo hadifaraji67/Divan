@@ -82,6 +82,12 @@ export type Transaction = {
   createdAt: string;
 };
 
+export type User = {
+  id: string;
+  username: string;
+  password: string;
+};
+
 /** A cash movement against a party's balance — receipts reduce what they owe us. */
 export type PaymentDirection = "receipt" | "payment";
 
@@ -185,8 +191,11 @@ type State = Counters & {
   draft: Draft;
   viewingId: string | null;
   isAuthenticated: boolean;
+  users: User[];
   login: (username: string, password: string) => boolean;
   logout: () => void;
+  addUser: (username: string, password: string) => boolean;
+  removeUser: (id: string) => boolean;
   setSeller: (seller: Seller) => void;
   addProduct: (p: Omit<Product, "id">) => string;
   updateProduct: (id: string, p: Partial<Product>) => void;
@@ -272,12 +281,25 @@ export const useInvoiceStore = create<State>()(
       draft: newDraft(1, "invoice", "sale"),
       viewingId: null,
       isAuthenticated: false,
+      users: [{ id: "admin", username: "admin", password: "admin" }],
       login: (username, password) => {
-        const ok = username === "admin" && password === "admin";
+        const ok = get().users.some((u) => u.username === username && u.password === password);
         if (ok) set({ isAuthenticated: true });
         return ok;
       },
       logout: () => set({ isAuthenticated: false }),
+      addUser: (username, password) => {
+        const name = username.trim();
+        if (!name || !password) return false;
+        if (get().users.some((u) => u.username === name)) return false;
+        set({ users: [...get().users, { id: uid(), username: name, password }] });
+        return true;
+      },
+      removeUser: (id) => {
+        if (get().users.length <= 1) return false;
+        set({ users: get().users.filter((u) => u.id !== id) });
+        return true;
+      },
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
         const id = uid();
@@ -454,6 +476,7 @@ export const useInvoiceStore = create<State>()(
         nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
         nextPurchaseInvoiceNumber: s.nextPurchaseInvoiceNumber,
         isAuthenticated: s.isAuthenticated,
+        users: s.users,
       }),
     },
   ),
