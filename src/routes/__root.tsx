@@ -1,8 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth/provider";
-import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { OfflineCache } from "@/components/offline-cache";
-import { DesktopBlockNotice } from "@/components/mobile-only-gate";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
@@ -43,13 +40,9 @@ export const Route = createRootRoute({
         <HeadContent />
       </head>
       <body>
-        <PreviewHostBridge />
         <OfflineCache />
-        <DesktopBlockNotice />
-        <div className="app-shell md:hidden">
-          <AuthProvider>
-            <Outlet />
-          </AuthProvider>
+        <div className="app-shell">
+          <Outlet />
         </div>
         <Toaster position="top-center" dir="rtl" richColors closeButton />
         <Scripts />
