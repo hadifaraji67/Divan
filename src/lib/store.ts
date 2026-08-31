@@ -222,6 +222,8 @@ type State = Counters & {
   removePayment: (id: string) => void;
   addStockMovement: (m: Omit<StockMovement, "id" | "createdAt">) => void;
   removeStockMovement: (id: string) => void;
+  exportData: () => string;
+  importData: (json: string) => boolean;
 };
 
 export function invoiceSums(items: LineItem[]) {
@@ -455,6 +457,49 @@ export const useInvoiceStore = create<State>()(
         }),
       removeStockMovement: (id) =>
         set({ stockMovements: get().stockMovements.filter((x) => x.id !== id) }),
+      exportData: () => {
+        const s = get();
+        const payload = {
+          app: "divan",
+          exportedAt: new Date().toISOString(),
+          seller: s.seller,
+          products: s.products,
+          customers: s.customers,
+          invoices: s.invoices,
+          transactions: s.transactions,
+          payments: s.payments,
+          stockMovements: s.stockMovements,
+          users: s.users,
+          nextSaleQuoteNumber: s.nextSaleQuoteNumber,
+          nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
+          nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
+          nextPurchaseInvoiceNumber: s.nextPurchaseInvoiceNumber,
+        };
+        return JSON.stringify(payload, null, 2);
+      },
+      importData: (json) => {
+        try {
+          const data = JSON.parse(json);
+          if (!data || typeof data !== "object" || data.app !== "divan") return false;
+          set({
+            seller: data.seller ?? get().seller,
+            products: data.products ?? [],
+            customers: data.customers ?? [],
+            invoices: data.invoices ?? [],
+            transactions: data.transactions ?? [],
+            payments: data.payments ?? [],
+            stockMovements: data.stockMovements ?? [],
+            users: data.users?.length ? data.users : get().users,
+            nextSaleQuoteNumber: data.nextSaleQuoteNumber ?? 1,
+            nextSaleInvoiceNumber: data.nextSaleInvoiceNumber ?? 1,
+            nextPurchaseQuoteNumber: data.nextPurchaseQuoteNumber ?? 1,
+            nextPurchaseInvoiceNumber: data.nextPurchaseInvoiceNumber ?? 1,
+          });
+          return true;
+        } catch {
+          return false;
+        }
+      },
     }),
     {
       name: "ansar-invoice-v3",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -1283,8 +1283,11 @@ function SoftwareSettingsPanel() {
   const users = useInvoiceStore((s) => s.users);
   const addUser = useInvoiceStore((s) => s.addUser);
   const removeUser = useInvoiceStore((s) => s.removeUser);
+  const exportData = useInvoiceStore((s) => s.exportData);
+  const importData = useInvoiceStore((s) => s.importData);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function save() {
     if (!username.trim() || !password) {
@@ -1310,8 +1313,69 @@ function SoftwareSettingsPanel() {
     toast.success(`${name} حذف شد`);
   }
 
+  async function handleExport() {
+    const json = exportData();
+    const filename = `divan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const file = new File([json], filename, { type: "application/json" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      }
+    } catch {
+      // fall through to download
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("فایل پشتیبان دانلود شد");
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const ok = importData(String(reader.result ?? ""));
+      if (ok) toast.success("اطلاعات بازگردانی شد");
+      else toast.error("فایل معتبر نیست");
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
   return (
     <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>پشتیبان‌گیری</CardTitle>
+          <CardDescription>خروجی از همه‌ی اطلاعات، یا بازگردانی از فایل قبلی</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          <Button onClick={handleExport}>خروجی گرفتن (JSON)</Button>
+          <Button variant="outline" onClick={handleImportClick}>
+            بازگردانی از فایل
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <p className="text-xs text-muted-foreground">
+            بعد از خروجی گرفتن، از منوی اشتراک‌گذاری گوشی می‌توانید فایل را در Google Drive یا هر جای دیگر ذخیره کنید.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>کاربران</CardTitle>

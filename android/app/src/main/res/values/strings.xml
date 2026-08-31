@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">دیوان</string>
+    <string name="title_activity_main">دیوان</string>
+    <string name="package_name">ir.divan.app</string>
+    <string name="custom_url_scheme">ir.divan.app</string>
+</resources>
