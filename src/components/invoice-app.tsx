@@ -46,6 +46,7 @@ import { PaymentsPanel } from "@/components/payments-panel";
 import { SettingsHub, type SettingsView } from "@/components/settings-hub";
 import { SmsImportPanel } from "@/components/sms-import-panel";
 import { LoginScreen } from "@/components/login-screen";
+import { BootScreen } from "@/components/boot-screen";
 import { APP_VERSION } from "@/lib/version";
 import { useBackableOpen } from "@/lib/use-backable-open";
 import NativePrint from "@/lib/native-print";
@@ -146,6 +147,7 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
 
 export function InvoiceApp() {
   const isAuthenticated = useInvoiceStore((s) => s.isAuthenticated);
+  const hydrated = useInvoiceStore((s) => s.hydrated);
   const logout = useInvoiceStore((s) => s.logout);
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -219,6 +221,7 @@ export function InvoiceApp() {
     setSidebarOpen(false);
   }
 
+  if (!hydrated) return <BootScreen />;
   if (!isAuthenticated) return <LoginScreen />;
 
   const doc = DOC_VIEWS[view];

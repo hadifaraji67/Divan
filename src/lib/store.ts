@@ -193,6 +193,7 @@ type State = Counters & {
   stockMovements: StockMovement[];
   draft: Draft;
   viewingId: string | null;
+  hydrated: boolean;
   isAuthenticated: boolean;
   users: User[];
   login: (username: string, password: string) => boolean;
@@ -285,6 +286,7 @@ export const useInvoiceStore = create<State>()(
       nextPurchaseInvoiceNumber: 1,
       draft: newDraft(1, "invoice", "sale"),
       viewingId: null,
+      hydrated: false,
       isAuthenticated: false,
       users: [{ id: "admin", username: "admin", password: "admin" }],
       login: (username, password) => {
@@ -621,5 +623,7 @@ function migrateLegacyData() {
 
 if (typeof window !== "undefined") {
   migrateLegacyData();
-  void useInvoiceStore.persist.rehydrate();
+  void useInvoiceStore.persist.rehydrate().then(() => {
+    useInvoiceStore.setState({ hydrated: true });
+  });
 }

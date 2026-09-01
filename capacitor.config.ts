@@ -12,6 +12,14 @@ const config: CapacitorConfig = {
     url: "https://divan-one.vercel.app",
     cleartext: false,
   },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 800,
+      backgroundColor: "#1b3654",
+      androidSplashResourceName: "splash",
+      showSpinner: false,
+    },
+  },
 };
 
 export default config;
