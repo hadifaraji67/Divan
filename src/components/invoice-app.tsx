@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Field } from "@/components/field";
+import { LocationFields } from "@/components/location-fields";
 import { InvoicePrint } from "@/components/invoice-print";
 import { HomeScreen } from "@/components/home-screen";
 import { FinancePanel } from "@/components/finance-panel";
@@ -135,6 +136,7 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
   postalCode: "",
   phone: "",
   province: "",
+  county: "",
   city: "",
   address: "",
 });
@@ -582,12 +584,10 @@ function Composer({
                 onChange={(e) => setDraftCustomer({ ...draft.customer, phone: e.target.value })}
               />
             </Field>
-            <Field label="شهر">
-              <Input
-                value={draft.customer.city}
-                onChange={(e) => setDraftCustomer({ ...draft.customer, city: e.target.value })}
-              />
-            </Field>
+            <LocationFields
+              value={draft.customer}
+              onChange={(loc) => setDraftCustomer({ ...draft.customer, ...loc })}
+            />
             <Field label="نشانی کامل" >
               <Input
                 value={draft.customer.address}
@@ -1059,10 +1059,8 @@ function CustomerFields({
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           />
         </Field>
-        <Field label="شهر">
-          <Input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} />
-        </Field>
       </div>
+      <LocationFields value={form} onChange={(loc) => setForm((f) => ({ ...f, ...loc }))} />
       <Field label="نشانی">
         <Input
           value={form.address}
@@ -1209,9 +1207,7 @@ function BusinessSettingsPanel() {
         <Field label="تلفن">
           <Input value={seller.phone} onChange={(e) => setSeller({ ...seller, phone: e.target.value })} />
         </Field>
-        <Field label="شهر">
-          <Input value={seller.city} onChange={(e) => setSeller({ ...seller, city: e.target.value })} />
-        </Field>
+        <LocationFields value={seller} onChange={(loc) => setSeller({ ...seller, ...loc })} />
         <Field label="کدپستی">
           <Input
             value={seller.postalCode}

@@ -20,6 +20,7 @@ export type Customer = {
   postalCode: string;
   phone: string;
   province: string;
+  county: string;
   city: string;
   address: string;
 };
@@ -123,6 +124,7 @@ const emptyCustomer = (): Customer => ({
   postalCode: "",
   phone: "",
   province: "",
+  county: "",
   city: "",
   address: "",
 });
@@ -137,6 +139,7 @@ export const defaultSeller: Seller = {
   trackingCode: "061764831900",
   phone: "09123333338",
   province: "تهران",
+  county: "تهران",
   city: "تهران",
   address: "تهران، خیابان کارگر، بالاتر از میدان فوزیه، پاساژ شایان، پلاک ۳۴",
 };

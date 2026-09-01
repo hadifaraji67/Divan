@@ -55,7 +55,7 @@ export function InvoicePrint({
           </div>
           <div className="span2">
             <span>نشانی:</span>{" "}
-            {[sellerParty.province, sellerParty.city, sellerParty.address].filter(Boolean).join(" — ") || "—"}
+            {[sellerParty.province, sellerParty.county, sellerParty.city, sellerParty.address].filter(Boolean).join(" — ") || "—"}
           </div>
           {!isPurchase ? (
             <div>
@@ -88,7 +88,7 @@ export function InvoicePrint({
           </div>
           <div className="span3">
             <span>نشانی:</span>{" "}
-            {[buyerParty.province, buyerParty.city, buyerParty.address].filter(Boolean).join(" — ") || "—"}
+            {[buyerParty.province, buyerParty.county, buyerParty.city, buyerParty.address].filter(Boolean).join(" — ") || "—"}
           </div>
         </div>
       </section>
