@@ -19,6 +19,7 @@ import {
   useInvoiceStore,
   type TransactionType,
 } from "@/lib/store";
+import { useBackableOpen } from "@/lib/use-backable-open";
 
 function emptyForm(type: TransactionType) {
   return {
@@ -34,6 +35,7 @@ export function FinancePanel() {
   const addTransaction = useInvoiceStore((s) => s.addTransaction);
   const removeTransaction = useInvoiceStore((s) => s.removeTransaction);
   const [open, setOpen] = useState(false);
+  useBackableOpen(open, () => setOpen(false));
   const [form, setForm] = useState(emptyForm("expense"));
 
   const totals = useMemo(() => {

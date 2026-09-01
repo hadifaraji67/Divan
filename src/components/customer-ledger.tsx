@@ -14,12 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/field";
 import { formatJalali, formatRial, parseAmount, toFaDigits } from "@/lib/format";
 import { partyBalance, useInvoiceStore, type Customer, type PaymentDirection } from "@/lib/store";
+import { useBackableOpen } from "@/lib/use-backable-open";
 
 export function CustomerLedger() {
   const customers = useInvoiceStore((s) => s.customers);
   const invoices = useInvoiceStore((s) => s.invoices);
   const payments = useInvoiceStore((s) => s.payments);
   const [openId, setOpenId] = useState<string | null>(null);
+  useBackableOpen(!!openId, () => setOpenId(null));
 
   const rows = useMemo(
     () =>

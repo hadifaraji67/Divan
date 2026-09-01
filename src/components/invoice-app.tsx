@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   ArrowRight,
   BarChart3,
@@ -46,6 +47,8 @@ import { SettingsHub, type SettingsView } from "@/components/settings-hub";
 import { SmsImportPanel } from "@/components/sms-import-panel";
 import { LoginScreen } from "@/components/login-screen";
 import { APP_VERSION } from "@/lib/version";
+import { useBackableOpen } from "@/lib/use-backable-open";
+import NativePrint from "@/lib/native-print";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
   invoiceSums,
@@ -147,9 +150,12 @@ export function InvoiceApp() {
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  useBackableOpen(sidebarOpen, () => setSidebarOpen(false));
+  useBackableOpen(menuOpen, () => setMenuOpen(false));
   const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
   const [printFormat, setPrintFormat] = useState<"A4" | "A5">("A4");
   const [pendingPrint, setPendingPrint] = useState<Invoice | null>(null);
+  useBackableOpen(!!pendingPrint, () => setPendingPrint(null));
   const [shouldPrint, setShouldPrint] = useState(false);
   const seller = useInvoiceStore((s) => s.seller);
   const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
@@ -161,7 +167,11 @@ export function InvoiceApp() {
   useEffect(() => {
     if (!shouldPrint || !printInvoice) return;
     const id = window.setTimeout(() => {
-      window.print();
+      if (Capacitor.isNativePlatform()) {
+        void NativePrint.printPage();
+      } else {
+        window.print();
+      }
       setShouldPrint(false);
     }, 50);
     return () => window.clearTimeout(id);
@@ -407,6 +417,7 @@ function Composer({
   const docLabel = (kind === "quote" ? "پیش‌فاکتور" : "فاکتور") + " " + (direction === "sale" ? "فروش" : "خرید");
 
   const [itemOpen, setItemOpen] = useState(false);
+  useBackableOpen(itemOpen, () => setItemOpen(false));
   const [itemForm, setItemForm] = useState({
     productId: "",
     code: "",
@@ -812,6 +823,7 @@ function ProductManager() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState(emptyProduct());
+  useBackableOpen(open, () => setOpen(false));
 
   function openNew() {
     setEditing(null);
@@ -936,6 +948,7 @@ function CustomerManager() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState(emptyCustomer());
+  useBackableOpen(open, () => setOpen(false));
 
   function openNew() {
     setEditing(null);

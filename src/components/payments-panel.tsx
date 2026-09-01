@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatJalali, formatRial, parseAmount, toFaDigits } from "@/lib/format";
 import { useInvoiceStore, type PaymentDirection } from "@/lib/store";
+import { useBackableOpen } from "@/lib/use-backable-open";
 
 export function PaymentsPanel() {
   const customers = useInvoiceStore((s) => s.customers);
@@ -22,6 +23,7 @@ export function PaymentsPanel() {
   const removePayment = useInvoiceStore((s) => s.removePayment);
 
   const [open, setOpen] = useState(false);
+  useBackableOpen(open, () => setOpen(false));
   const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
   const [direction, setDirection] = useState<PaymentDirection>("receipt");
   const [amount, setAmount] = useState("");
