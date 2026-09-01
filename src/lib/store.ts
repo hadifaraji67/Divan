@@ -527,6 +527,96 @@ export const useInvoiceStore = create<State>()(
   ),
 );
 
+const CURRENT_STORAGE_KEY = "ansar-invoice-v3";
+const KNOWN_OLD_KEYS = ["ansar-invoice-v2", "ansar-invoice-v1", "ansar-invoice"];
+
+function hasRealData(state: any): boolean {
+  if (!state || typeof state !== "object") return false;
+  return (
+    (Array.isArray(state.invoices) && state.invoices.length > 0) ||
+    (Array.isArray(state.products) && state.products.length > 0) ||
+    (Array.isArray(state.customers) && state.customers.length > 0)
+  );
+}
+
+/**
+ * One-time recovery: earlier app versions used different localStorage key
+ * names as the data model grew (ansar-invoice-v2 -> v3). Renaming the key
+ * without migrating stranded anything saved under the old name — this finds
+ * it and copies it forward, filling in fields the old shape didn't have.
+ */
+function migrateLegacyData() {
+  try {
+    const current = window.localStorage.getItem(CURRENT_STORAGE_KEY);
+    if (current) {
+      const parsed = JSON.parse(current);
+      if (hasRealData(parsed?.state)) return; // already has data, nothing to do
+    }
+
+    let recovered: any = null;
+    for (const key of KNOWN_OLD_KEYS) {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (hasRealData(parsed?.state)) {
+          recovered = parsed.state;
+          break;
+        }
+      } catch {
+        // ignore unparsable entries
+      }
+    }
+
+    if (!recovered) {
+      // Fallback: scan every localStorage key for anything shaped like our
+      // state that the known names above didn't catch.
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (!key || key === CURRENT_STORAGE_KEY) continue;
+        const raw = window.localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (hasRealData(parsed?.state)) {
+            recovered = parsed.state;
+            break;
+          }
+        } catch {
+          // ignore unparsable entries
+        }
+      }
+    }
+
+    if (!recovered) return;
+
+    const migrated = {
+      seller: recovered.seller ?? defaultSeller,
+      products: recovered.products ?? [],
+      customers: recovered.customers ?? [],
+      invoices: (recovered.invoices ?? []).map((i: any) => ({
+        ...i,
+        kind: i.kind ?? "invoice",
+        direction: i.direction ?? "sale",
+      })),
+      transactions: recovered.transactions ?? [],
+      payments: recovered.payments ?? [],
+      stockMovements: recovered.stockMovements ?? [],
+      nextSaleQuoteNumber: recovered.nextSaleQuoteNumber ?? recovered.nextQuoteNumber ?? 1,
+      nextSaleInvoiceNumber: recovered.nextSaleInvoiceNumber ?? recovered.nextInvoiceNumber ?? 1,
+      nextPurchaseQuoteNumber: recovered.nextPurchaseQuoteNumber ?? 1,
+      nextPurchaseInvoiceNumber: recovered.nextPurchaseInvoiceNumber ?? 1,
+      isAuthenticated: false,
+      users: recovered.users?.length ? recovered.users : [{ id: "admin", username: "admin", password: "admin" }],
+    };
+
+    window.localStorage.setItem(CURRENT_STORAGE_KEY, JSON.stringify({ state: migrated, version: 0 }));
+  } catch {
+    // Recovery is best-effort — never block the app over it.
+  }
+}
+
 if (typeof window !== "undefined") {
+  migrateLegacyData();
   void useInvoiceStore.persist.rehydrate();
 }
