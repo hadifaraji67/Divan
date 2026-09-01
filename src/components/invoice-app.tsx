@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import {
   ArrowRight,
   BarChart3,
@@ -49,6 +50,7 @@ import { LoginScreen } from "@/components/login-screen";
 import { BootScreen } from "@/components/boot-screen";
 import { APP_VERSION } from "@/lib/version";
 import { useBackableOpen } from "@/lib/use-backable-open";
+import { navDepth, pushNav } from "@/lib/nav-history";
 import NativePrint from "@/lib/native-print";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
@@ -193,8 +195,27 @@ export function InvoiceApp() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // The native WebView's own canGoBack()/goBack() doesn't reliably track
+  // client-side pushState() navigations, which was letting the hardware
+  // back button fall through and close the app from inside a menu/dialog.
+  // Take the hardware back button over explicitly and drive it from our
+  // own history depth counter instead.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = App.addListener("backButton", () => {
+      if (navDepth() > 0) {
+        window.history.back();
+      } else {
+        void App.exitApp();
+      }
+    });
+    return () => {
+      void handle.then((h) => h.remove());
+    };
+  }, []);
+
   function goTo(next: View) {
-    window.history.pushState({ view: next }, "");
+    pushNav({ view: next });
     setView(next);
   }
 

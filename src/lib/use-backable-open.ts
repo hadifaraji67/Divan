@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { pushNav } from "@/lib/nav-history";
 
 /**
  * Makes the phone's hardware/gesture back button close an open
@@ -29,7 +30,7 @@ export function useBackableOpen(isOpen: boolean, onRequestClose: () => void) {
 
   useEffect(() => {
     if (isOpen && !pushedRef.current) {
-      window.history.pushState({ modal: true }, "");
+      pushNav({ modal: true });
       pushedRef.current = true;
     } else if (!isOpen && pushedRef.current) {
       pushedRef.current = false;
