@@ -16,12 +16,20 @@ export const Route = createRootRoute({
         name: "description",
         content: "سامانه جامع حسابداری دیوان — صدور پیش‌فاکتور، مدیریت مشتریان و کالاها",
       },
+      { name: "apple-mobile-web-app-title", content: "دیوان" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
+      { property: "og:title", content: APP_NAME },
+      {
+        property: "og:description",
+        content: "سامانه جامع حسابداری دیوان — صدور پیش‌فاکتور، مدیریت مشتریان و کالاها",
+      },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/icon-180.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "preconnect",
