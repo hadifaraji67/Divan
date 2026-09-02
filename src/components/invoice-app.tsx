@@ -1231,6 +1231,20 @@ function HistoryPanel({
 function BusinessSettingsPanel() {
   const seller = useInvoiceStore((s) => s.seller);
   const setSeller = useInvoiceStore((s) => s.setSeller);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSeller({ ...seller, logo: String(reader.result ?? "") });
+      toast.success("آیکن ذخیره شد");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -1238,6 +1252,34 @@ function BusinessSettingsPanel() {
         <CardDescription>این اطلاعات روی همه اسناد چاپ می‌شود</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
+        <Field label="آیکن کسب‌وکار">
+          <div className="flex items-center gap-3">
+            {seller.logo ? (
+              <img src={seller.logo} alt="آیکن کسب‌وکار" className="size-14 rounded-xl object-cover" />
+            ) : (
+              <div className="grid size-14 place-items-center rounded-xl bg-muted text-xs text-muted-foreground">
+                بدون آیکن
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => logoInputRef.current?.click()}>
+                {seller.logo ? "تغییر آیکن" : "افزودن آیکن"}
+              </Button>
+              {seller.logo ? (
+                <Button type="button" variant="ghost" onClick={() => setSeller({ ...seller, logo: undefined })}>
+                  حذف
+                </Button>
+              ) : null}
+            </div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoChange}
+            />
+          </div>
+        </Field>
         <Field label="نام کسب‌وکار">
           <Input value={seller.name} onChange={(e) => setSeller({ ...seller, name: e.target.value })} />
         </Field>
@@ -1324,9 +1366,23 @@ function SoftwareSettingsPanel() {
   const removeUser = useInvoiceStore((s) => s.removeUser);
   const exportData = useInvoiceStore((s) => s.exportData);
   const importData = useInvoiceStore((s) => s.importData);
+  const smsBankSenders = useInvoiceStore((s) => s.smsBankSenders);
+  const addSmsBankSender = useInvoiceStore((s) => s.addSmsBankSender);
+  const removeSmsBankSender = useInvoiceStore((s) => s.removeSmsBankSender);
+  const [smsSender, setSmsSender] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function saveSmsSender() {
+    if (!smsSender.trim()) {
+      toast.error("شماره یا نام فرستنده را وارد کنید");
+      return;
+    }
+    addSmsBankSender(smsSender.trim());
+    setSmsSender("");
+    toast.success("افزوده شد");
+  }
 
   function save() {
     if (!username.trim() || !password) {
@@ -1412,6 +1468,43 @@ function SoftwareSettingsPanel() {
           <p className="text-xs text-muted-foreground">
             بعد از خروجی گرفتن، از منوی اشتراک‌گذاری گوشی می‌توانید فایل را در Google Drive یا هر جای دیگر ذخیره کنید.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>شماره‌های پیامک بانکی</CardTitle>
+          <CardDescription>فقط پیامک‌های این فرستنده‌ها برای «وارد کردن از پیامک بانکی» خونده می‌شود</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {smsBankSenders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">هنوز شماره‌ای ثبت نشده.</p>
+          ) : (
+            <div className="grid gap-2">
+              {smsBankSenders.map((s) => (
+                <div key={s} className="flex items-center justify-between rounded-xl bg-muted/70 p-3">
+                  <span className="font-medium" dir="ltr">
+                    {s}
+                  </span>
+                  <Button variant="ghost" size="icon" aria-label="حذف" onClick={() => removeSmsBankSender(s)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={smsSender}
+              onChange={(e) => setSmsSender(e.target.value)}
+              placeholder="مثلاً 30007256 یا Bank Melli"
+              dir="ltr"
+            />
+            <Button onClick={saveSmsSender}>
+              <Plus className="size-4" />
+              افزودن
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -27,6 +27,8 @@ export type Customer = {
 
 export type Seller = Customer & {
   trackingCode: string;
+  /** Base64 data URL of an uploaded logo image, printed on invoices. */
+  logo?: string;
 };
 
 export type LineItem = {
@@ -131,17 +133,17 @@ const emptyCustomer = (): Customer => ({
 
 export const defaultSeller: Seller = {
   id: "seller",
-  name: "پیشگامان فناوری نوظهور",
-  nationalId: "14011833339",
-  economicCode: "14011833339",
-  registrationNo: "40813",
-  postalCode: "1894878583",
-  trackingCode: "061764831900",
-  phone: "09123333338",
-  province: "تهران",
-  county: "تهران",
-  city: "تهران",
-  address: "تهران، خیابان کارگر، بالاتر از میدان فوزیه، پاساژ شایان، پلاک ۳۴",
+  name: "",
+  nationalId: "",
+  economicCode: "",
+  registrationNo: "",
+  postalCode: "",
+  trackingCode: "",
+  phone: "",
+  province: "",
+  county: "",
+  city: "",
+  address: "",
 };
 
 const seedProducts: Product[] = [];
@@ -196,10 +198,13 @@ type State = Counters & {
   hydrated: boolean;
   isAuthenticated: boolean;
   users: User[];
+  smsBankSenders: string[];
   login: (username: string, password: string) => boolean;
   logout: () => void;
   addUser: (username: string, password: string) => boolean;
   removeUser: (id: string) => boolean;
+  addSmsBankSender: (sender: string) => void;
+  removeSmsBankSender: (sender: string) => void;
   setSeller: (seller: Seller) => void;
   addProduct: (p: Omit<Product, "id">) => string;
   updateProduct: (id: string, p: Partial<Product>) => void;
@@ -289,6 +294,7 @@ export const useInvoiceStore = create<State>()(
       hydrated: false,
       isAuthenticated: false,
       users: [{ id: "admin", username: "admin", password: "admin" }],
+      smsBankSenders: [],
       login: (username, password) => {
         const ok = get().users.some((u) => u.username === username && u.password === password);
         if (ok) set({ isAuthenticated: true });
@@ -307,6 +313,13 @@ export const useInvoiceStore = create<State>()(
         set({ users: get().users.filter((u) => u.id !== id) });
         return true;
       },
+      addSmsBankSender: (sender) => {
+        const s = sender.trim();
+        if (!s || get().smsBankSenders.includes(s)) return;
+        set({ smsBankSenders: [...get().smsBankSenders, s] });
+      },
+      removeSmsBankSender: (sender) =>
+        set({ smsBankSenders: get().smsBankSenders.filter((s) => s !== sender) }),
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
         const id = uid();
@@ -475,6 +488,7 @@ export const useInvoiceStore = create<State>()(
           payments: s.payments,
           stockMovements: s.stockMovements,
           users: s.users,
+          smsBankSenders: s.smsBankSenders,
           nextSaleQuoteNumber: s.nextSaleQuoteNumber,
           nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
           nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
@@ -495,6 +509,7 @@ export const useInvoiceStore = create<State>()(
             payments: data.payments ?? [],
             stockMovements: data.stockMovements ?? [],
             users: data.users?.length ? data.users : get().users,
+            smsBankSenders: data.smsBankSenders ?? [],
             nextSaleQuoteNumber: data.nextSaleQuoteNumber ?? 1,
             nextSaleInvoiceNumber: data.nextSaleInvoiceNumber ?? 1,
             nextPurchaseQuoteNumber: data.nextPurchaseQuoteNumber ?? 1,
@@ -527,6 +542,7 @@ export const useInvoiceStore = create<State>()(
         nextPurchaseInvoiceNumber: s.nextPurchaseInvoiceNumber,
         isAuthenticated: s.isAuthenticated,
         users: s.users,
+        smsBankSenders: s.smsBankSenders,
       }),
     },
   ),

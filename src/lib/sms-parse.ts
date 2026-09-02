@@ -15,8 +15,18 @@ const DEBIT_WORDS = ["برداشت", "خرید", "کسر", "پرداخت شد", 
 
 const BANK_SENDER_HINTS = ["بانک", "melli", "saman", "bmi", "sep", "پارسیان", "ملت", "سامان", "صادرات"];
 
-/** Loose heuristic — good enough to pre-filter which SMS are worth parsing. */
-export function looksLikeBankSms(address: string, body: string): boolean {
+/**
+ * Loose heuristic for which SMS are worth parsing. If the user has
+ * registered specific bank sender numbers/names in settings, only those
+ * match — precise and avoids picking up unrelated messages. With nothing
+ * registered yet, falls back to a generic keyword guess so the feature
+ * still works before that one-time setup.
+ */
+export function looksLikeBankSms(address: string, body: string, registeredSenders: string[] = []): boolean {
+  if (registeredSenders.length > 0) {
+    const addr = address.toLowerCase();
+    return registeredSenders.some((s) => addr.includes(s.trim().toLowerCase()));
+  }
   const hay = `${address} ${body}`.toLowerCase();
   return BANK_SENDER_HINTS.some((h) => hay.includes(h.toLowerCase())) || AMOUNT_RE.test(body);
 }

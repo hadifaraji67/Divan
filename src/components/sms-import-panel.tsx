@@ -15,6 +15,7 @@ export function SmsImportPanel() {
   const isNative = Capacitor.isNativePlatform();
   const customers = useInvoiceStore((s) => s.customers);
   const addPayment = useInvoiceStore((s) => s.addPayment);
+  const smsBankSenders = useInvoiceStore((s) => s.smsBankSenders);
   const [loading, setLoading] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
 
@@ -29,7 +30,7 @@ export function SmsImportPanel() {
       const { messages } = await SmsReader.readMessages({ limit: 300 });
       const parsed: Candidate[] = [];
       for (const msg of messages) {
-        if (!looksLikeBankSms(msg.address, msg.body)) continue;
+        if (!looksLikeBankSms(msg.address, msg.body, smsBankSenders)) continue;
         const p = parseBankSms(msg.body, msg.date);
         if (p) parsed.push({ ...p, id: `${msg.date}-${p.amount}`, customerId: customers[0]?.id ?? "" });
       }
@@ -78,6 +79,12 @@ export function SmsImportPanel() {
 
   return (
     <div className="grid gap-4">
+      {smsBankSenders.length === 0 ? (
+        <p className="rounded-xl bg-muted/70 p-3 text-xs text-muted-foreground">
+          هنوز شماره‌ی بانکی ثبت نکرده‌اید — از تنظیمات ← تنظیمات نرم‌افزار شماره‌ی پیامک‌های بانکتان را اضافه کنید
+          تا فقط همون‌ها خونده بشه. فعلاً با یک حدس کلی‌تر جست‌وجو می‌کنیم.
+        </p>
+      ) : null}
       <Button onClick={loadMessages} disabled={loading}>
         <Inbox className="size-4" />
         {loading ? "در حال خواندن..." : "خواندن پیامک‌های بانکی"}

@@ -27,7 +27,11 @@ export function InvoicePrint({
         </div>
         <h1>{docLabel} کالا و خدمات</h1>
         <div className="sheet-logo">
-          <div className="mark">P</div>
+          {seller.logo ? (
+            <img src={seller.logo} alt="" className="mark-img" />
+          ) : (
+            <div className="mark">{seller.name ? seller.name[0] : "؟"}</div>
+          )}
           <div className="mark-name">{seller.name}</div>
         </div>
       </header>
