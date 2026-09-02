@@ -1,8 +1,11 @@
-// Offline cache for the Divan invoice app.
-// Strategy: cache-first for everything after the first successful online
-// visit, so the app (and its already-saved invoice data in localStorage)
-// keeps working with no network at all — e.g. in airplane mode.
-const CACHE_NAME = "divan-offline-v1";
+// Offline cache for the Divan app.
+// Navigations (the page itself) are network-first: whenever online, this
+// always fetches the latest deploy, so a new version shows up immediately
+// instead of the PWA getting stuck on a stale cached copy. Only when
+// there's truly no network does it fall back to what was last cached.
+// Static assets (hashed JS/CSS/images) stay cache-first for speed, which
+// is safe because Vite fingerprints their filenames on every build.
+const CACHE_NAME = "divan-offline-v2";
 const APP_SHELL_URL = "/";
 
 self.addEventListener("install", (event) => {
@@ -32,6 +35,18 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin && !url.hostname.includes("fonts")) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match(APP_SHELL_URL))),
+    );
+    return;
+  }
+
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(request);
@@ -42,8 +57,6 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
 
-      // Navigations: try cache first (instant, works offline). Everything
-      // else: prefer cache too, but keep refreshing it in the background.
       if (cached) {
         network.catch(() => {});
         return cached;
