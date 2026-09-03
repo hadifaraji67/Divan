@@ -1,22 +1,50 @@
-import { useState } from "react";
-import { Lock, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Lock, Mail, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
-import { useInvoiceStore } from "@/lib/store";
+import { authClient } from "@/lib/auth-client";
+import { bootstrapSignUp, hasAnyUser } from "@/lib/team";
 import { APP_VERSION } from "@/lib/version";
 
 export function LoginScreen() {
-  const login = useInvoiceStore((s) => s.login);
-  const [username, setUsername] = useState("");
+  const [checking, setChecking] = useState(true);
+  const [needsBootstrap, setNeedsBootstrap] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  useEffect(() => {
+    hasAnyUser()
+      .then((exists) => setNeedsBootstrap(!exists))
+      .catch(() => setNeedsBootstrap(false))
+      .finally(() => setChecking(false));
+  }, []);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = login(username, password);
-    setError(!ok);
+    setError("");
+    setBusy(true);
+    try {
+      if (needsBootstrap) {
+        await bootstrapSignUp({ data: { email, password, name: name || email } });
+        await authClient.signIn.email({ email, password });
+      } else {
+        const res = await authClient.signIn.email({ email, password });
+        if (res.error) throw new Error(res.error.message ?? "auth-failed");
+      }
+    } catch {
+      setError(needsBootstrap ? "ثبت‌نام ناموفق بود" : "ایمیل یا رمز عبور اشتباه است");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (checking) {
+    return <div className="min-h-dvh bg-background" />;
   }
 
   return (
@@ -31,18 +59,32 @@ export function LoginScreen() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>ورود</CardTitle>
-            <CardDescription>برای دسترسی به اطلاعات وارد شوید</CardDescription>
+            <CardTitle>{needsBootstrap ? "راه‌اندازی اولیه" : "ورود"}</CardTitle>
+            <CardDescription>
+              {needsBootstrap
+                ? "این اولین‌بار اجرای برنامه‌ست — یه حساب مدیر بساز"
+                : "برای دسترسی به اطلاعات وارد شوید"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="grid gap-3">
-              <Field label="نام کاربری">
+              {needsBootstrap ? (
+                <Field label="نام">
+                  <div className="relative">
+                    <UserIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="pr-9" value={name} onChange={(e) => setName(e.target.value)} />
+                  </div>
+                </Field>
+              ) : null}
+              <Field label="ایمیل">
                 <div className="relative">
-                  <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     className="pr-9"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    type="email"
+                    dir="ltr"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     autoComplete="username"
                   />
                 </div>
@@ -53,15 +95,16 @@ export function LoginScreen() {
                   <Input
                     className="pr-9"
                     type="password"
+                    dir="ltr"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
+                    autoComplete={needsBootstrap ? "new-password" : "current-password"}
                   />
                 </div>
               </Field>
-              {error ? <p className="text-sm text-rose-600">نام کاربری یا رمز عبور اشتباه است.</p> : null}
-              <Button type="submit" className="mt-1">
-                ورود
+              {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+              <Button type="submit" className="mt-1" disabled={busy}>
+                {busy ? "..." : needsBootstrap ? "ساخت حساب مدیر" : "ورود"}
               </Button>
             </form>
           </CardContent>

@@ -49,8 +49,11 @@ import { SmsImportPanel } from "@/components/sms-import-panel";
 import { LoginScreen } from "@/components/login-screen";
 import { BootScreen } from "@/components/boot-screen";
 import { APP_VERSION } from "@/lib/version";
+import { useSession, signOut } from "@/lib/auth-client";
+import { listTeamUsers, addTeamUser, removeTeamUser } from "@/lib/team";
 import { useBackableOpen } from "@/lib/use-backable-open";
 import { navDepth, pushNav } from "@/lib/nav-history";
+import { backupToDrive, GOOGLE_CLIENT_ID } from "@/lib/google-drive";
 import NativePrint from "@/lib/native-print";
 import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
 import {
@@ -78,6 +81,7 @@ export type View =
   | "inventory"
   | "reports"
   | "sms-import"
+  | "import"
   | "settings"
   | "settings-business"
   | "settings-invoice"
@@ -148,9 +152,10 @@ const emptyCustomer = (): Omit<Customer, "id"> => ({
 });
 
 export function InvoiceApp() {
-  const isAuthenticated = useInvoiceStore((s) => s.isAuthenticated);
+  const { data: session, isPending: sessionPending } = useSession();
+  const isAuthenticated = !!session;
   const hydrated = useInvoiceStore((s) => s.hydrated);
-  const logout = useInvoiceStore((s) => s.logout);
+  const autoLockMinutes = useInvoiceStore((s) => s.autoLockMinutes);
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -214,6 +219,24 @@ export function InvoiceApp() {
     };
   }, []);
 
+  // Auto-lock: log out after N minutes with no touch/click/key activity,
+  // so a phone left unattended doesn't stay open on real invoice data.
+  useEffect(() => {
+    if (!isAuthenticated || autoLockMinutes <= 0) return;
+    let timer: number;
+    function reset() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void signOut(), autoLockMinutes * 60 * 1000);
+    }
+    const events = ["click", "touchstart", "keydown"] as const;
+    events.forEach((ev) => window.addEventListener(ev, reset));
+    reset();
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((ev) => window.removeEventListener(ev, reset));
+    };
+  }, [isAuthenticated, autoLockMinutes, logout]);
+
   function goTo(next: View) {
     pushNav({ view: next });
     setView(next);
@@ -242,7 +265,7 @@ export function InvoiceApp() {
     setSidebarOpen(false);
   }
 
-  if (!hydrated) return <BootScreen />;
+  if (!hydrated || sessionPending) return <BootScreen />;
   if (!isAuthenticated) return <LoginScreen />;
 
   const doc = DOC_VIEWS[view];
@@ -289,7 +312,7 @@ export function InvoiceApp() {
                   <button
                     onClick={() => {
                       setMenuOpen(false);
-                      logout();
+                      void signOut();
                     }}
                     className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-rose-600 hover:bg-muted"
                   >
@@ -972,6 +995,7 @@ function CustomerManager() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState(emptyCustomer());
+  const [query, setQuery] = useState("");
   useBackableOpen(open, () => setOpen(false));
 
   function openNew() {
@@ -1013,9 +1037,21 @@ function CustomerManager() {
             طرف‌حساب جدید
           </Button>
         </div>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="جست‌وجو بر اساس نام یا تلفن"
+          className="mt-2"
+        />
       </CardHeader>
       <CardContent className="grid gap-2">
-        {customers.map((c) => (
+        {customers
+          .filter((c) => {
+            if (!query.trim()) return true;
+            const q = query.trim().toLowerCase();
+            return c.name.toLowerCase().includes(q) || c.phone.includes(q);
+          })
+          .map((c) => (
           <div
             key={c.id}
             className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
@@ -1077,6 +1113,9 @@ function CustomerFields({
       <Field label="نام طرف‌حساب">
         <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
       </Field>
+      <Field label="کد (اختیاری)">
+        <Input value={form.code ?? ""} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="شناسه ملی">
           <Input
@@ -1121,18 +1160,30 @@ function HistoryPanel({
   const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
   const [kindFilter, setKindFilter] = useState<"all" | DocKind>("all");
   const [dirFilter, setDirFilter] = useState<"all" | DocDirection>("all");
+  const [query, setQuery] = useState("");
 
-  const rows = invoices.filter(
-    (i) =>
-      (kindFilter === "all" || i.kind === kindFilter) &&
-      (dirFilter === "all" || i.direction === dirFilter),
-  );
+  const rows = invoices.filter((i) => {
+    if (kindFilter !== "all" && i.kind !== kindFilter) return false;
+    if (dirFilter !== "all" && i.direction !== dirFilter) return false;
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      const hay = `${i.customer.name} ${toFaDigits(i.number)} ${i.number}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>سوابق اسناد</CardTitle>
         <CardDescription>برای چاپ یا ویرایش، سند را باز کنید</CardDescription>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="جست‌وجو بر اساس نام طرف‌حساب یا شماره سند"
+          className="mt-2"
+        />
         <div className="mt-2 flex flex-wrap gap-2">
           <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} onClick={() => setKindFilter("all")}>
             همه
@@ -1361,18 +1412,30 @@ function InvoiceSettingsPanel() {
 }
 
 function SoftwareSettingsPanel() {
-  const users = useInvoiceStore((s) => s.users);
-  const addUser = useInvoiceStore((s) => s.addUser);
-  const removeUser = useInvoiceStore((s) => s.removeUser);
+  const { data: session } = useSession();
+  const [users, setUsers] = useState<{ id: string; email: string; name: string }[]>([]);
   const exportData = useInvoiceStore((s) => s.exportData);
   const importData = useInvoiceStore((s) => s.importData);
   const smsBankSenders = useInvoiceStore((s) => s.smsBankSenders);
   const addSmsBankSender = useInvoiceStore((s) => s.addSmsBankSender);
   const removeSmsBankSender = useInvoiceStore((s) => s.removeSmsBankSender);
+  const autoLockMinutes = useInvoiceStore((s) => s.autoLockMinutes);
+  const setAutoLockMinutes = useInvoiceStore((s) => s.setAutoLockMinutes);
   const [smsSender, setSmsSender] = useState("");
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function refreshUsers() {
+    listTeamUsers()
+      .then(setUsers)
+      .catch(() => toast.error("خواندن فهرست کاربران ناموفق بود"));
+  }
+
+  useEffect(() => {
+    refreshUsers();
+  }, []);
 
   function saveSmsSender() {
     if (!smsSender.trim()) {
@@ -1384,28 +1447,55 @@ function SoftwareSettingsPanel() {
     toast.success("افزوده شد");
   }
 
-  function save() {
-    if (!username.trim() || !password) {
-      toast.error("نام کاربری و رمز عبور را وارد کنید");
+  async function save() {
+    if (!name.trim() || !email.trim() || !password) {
+      toast.error("نام، ایمیل و رمز عبور را وارد کنید");
       return;
     }
-    const ok = addUser(username.trim(), password);
-    if (!ok) {
-      toast.error("این نام کاربری قبلاً ثبت شده است");
-      return;
+    try {
+      await addTeamUser({ data: { email: email.trim(), password, name: name.trim() } });
+      toast.success("کاربر اضافه شد");
+      setName("");
+      setEmail("");
+      setPassword("");
+      refreshUsers();
+    } catch {
+      toast.error("افزودن کاربر ناموفق بود (شاید این ایمیل قبلاً ثبت شده)");
     }
-    toast.success("کاربر اضافه شد");
-    setUsername("");
-    setPassword("");
   }
 
-  function remove(id: string, name: string) {
-    const ok = removeUser(id);
-    if (!ok) {
-      toast.error("باید حداقل یک کاربر باقی بماند");
+  async function remove(id: string, userName: string) {
+    if (session?.user.id === id) {
+      toast.error("نمی‌توانید حساب خودتان را حذف کنید");
       return;
     }
-    toast.success(`${name} حذف شد`);
+    try {
+      await removeTeamUser({ data: id });
+      toast.success(`${userName} حذف شد`);
+      refreshUsers();
+    } catch {
+      toast.error("حذف کاربر ناموفق بود");
+    }
+  }
+
+  const [driveBusy, setDriveBusy] = useState(false);
+
+  async function handleDriveBackup() {
+    if (GOOGLE_CLIENT_ID.startsWith("REPLACE_WITH")) {
+      toast.error("هنوز اتصال Google Drive راه‌اندازی نشده است");
+      return;
+    }
+    setDriveBusy(true);
+    try {
+      const json = exportData();
+      const filename = `divan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      await backupToDrive(json, filename);
+      toast.success("پشتیبان در Google Drive ذخیره شد");
+    } catch {
+      toast.error("ارسال به Google Drive ناموفق بود");
+    } finally {
+      setDriveBusy(false);
+    }
   }
 
   async function handleExport() {
@@ -1450,6 +1540,22 @@ function SoftwareSettingsPanel() {
     <div className="grid gap-4">
       <Card>
         <CardHeader>
+          <CardTitle>قفل خودکار</CardTitle>
+          <CardDescription>بعد از این مدت بی‌کاری، خودکار خارج می‌شوید</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center gap-2">
+          <Input
+            inputMode="numeric"
+            value={String(autoLockMinutes)}
+            onChange={(e) => setAutoLockMinutes(Number(e.target.value) || 0)}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">دقیقه (صفر یعنی غیرفعال)</span>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>پشتیبان‌گیری</CardTitle>
           <CardDescription>خروجی از همه‌ی اطلاعات، یا بازگردانی از فایل قبلی</CardDescription>
         </CardHeader>
@@ -1457,6 +1563,9 @@ function SoftwareSettingsPanel() {
           <Button onClick={handleExport}>خروجی گرفتن (JSON)</Button>
           <Button variant="outline" onClick={handleImportClick}>
             بازگردانی از فایل
+          </Button>
+          <Button variant="secondary" onClick={handleDriveBackup} disabled={driveBusy}>
+            {driveBusy ? "در حال ارسال..." : "پشتیبان‌گیری خودکار در Google Drive"}
           </Button>
           <input
             ref={fileInputRef}
@@ -1516,8 +1625,13 @@ function SoftwareSettingsPanel() {
         <CardContent className="grid gap-2">
           {users.map((u) => (
             <div key={u.id} className="flex items-center justify-between rounded-xl bg-muted/70 p-3">
-              <span className="font-medium">{u.username}</span>
-              <Button variant="ghost" size="icon" aria-label="حذف کاربر" onClick={() => remove(u.id, u.username)}>
+              <div className="min-w-0">
+                <p className="font-medium">{u.name}</p>
+                <p className="text-xs text-muted-foreground" dir="ltr">
+                  {u.email}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" aria-label="حذف کاربر" onClick={() => remove(u.id, u.name)}>
                 <Trash2 className="size-4" />
               </Button>
             </div>
@@ -1530,11 +1644,14 @@ function SoftwareSettingsPanel() {
           <CardTitle>افزودن کاربر</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <Field label="نام کاربری">
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+          <Field label="نام">
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Field label="ایمیل">
+            <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="رمز عبور">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           <Button onClick={save}>
             <Plus className="size-4" />

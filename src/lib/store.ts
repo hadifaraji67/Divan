@@ -13,6 +13,8 @@ export type Product = {
 /** A counterparty — can be a sales customer, a purchase supplier, or both. */
 export type Customer = {
   id: string;
+  /** User-defined code (e.g. for matching bulk imports) — optional. */
+  code?: string;
   name: string;
   nationalId: string;
   economicCode: string;
@@ -85,12 +87,6 @@ export type Transaction = {
   createdAt: string;
 };
 
-export type User = {
-  id: string;
-  username: string;
-  password: string;
-};
-
 /** A cash movement against a party's balance — receipts reduce what they owe us. */
 export type PaymentDirection = "receipt" | "payment";
 
@@ -115,6 +111,8 @@ export type StockMovement = {
   date: string;
   note: string;
   createdAt: string;
+  /** Set when this movement was auto-generated from an invoice's line items. */
+  sourceInvoiceId?: string;
 };
 
 const emptyCustomer = (): Customer => ({
@@ -196,20 +194,20 @@ type State = Counters & {
   draft: Draft;
   viewingId: string | null;
   hydrated: boolean;
-  isAuthenticated: boolean;
-  users: User[];
   smsBankSenders: string[];
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
-  addUser: (username: string, password: string) => boolean;
-  removeUser: (id: string) => boolean;
+  autoLockMinutes: number;
+  setAutoLockMinutes: (minutes: number) => void;
+  lowStockThreshold: number;
+  setLowStockThreshold: (n: number) => void;
   addSmsBankSender: (sender: string) => void;
   removeSmsBankSender: (sender: string) => void;
   setSeller: (seller: Seller) => void;
   addProduct: (p: Omit<Product, "id">) => string;
+  importProducts: (rows: Omit<Product, "id">[]) => { created: number; updated: number };
   updateProduct: (id: string, p: Partial<Product>) => void;
   removeProduct: (id: string) => void;
   addCustomer: (c: Omit<Customer, "id">) => string;
+  importCustomers: (rows: Omit<Customer, "id">[]) => { created: number; updated: number };
   updateCustomer: (id: string, c: Partial<Customer>) => void;
   removeCustomer: (id: string) => void;
   setDraftCustomer: (c: Customer) => void;
@@ -275,6 +273,43 @@ export function productStock(movements: StockMovement[], productId: string) {
     .reduce((sum, m) => sum + (m.direction === "in" ? m.qty : -m.qty), 0);
 }
 
+/**
+ * Keeps warehouse stock in step with sale/purchase invoices automatically:
+ * a saved invoice's line items (the ones tied to a product) become stock
+ * movements, replacing any it previously generated so re-saving/editing
+ * stays correct instead of piling up duplicates. Quotes never touch stock.
+ */
+function syncStockForInvoice(get: () => State, set: (partial: Partial<State>) => void, invoice: Invoice) {
+  const withoutOld = get().stockMovements.filter((m) => m.sourceInvoiceId !== invoice.id);
+  if (invoice.kind !== "invoice") {
+    set({ stockMovements: withoutOld });
+    return;
+  }
+  const direction: StockDirection = invoice.direction === "sale" ? "out" : "in";
+  const label = invoice.direction === "sale" ? "فاکتور فروش" : "فاکتور خرید";
+  const now = new Date().toISOString();
+  const fresh: StockMovement[] = invoice.items
+    .filter((item) => item.productId && item.qty > 0)
+    .map((item) => ({
+      id: uid(),
+      productId: item.productId as string,
+      direction,
+      qty: item.qty,
+      date: invoice.date,
+      note: `${label} شماره ${toFaDigitsForNote(invoice.number)} (خودکار)`,
+      createdAt: now,
+      sourceInvoiceId: invoice.id,
+    }));
+  set({ stockMovements: [...fresh, ...withoutOld] });
+}
+
+// Kept tiny and local — the shared toFaDigits formatter lives in ./format,
+// and pulling it in here would be a one-line dependency just for a note
+// string. Plain digits in the note are fine either way.
+function toFaDigitsForNote(n: number): string {
+  return String(n);
+}
+
 export const useInvoiceStore = create<State>()(
   persist(
     (set, get) => ({
@@ -292,27 +327,9 @@ export const useInvoiceStore = create<State>()(
       draft: newDraft(1, "invoice", "sale"),
       viewingId: null,
       hydrated: false,
-      isAuthenticated: false,
-      users: [{ id: "admin", username: "admin", password: "admin" }],
       smsBankSenders: [],
-      login: (username, password) => {
-        const ok = get().users.some((u) => u.username === username && u.password === password);
-        if (ok) set({ isAuthenticated: true });
-        return ok;
-      },
-      logout: () => set({ isAuthenticated: false }),
-      addUser: (username, password) => {
-        const name = username.trim();
-        if (!name || !password) return false;
-        if (get().users.some((u) => u.username === name)) return false;
-        set({ users: [...get().users, { id: uid(), username: name, password }] });
-        return true;
-      },
-      removeUser: (id) => {
-        if (get().users.length <= 1) return false;
-        set({ users: get().users.filter((u) => u.id !== id) });
-        return true;
-      },
+      autoLockMinutes: 10,
+      lowStockThreshold: 5,
       addSmsBankSender: (sender) => {
         const s = sender.trim();
         if (!s || get().smsBankSenders.includes(s)) return;
@@ -320,11 +337,31 @@ export const useInvoiceStore = create<State>()(
       },
       removeSmsBankSender: (sender) =>
         set({ smsBankSenders: get().smsBankSenders.filter((s) => s !== sender) }),
+      setAutoLockMinutes: (minutes) => set({ autoLockMinutes: minutes }),
+      setLowStockThreshold: (n) => set({ lowStockThreshold: n }),
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
         const id = uid();
         set({ products: [{ ...p, id }, ...get().products] });
         return id;
+      },
+      importProducts: (rows) => {
+        let created = 0;
+        let updated = 0;
+        let products = [...get().products];
+        for (const row of rows) {
+          const code = row.code?.trim();
+          const idx = code ? products.findIndex((p) => p.code?.trim() === code) : -1;
+          if (idx >= 0) {
+            products[idx] = { ...products[idx], ...row };
+            updated++;
+          } else {
+            products = [{ ...row, id: uid() }, ...products];
+            created++;
+          }
+        }
+        set({ products });
+        return { created, updated };
       },
       updateProduct: (id, p) =>
         set({ products: get().products.map((x) => (x.id === id ? { ...x, ...p } : x)) }),
@@ -333,6 +370,24 @@ export const useInvoiceStore = create<State>()(
         const id = uid();
         set({ customers: [{ ...c, id }, ...get().customers] });
         return id;
+      },
+      importCustomers: (rows) => {
+        let created = 0;
+        let updated = 0;
+        let customers = [...get().customers];
+        for (const row of rows) {
+          const code = row.code?.trim();
+          const idx = code ? customers.findIndex((c) => c.code?.trim() === code) : -1;
+          if (idx >= 0) {
+            customers[idx] = { ...customers[idx], ...row };
+            updated++;
+          } else {
+            customers = [{ ...row, id: uid() }, ...customers];
+            created++;
+          }
+        }
+        set({ customers });
+        return { created, updated };
       },
       updateCustomer: (id, c) =>
         set({ customers: get().customers.map((x) => (x.id === id ? { ...x, ...c } : x)) }),
@@ -395,6 +450,7 @@ export const useInvoiceStore = create<State>()(
             convertedFromId: existing?.convertedFromId,
           };
           set({ invoices: invoices.map((i) => (i.id === viewingId ? updated : i)) });
+          syncStockForInvoice(get, set, updated);
           return updated;
         }
         const key = counterKey(draft.kind, draft.direction) as keyof Counters;
@@ -416,12 +472,14 @@ export const useInvoiceStore = create<State>()(
           draft: { ...draft, number: created.number },
           viewingId: created.id,
         } as Partial<State>);
+        syncStockForInvoice(get, set, created);
         return created;
       },
       removeInvoice: (id) =>
         set({
           invoices: get().invoices.filter((x) => x.id !== id),
           viewingId: get().viewingId === id ? null : get().viewingId,
+          stockMovements: get().stockMovements.filter((m) => m.sourceInvoiceId !== id),
         }),
       convertQuoteToInvoice: (id) => {
         const { invoices } = get();
@@ -449,6 +507,7 @@ export const useInvoiceStore = create<State>()(
           ],
           [key]: number + 1,
         } as Partial<State>);
+        syncStockForInvoice(get, set, invoice);
         return invoice;
       },
       setViewingId: (viewingId) => set({ viewingId }),
@@ -487,7 +546,6 @@ export const useInvoiceStore = create<State>()(
           transactions: s.transactions,
           payments: s.payments,
           stockMovements: s.stockMovements,
-          users: s.users,
           smsBankSenders: s.smsBankSenders,
           nextSaleQuoteNumber: s.nextSaleQuoteNumber,
           nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
@@ -508,7 +566,6 @@ export const useInvoiceStore = create<State>()(
             transactions: data.transactions ?? [],
             payments: data.payments ?? [],
             stockMovements: data.stockMovements ?? [],
-            users: data.users?.length ? data.users : get().users,
             smsBankSenders: data.smsBankSenders ?? [],
             nextSaleQuoteNumber: data.nextSaleQuoteNumber ?? 1,
             nextSaleInvoiceNumber: data.nextSaleInvoiceNumber ?? 1,
@@ -540,9 +597,9 @@ export const useInvoiceStore = create<State>()(
         nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
         nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
         nextPurchaseInvoiceNumber: s.nextPurchaseInvoiceNumber,
-        isAuthenticated: s.isAuthenticated,
-        users: s.users,
         smsBankSenders: s.smsBankSenders,
+        autoLockMinutes: s.autoLockMinutes,
+        lowStockThreshold: s.lowStockThreshold,
       }),
     },
   ),
@@ -627,8 +684,6 @@ function migrateLegacyData() {
       nextSaleInvoiceNumber: recovered.nextSaleInvoiceNumber ?? recovered.nextInvoiceNumber ?? 1,
       nextPurchaseQuoteNumber: recovered.nextPurchaseQuoteNumber ?? 1,
       nextPurchaseInvoiceNumber: recovered.nextPurchaseInvoiceNumber ?? 1,
-      isAuthenticated: false,
-      users: recovered.users?.length ? recovered.users : [{ id: "admin", username: "admin", password: "admin" }],
     };
 
     window.localStorage.setItem(CURRENT_STORAGE_KEY, JSON.stringify({ state: migrated, version: 0 }));
