@@ -1,50 +1,55 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Lock, Mail, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
-import { bootstrapSignUp, hasAnyUser } from "@/lib/team";
+import { bootstrapSignUp } from "@/lib/team";
 import { APP_VERSION } from "@/lib/version";
 
 export function LoginScreen() {
-  const [checking, setChecking] = useState(true);
-  const [needsBootstrap, setNeedsBootstrap] = useState(false);
+  const [mode, setMode] = useState<"login" | "bootstrap">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    hasAnyUser()
-      .then((exists) => setNeedsBootstrap(!exists))
-      .catch(() => setNeedsBootstrap(false))
-      .finally(() => setChecking(false));
-  }, []);
-
-  async function submit(e: React.FormEvent) {
+  async function submitLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      if (needsBootstrap) {
-        await bootstrapSignUp({ data: { email, password, name: name || email } });
-        await authClient.signIn.email({ email, password });
-      } else {
-        const res = await authClient.signIn.email({ email, password });
-        if (res.error) throw new Error(res.error.message ?? "auth-failed");
+      const res = await authClient.signIn.email({ email, password });
+      if (res.error) {
+        console.error("[login] sign-in failed:", res.error);
+        setError(res.error.message ?? "ایمیل یا رمز عبور اشتباه است");
       }
-    } catch {
-      setError(needsBootstrap ? "ثبت‌نام ناموفق بود" : "ایمیل یا رمز عبور اشتباه است");
+    } catch (err) {
+      console.error("[login] sign-in threw:", err);
+      setError(err instanceof Error ? err.message : "ورود ناموفق بود");
     } finally {
       setBusy(false);
     }
   }
 
-  if (checking) {
-    return <div className="min-h-dvh bg-background" />;
+  async function submitBootstrap(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await bootstrapSignUp({ data: { email, password, name: name || email } });
+      setNotice("حساب مدیر ساخته شد — حالا با همین ایمیل و رمز وارد شوید.");
+      setMode("login");
+      setPassword("");
+    } catch (err) {
+      console.error("[bootstrap] sign-up threw:", err);
+      setError(err instanceof Error ? err.message : "ثبت‌نام ناموفق بود");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -59,16 +64,16 @@ export function LoginScreen() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>{needsBootstrap ? "راه‌اندازی اولیه" : "ورود"}</CardTitle>
+            <CardTitle>{mode === "bootstrap" ? "راه‌اندازی اولیه" : "ورود"}</CardTitle>
             <CardDescription>
-              {needsBootstrap
-                ? "این اولین‌بار اجرای برنامه‌ست — یه حساب مدیر بساز"
+              {mode === "bootstrap"
+                ? "یه حساب مدیر بساز — فقط برای اولین‌بار لازمه"
                 : "برای دسترسی به اطلاعات وارد شوید"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={submit} className="grid gap-3">
-              {needsBootstrap ? (
+            <form onSubmit={mode === "bootstrap" ? submitBootstrap : submitLogin} className="grid gap-3">
+              {mode === "bootstrap" ? (
                 <Field label="نام">
                   <div className="relative">
                     <UserIcon className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -98,15 +103,27 @@ export function LoginScreen() {
                     dir="ltr"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={needsBootstrap ? "new-password" : "current-password"}
+                    autoComplete={mode === "bootstrap" ? "new-password" : "current-password"}
                   />
                 </div>
               </Field>
-              {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+              {notice ? <p className="text-sm text-emerald-600">{notice}</p> : null}
+              {error ? <p className="break-words text-sm text-rose-600">{error}</p> : null}
               <Button type="submit" className="mt-1" disabled={busy}>
-                {busy ? "..." : needsBootstrap ? "ساخت حساب مدیر" : "ورود"}
+                {busy ? "..." : mode === "bootstrap" ? "ساخت حساب مدیر" : "ورود"}
               </Button>
             </form>
+            <button
+              type="button"
+              className="mt-3 w-full text-center text-xs text-muted-foreground underline"
+              onClick={() => {
+                setError("");
+                setNotice("");
+                setMode(mode === "bootstrap" ? "login" : "bootstrap");
+              }}
+            >
+              {mode === "bootstrap" ? "قبلاً حساب ساخته شده؟ ورود" : "اولین اجراست؟ ساخت حساب مدیر"}
+            </button>
           </CardContent>
         </Card>
         <p className="mt-4 text-center text-xs text-muted-foreground">نسخه {APP_VERSION}</p>
