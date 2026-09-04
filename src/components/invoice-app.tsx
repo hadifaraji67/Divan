@@ -235,7 +235,7 @@ export function InvoiceApp() {
       window.clearTimeout(timer);
       events.forEach((ev) => window.removeEventListener(ev, reset));
     };
-  }, [isAuthenticated, autoLockMinutes, logout]);
+  }, [isAuthenticated, autoLockMinutes]);
 
   function goTo(next: View) {
     pushNav({ view: next });
