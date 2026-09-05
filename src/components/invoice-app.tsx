@@ -189,11 +189,18 @@ export function InvoiceApp() {
   // Make the phone's back button/gesture navigate inside the app instead of
   // closing it: every screen change pushes a history entry, and going back
   // just pops to the previous one.
+  const pendingNavRef = useRef<View | null>(null);
   useEffect(() => {
     window.history.replaceState({ view: "home" }, "");
     function onPopState(e: PopStateEvent) {
       setSidebarOpen(false);
       setMenuOpen(false);
+      if (pendingNavRef.current) {
+        const next = pendingNavRef.current;
+        pendingNavRef.current = null;
+        goTo(next);
+        return;
+      }
       setView((e.state?.view as View | undefined) ?? "home");
     }
     window.addEventListener("popstate", onPopState);
@@ -261,8 +268,12 @@ export function InvoiceApp() {
   function navigate(next: View) {
     const doc = DOC_VIEWS[next];
     if (doc) startNewDocument(doc.kind, doc.direction);
-    goTo(next);
-    setSidebarOpen(false);
+    if (sidebarOpen) {
+      pendingNavRef.current = next;
+      setSidebarOpen(false);
+    } else {
+      goTo(next);
+    }
   }
 
   if (!hydrated || sessionPending) return <BootScreen />;
@@ -275,11 +286,6 @@ export function InvoiceApp() {
       <header className="no-print border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-1">
-            {view === "home" ? null : (
-              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
-                <ArrowRight className="size-5" />
-              </Button>
-            )}
             <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
               <Menu className="size-5" />
             </Button>
@@ -293,14 +299,20 @@ export function InvoiceApp() {
             <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
           )}
           <div className="relative flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="گزینه‌های بیشتر"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              <MoreVertical className="size-5" />
-            </Button>
+            {view === "home" ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="گزینه‌های بیشتر"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                <MoreVertical className="size-5" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
+                <ArrowRight className="size-5" />
+              </Button>
+            )}
             {menuOpen ? (
               <>
                 <button
@@ -343,7 +355,7 @@ export function InvoiceApp() {
             <nav className="grid gap-1">
               <button
                 onClick={() => {
-                  goTo("home");
+                  pendingNavRef.current = "home";
                   setSidebarOpen(false);
                 }}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"

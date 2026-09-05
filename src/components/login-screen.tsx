@@ -41,14 +41,14 @@ export function LoginScreen() {
     setBusy(true);
     try {
       await bootstrapSignUp({ data: { email, password, name: name || email } });
-      setNotice("حساب مدیر ساخته شد — حالا با همین ایمیل و رمز وارد شوید.");
+      setNotice("حساب مدیر با موفقیت ایجاد شد — اکنون با همین ایمیل و رمز عبور وارد شوید.");
       setMode("login");
       setPassword("");
     } catch (err) {
       console.error("[bootstrap] sign-up threw:", err);
       const message = err instanceof Error ? err.message : "";
       if (message === "already-initialized") {
-        setError("یه حساب مدیر از قبل ساخته شده — از لینک زیر وارد شوید، یا اگه رمز یادتون نیست باید از پنل Neon حذفش کنید.");
+        setError("حساب مدیر پیش‌تر ایجاد شده است — از طریق پیوند زیر وارد شوید. در صورت فراموشی رمز عبور، لازم است آن را از طریق پنل Neon حذف کنید.");
         setMode("login");
       } else {
         setError(message || "ثبت‌نام ناموفق بود");
@@ -64,10 +64,10 @@ export function LoginScreen() {
     setBusy(true);
     try {
       await authClient.forgetPassword({ email, redirectTo: "/reset-password" });
-      setNotice("اگر این ایمیل ثبت شده باشد، لینک بازیابی براش ارسال شد.");
+      setNotice("در صورتی که این ایمیل در سامانه ثبت شده باشد، پیوند بازیابی برای آن ارسال شد.");
       setMode("login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "ارسال لینک ناموفق بود");
+      setError(err instanceof Error ? err.message : "ارسال پیوند بازیابی ناموفق بود");
     } finally {
       setBusy(false);
     }
@@ -90,10 +90,10 @@ export function LoginScreen() {
             </CardTitle>
             <CardDescription>
               {mode === "bootstrap"
-                ? "یه حساب مدیر بساز — فقط برای اولین‌بار لازمه"
+                ? "ایجاد حساب مدیر — این مرحله تنها برای نخستین اجرای برنامه لازم است"
                 : mode === "forgot"
-                  ? "ایمیل حسابتون رو وارد کنید تا لینک بازیابی ارسال بشه"
-                  : "برای دسترسی به اطلاعات وارد شوید"}
+                  ? "نشانی ایمیل حساب کاربری خود را وارد کنید تا پیوند بازیابی ارسال شود"
+                  : "برای دسترسی به اطلاعات، وارد شوید"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -140,7 +140,7 @@ export function LoginScreen() {
               {notice ? <p className="text-sm text-emerald-600">{notice}</p> : null}
               {error ? <p className="break-words text-sm text-rose-600">{error}</p> : null}
               <Button type="submit" className="mt-1" disabled={busy}>
-                {busy ? "..." : mode === "bootstrap" ? "ساخت حساب مدیر" : mode === "forgot" ? "ارسال لینک بازیابی" : "ورود"}
+                {busy ? "..." : mode === "bootstrap" ? "ایجاد حساب مدیر" : mode === "forgot" ? "ارسال پیوند بازیابی" : "ورود"}
               </Button>
             </form>
             {mode === "login" ? (
@@ -153,7 +153,7 @@ export function LoginScreen() {
                   setMode("forgot");
                 }}
               >
-                رمز رو فراموش کردم
+                رمز عبور را فراموش کرده‌ام
               </button>
             ) : null}
             <button
@@ -165,7 +165,7 @@ export function LoginScreen() {
                 setMode(mode === "login" ? "bootstrap" : "login");
               }}
             >
-              {mode === "login" ? "اولین اجراست؟ ساخت حساب مدیر" : "قبلاً حساب ساخته شده؟ ورود"}
+              {mode === "login" ? "نخستین اجرای برنامه است؟ ایجاد حساب مدیر" : "حساب کاربری از پیش ایجاد شده است؟ ورود"}
             </button>
           </CardContent>
         </Card>

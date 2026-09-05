@@ -23,7 +23,7 @@ function ResetPasswordPage() {
     setError("");
     const token = new URLSearchParams(window.location.search).get("token");
     if (!token) {
-      setError("لینک نامعتبر است — دوباره از صفحه‌ی ورود درخواست بازیابی بدهید.");
+      setError("پیوند نامعتبر است — لطفاً مجدداً از صفحه‌ی ورود، درخواست بازیابی رمز عبور را ثبت کنید.");
       return;
     }
     setBusy(true);
@@ -45,11 +45,11 @@ function ResetPasswordPage() {
         <Card>
           <CardHeader>
             <CardTitle>تنظیم رمز جدید</CardTitle>
-            <CardDescription>یه رمز جدید برای حسابتون انتخاب کنید</CardDescription>
+            <CardDescription>رمز عبور جدیدی برای حساب کاربری خود انتخاب کنید</CardDescription>
           </CardHeader>
           <CardContent>
             {done ? (
-              <p className="text-sm text-emerald-600">رمز عوض شد — در حال انتقال به صفحه‌ی ورود...</p>
+              <p className="text-sm text-emerald-600">رمز عبور با موفقیت تغییر یافت — در حال انتقال به صفحه‌ی ورود...</p>
             ) : (
               <form onSubmit={submit} className="grid gap-3">
                 <Field label="رمز عبور جدید">
