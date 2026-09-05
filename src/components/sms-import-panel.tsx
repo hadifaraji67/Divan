@@ -81,8 +81,8 @@ export function SmsImportPanel() {
     <div className="grid gap-4">
       {smsBankSenders.length === 0 ? (
         <p className="rounded-xl bg-muted/70 p-3 text-xs text-muted-foreground">
-          هنوز شماره‌ی بانکی ثبت نکرده‌اید — از تنظیمات ← تنظیمات نرم‌افزار شماره‌ی پیامک‌های بانکتان را اضافه کنید
-          تا فقط همون‌ها خونده بشه. فعلاً با یک حدس کلی‌تر جست‌وجو می‌کنیم.
+          هنوز شماره‌ی بانکی ثبت نکرده‌اید — از تنظیمات ← تنظیمات نرم‌افزار شماره‌ی پیامک‌های بانکی خود را اضافه کنید
+          تا تنها همان‌ها خوانده شود. در حال حاضر با حدسی کلی‌تر جست‌وجو می‌شود.
         </p>
       ) : null}
       <Button onClick={loadMessages} disabled={loading}>

@@ -1595,7 +1595,7 @@ function SoftwareSettingsPanel() {
       <Card>
         <CardHeader>
           <CardTitle>شماره‌های پیامک بانکی</CardTitle>
-          <CardDescription>فقط پیامک‌های این فرستنده‌ها برای «وارد کردن از پیامک بانکی» خونده می‌شود</CardDescription>
+          <CardDescription>فقط پیامک‌های این فرستنده‌ها برای «وارد کردن از پیامک بانکی» خوانده می‌شود</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {smsBankSenders.length === 0 ? (
