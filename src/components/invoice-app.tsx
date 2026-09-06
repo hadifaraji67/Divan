@@ -51,6 +51,7 @@ import { BootScreen } from "@/components/boot-screen";
 import { APP_VERSION } from "@/lib/version";
 import { useSession, signOut } from "@/lib/auth-client";
 import { startServerSync, stopServerSync } from "@/lib/app-state-client-sync";
+import { SyncStatusBadge } from "@/components/sync-status";
 import { listTeamUsers, addTeamUser, removeTeamUser } from "@/lib/team";
 import { useBackableOpen } from "@/lib/use-backable-open";
 import { navDepth, pushNav } from "@/lib/nav-history";
@@ -347,6 +348,7 @@ export function InvoiceApp() {
           </div>
         </div>
       </header>
+      <SyncStatusBadge />
 
       {sidebarOpen ? (
         <div className="no-print fixed inset-0 z-50">

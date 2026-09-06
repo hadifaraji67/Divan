@@ -37,6 +37,56 @@ function snapshot(state: ReturnType<typeof useInvoiceStore.getState>): SyncedSta
   return out;
 }
 
+export type SyncStatus = "idle" | "syncing" | "offline" | "error";
+
+let status: SyncStatus = "idle";
+const statusListeners = new Set<(s: SyncStatus) => void>();
+
+function setStatus(next: SyncStatus) {
+  status = next;
+  statusListeners.forEach((listener) => listener(next));
+}
+
+/** Lets a small UI indicator show sync status without wiring this into zustand. */
+export function subscribeSyncStatus(fn: (s: SyncStatus) => void) {
+  statusListeners.add(fn);
+  fn(status);
+  return () => {
+    statusListeners.delete(fn);
+  };
+}
+
+let pendingSnapshot: SyncedState | null = null;
+let retryTimer: number | null = null;
+
+async function attemptSave(data: SyncedState) {
+  setStatus("syncing");
+  try {
+    await saveAppState({ data });
+    pendingSnapshot = null;
+    setStatus("idle");
+  } catch (err) {
+    console.error("[sync] failed to save remote state:", err);
+    pendingSnapshot = data;
+    setStatus(typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "error");
+    scheduleRetry();
+  }
+}
+
+function scheduleRetry() {
+  if (retryTimer) return;
+  // Fallback poll — covers flaky connections where the browser's "online"
+  // event never fires even though requests would actually succeed again.
+  retryTimer = window.setTimeout(() => {
+    retryTimer = null;
+    if (pendingSnapshot) void attemptSave(pendingSnapshot);
+  }, 15000);
+}
+
+function onOnline() {
+  if (pendingSnapshot) void attemptSave(pendingSnapshot);
+}
+
 let unsubscribe: (() => void) | null = null;
 let saveTimer: number | null = null;
 let running = false;
@@ -44,6 +94,7 @@ let running = false;
 export async function startServerSync() {
   if (running) return;
   running = true;
+  window.addEventListener("online", onOnline);
 
   try {
     const remote = await loadAppState();
@@ -57,19 +108,24 @@ export async function startServerSync() {
   unsubscribe = useInvoiceStore.subscribe((state) => {
     if (saveTimer) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
-      void saveAppState({ data: snapshot(state) }).catch((err) => {
-        console.error("[sync] failed to save remote state:", err);
-      });
+      void attemptSave(snapshot(state));
     }, 1500);
   });
 }
 
 export function stopServerSync() {
   running = false;
+  window.removeEventListener("online", onOnline);
   unsubscribe?.();
   unsubscribe = null;
   if (saveTimer) {
     window.clearTimeout(saveTimer);
     saveTimer = null;
   }
+  if (retryTimer) {
+    window.clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+  pendingSnapshot = null;
+  setStatus("idle");
 }
