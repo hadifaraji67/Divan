@@ -50,6 +50,7 @@ import { LoginScreen } from "@/components/login-screen";
 import { BootScreen } from "@/components/boot-screen";
 import { APP_VERSION } from "@/lib/version";
 import { useSession, signOut } from "@/lib/auth-client";
+import { startServerSync, stopServerSync } from "@/lib/app-state-client-sync";
 import { listTeamUsers, addTeamUser, removeTeamUser } from "@/lib/team";
 import { useBackableOpen } from "@/lib/use-backable-open";
 import { navDepth, pushNav } from "@/lib/nav-history";
@@ -156,6 +157,15 @@ export function InvoiceApp() {
   const isAuthenticated = !!session;
   const hydrated = useInvoiceStore((s) => s.hydrated);
   const autoLockMinutes = useInvoiceStore((s) => s.autoLockMinutes);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void startServerSync();
+    } else {
+      stopServerSync();
+    }
+  }, [isAuthenticated]);
+
   const [view, setView] = useState<View>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
