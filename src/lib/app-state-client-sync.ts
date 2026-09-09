@@ -25,6 +25,7 @@ const SYNCED_KEYS = [
   "smsBankSenders",
   "autoLockMinutes",
   "lowStockThreshold",
+  "vatRate",
 ] as const;
 
 type SyncedState = Pick<ReturnType<typeof useInvoiceStore.getState>, (typeof SYNCED_KEYS)[number]>;

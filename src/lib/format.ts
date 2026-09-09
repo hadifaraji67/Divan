@@ -57,12 +57,13 @@ export function formatJalali(date: Date | string): string {
   return toFaDigits(`${y}/${pad(m)}/${pad(day)}`);
 }
 
+/** Fallback only — the real, user-editable rate lives in the store as `vatRate`. */
 export const VAT_RATE = 0.09;
 
-export function lineTotals(qty: number, unitPrice: number, discount: number) {
+export function lineTotals(qty: number, unitPrice: number, discount: number, vatRate: number = VAT_RATE) {
   const amount = qty * unitPrice;
   const afterDiscount = Math.max(0, amount - discount);
-  const vat = Math.round(afterDiscount * VAT_RATE);
+  const vat = Math.round(afterDiscount * vatRate);
   const payable = afterDiscount + vat;
   return { amount, afterDiscount, vat, payable };
 }

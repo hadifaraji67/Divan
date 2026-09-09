@@ -46,7 +46,7 @@ export function ReportsPanel() {
       if (inv.kind !== "invoice") continue;
       const j = gregorianToJalali(new Date(inv.date));
       if (j.y !== year) continue;
-      const total = invoiceSums(inv.items).payable;
+      const total = invoiceSums(inv.items, inv.vatRate).payable;
       if (inv.direction === "sale") rows[j.m - 1].income += total;
       else rows[j.m - 1].expense += total;
     }

@@ -9,7 +9,7 @@ export function InvoicePrint({
   seller: Seller;
   format?: "A4" | "A5";
 }) {
-  const sums = invoiceSums(invoice.items);
+  const sums = invoiceSums(invoice.items, invoice.vatRate);
   const isPurchase = invoice.direction === "purchase";
   const sellerParty = isPurchase ? invoice.customer : seller;
   const buyerParty = isPurchase ? seller : invoice.customer;

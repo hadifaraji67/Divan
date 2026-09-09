@@ -50,7 +50,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: (view: View) => void })
     let purchase = 0;
     for (const inv of invoices) {
       if (inv.kind !== "invoice") continue;
-      const total = invoiceSums(inv.items).payable;
+      const total = invoiceSums(inv.items, inv.vatRate).payable;
       if (inv.direction === "sale") sale += total;
       else purchase += total;
     }

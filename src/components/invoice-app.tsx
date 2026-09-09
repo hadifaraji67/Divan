@@ -500,7 +500,7 @@ function Composer({
     saveToCatalog: true,
   });
 
-  const sums = useMemo(() => invoiceSums(draft.items), [draft.items]);
+  const sums = useMemo(() => invoiceSums(draft.items, draft.vatRate), [draft.items, draft.vatRate]);
 
   function pickProduct(id: string) {
     const p = products.find((x) => x.id === id);
@@ -1251,7 +1251,7 @@ function HistoryPanel({
                   {toFaDigits(inv.number)} — {inv.customer.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatJalali(inv.date)} · {formatRial(invoiceSums(inv.items).payable)} ریال
+                  {formatJalali(inv.date)} · {formatRial(invoiceSums(inv.items, inv.vatRate).payable)} ریال
                 </p>
               </div>
               <div className="flex flex-wrap justify-end">
@@ -1389,6 +1389,9 @@ function BusinessSettingsPanel() {
 function InvoiceSettingsPanel() {
   const seller = useInvoiceStore((s) => s.seller);
   const setSeller = useInvoiceStore((s) => s.setSeller);
+  const vatRate = useInvoiceStore((s) => s.vatRate);
+  const setVatRate = useInvoiceStore((s) => s.setVatRate);
+  const [vatPercentInput, setVatPercentInput] = useState(String(Math.round(vatRate * 1000) / 10));
   return (
     <Card>
       <CardHeader>
@@ -1396,6 +1399,25 @@ function InvoiceSettingsPanel() {
         <CardDescription>کدهای رسمی که در سربرگ فاکتور چاپ می‌شود</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
+        <Field label="نرخ مالیات بر ارزش‌افزوده (٪)">
+          <Input
+            inputMode="decimal"
+            value={vatPercentInput}
+            onChange={(e) => setVatPercentInput(e.target.value)}
+            onBlur={() => {
+              const percent = Number(vatPercentInput);
+              if (Number.isFinite(percent) && percent >= 0) {
+                setVatRate(percent / 100);
+                toast.success("نرخ مالیات به‌روزرسانی شد");
+              } else {
+                setVatPercentInput(String(Math.round(vatRate * 1000) / 10));
+              }
+            }}
+          />
+        </Field>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          این نرخ برای اسناد جدید اعمال می‌شود؛ اسناد قبلی با همان نرخی که هنگام صدورشان فعال بوده باقی می‌مانند.
+        </p>
         <Field label="شناسه ملی">
           <Input
             value={seller.nationalId}
