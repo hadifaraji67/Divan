@@ -21,8 +21,3 @@ export const applyTheme = (theme: Theme) => {
 
   localStorage.setItem('divan-theme', theme);
 };
-
-export const initTheme = () => {
-  const currentTheme = getStoredTheme();
-  applyTheme(currentTheme);
-};

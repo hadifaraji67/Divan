@@ -20,33 +20,24 @@ export const ThemeToggle: React.FC = () => {
       <button
         onClick={() => handleThemeChange('light')}
         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          theme === 'light'
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
+          theme === 'light' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         }`}
-        title="حالت روشن"
       >
         ☀️ روشن
       </button>
       <button
         onClick={() => handleThemeChange('dark')}
         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          theme === 'dark'
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
+          theme === 'dark' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         }`}
-        title="حالت تاریک"
       >
         🌙 تاریک
       </button>
       <button
         onClick={() => handleThemeChange('system')}
         className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          theme === 'system'
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'
+          theme === 'system' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         }`}
-        title="هماهنگ با سیستم"
       >
         💻 سیستم
       </button>
