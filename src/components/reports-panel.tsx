@@ -20,110 +20,112 @@ const JALALI_MONTHS = [
   "اسفند",
 ];
 
+function getJalaliDate(d: Date) {
+  const dateObj = d instanceof Date && !isNaN(d.getTime()) ? d : new Date(d);
+  const [jy, jm, jd] = gregorianToJalali(dateObj.getFullYear(), dateObj.getMonth() + 1, dateObj.getDate());
+  return { y: jy, m: jm, d: jd };
+}
+
 export function ReportsPanel() {
   const invoices = useInvoiceStore((s) => s.invoices);
   const transactions = useInvoiceStore((s) => s.transactions);
 
-  const currentYear = gregorianToJalali(new Date()).y;
+  const currentYear = getJalaliDate(new Date()).y;
   const [year, setYear] = useState(currentYear);
 
   const years = useMemo(() => {
     const set = new Set<number>([currentYear]);
-    invoices.forEach((i) => set.add(gregorianToJalali(new Date(i.date)).y));
-    transactions.forEach((t) => set.add(gregorianToJalali(new Date(t.date)).y));
+    invoices.forEach((i) => set.add(getJalaliDate(new Date(i.date)).y));
+    transactions.forEach((t) => set.add(getJalaliDate(new Date(t.date)).y));
     return Array.from(set).sort((a, b) => b - a);
   }, [invoices, transactions, currentYear]);
 
-  const monthly = useMemo(() => {
-    const rows = JALALI_MONTHS.map((name, idx) => ({
-      month: name,
-      m: idx + 1,
-      income: 0,
-      expense: 0,
-    }));
+  const monthlyData = useMemo(() => {
+    const rows = JALALI_MONTHS.map((name) => ({ month: name, income: 0, expense: 0 }));
 
-    for (const inv of invoices) {
-      if (inv.kind !== "invoice") continue;
-      const j = gregorianToJalali(new Date(inv.date));
-      if (j.y !== year) continue;
-      const total = invoiceSums(inv.items, inv.vatRate).payable;
+    invoices.forEach((inv) => {
+      const j = getJalaliDate(new Date(inv.date));
+      if (j.y !== year) return;
+      const { total } = invoiceSums(inv);
       if (inv.direction === "sale") rows[j.m - 1].income += total;
       else rows[j.m - 1].expense += total;
-    }
-    for (const t of transactions) {
-      const j = gregorianToJalali(new Date(t.date));
-      if (j.y !== year) continue;
+    });
+
+    transactions.forEach((t) => {
+      const j = getJalaliDate(new Date(t.date));
+      if (j.y !== year) return;
       if (t.type === "income") rows[j.m - 1].income += t.amount;
       else rows[j.m - 1].expense += t.amount;
-    }
+    });
+
     return rows;
   }, [invoices, transactions, year]);
 
-  const totals = monthly.reduce(
-    (acc, r) => {
-      acc.income += r.income;
-      acc.expense += r.expense;
-      return acc;
-    },
-    { income: 0, expense: 0 },
-  );
-  const profit = totals.income - totals.expense;
+  const totals = useMemo(() => {
+    return monthlyData.reduce(
+      (acc, r) => ({ income: acc.income + r.income, expense: acc.expense + r.expense }),
+      { income: 0, expense: 0 }
+    );
+  }, [monthlyData]);
 
   return (
-    <div className="grid gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">گزارش‌های مالی</h2>
+        <div className="flex gap-2">
+          {years.map((y) => (
+            <Button
+              key={y}
+              variant={y === year ? "default" : "outline"}
+              size="sm"
+              onClick={() => setYear(y)}
+            >
+              سال {toFaDigits(y)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>مجموع درآمد سال {toFaDigits(year)}</CardDescription>
+            <CardTitle className="text-emerald-600">{formatRial(totals.income)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>مجموع هزینه سال {toFaDigits(year)}</CardDescription>
+            <CardTitle className="text-rose-600">{formatRial(totals.expense)}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>سود / زیان ناخالص</CardDescription>
+            <CardTitle className={totals.income - totals.expense >= 0 ? "text-emerald-600" : "text-rose-600"}>
+              {formatRial(totals.income - totals.expense)}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle>گزارش مالی</CardTitle>
-              <CardDescription>فروش/خرید (فاکتور نهایی) + تراکنش‌های دستی</CardDescription>
-            </div>
-            <div className="flex items-center gap-1">
-              {years.slice(0, 3).map((y) => (
-                <Button key={y} size="sm" variant={y === year ? "default" : "outline"} onClick={() => setYear(y)}>
-                  {toFaDigits(y)}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <CardTitle>نمودار درآمد و هزینه ماهانه</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="h-64 w-full">
+        <CardContent>
+          <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthly}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" fontSize={11} interval={0} angle={-35} textAnchor="end" height={50} />
-                <YAxis fontSize={11} tickFormatter={(v) => toFaDigits(v)} />
-                <Tooltip
-                  formatter={(value: number) => `${formatRial(value)} ریال`}
-                  labelFormatter={(label) => label}
-                />
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => formatRial(value)} />
                 <Legend />
-                <Bar dataKey="income" name="درآمد" fill="#059669" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="هزینه" fill="#e11d48" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="income" name="درآمد" fill="#10b981" />
+                <Bar dataKey="expense" name="هزینه" fill="#f43f5e" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-muted/70 p-3">
-              <p className="text-xs text-muted-foreground">درآمد سال</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-emerald-600">
-                {formatRial(totals.income)}
-              </p>
-            </div>
-            <div className="rounded-xl bg-muted/70 p-3">
-              <p className="text-xs text-muted-foreground">هزینه سال</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-rose-600">
-                {formatRial(totals.expense)}
-              </p>
-            </div>
-            <div className="rounded-xl bg-muted/70 p-3">
-              <p className="text-xs text-muted-foreground">سود خالص</p>
-              <p className={`mt-1 text-sm font-semibold tabular-nums ${profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                {formatRial(profit)}
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>
