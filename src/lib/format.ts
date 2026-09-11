@@ -1,42 +1,28 @@
-export interface LineItemInput {
-  quantity: number;
-  unitPrice: number;
-  discountPercent?: number;
-  vatRate?: number;
-}
+export const formatJalali = (date: any) => {
+  try {
+    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { dateStyle: 'short' }).format(new Date(date));
+  } catch {
+    return '';
+  }
+};
 
-export interface LineItemResult {
-  amount: number;
-  discountAmount: number;
-  afterDiscount: number;
-  vatAmount: number;
-  total: number;
-}
+export const formatRial = (amount: number | string) => {
+  const num = Number(amount) || 0;
+  return new Intl.NumberFormat('fa-IR').format(num) + ' ریال';
+};
 
-export const calculateLineTotals = (item: LineItemInput): LineItemResult => {
-  const qty = item.quantity || 0;
-  const price = item.unitPrice || 0;
-  const discountPercent = item.discountPercent || 0;
-  const vatRate = item.vatRate || 0;
+export const parseAmount = (val: string) => {
+  if (!val) return 0;
+  const englishDigits = val.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+  return parseFloat(englishDigits.replace(/,/g, '')) || 0;
+};
 
-  // ۱. مبلغ خام (گرد شده جهت جلوگیری از دریفت اعشاری)
-  const amount = Math.round(qty * price);
+export const toFaDigits = (str: string | number) => {
+  if (str === null || str === undefined) return '';
+  return str.toString().replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)]);
+};
 
-  // ۲. محاسبه تخفیف و مبلغ پس از تخفیف
-  const discountAmount = Math.round((amount * discountPercent) / 100);
-  const afterDiscount = Math.round(amount - discountAmount);
-
-  // ۳. محاسبه مالیات بر ارزش افزوده
-  const vatAmount = Math.round((afterDiscount * vatRate) / 100);
-
-  // ۴. جمع کل سطر
-  const total = Math.round(afterDiscount + vatAmount);
-
-  return {
-    amount,
-    discountAmount,
-    afterDiscount,
-    vatAmount,
-    total,
-  };
+export const lineTotals = (items: any[]) => {
+  if (!Array.isArray(items)) return 0;
+  return items.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
 };
