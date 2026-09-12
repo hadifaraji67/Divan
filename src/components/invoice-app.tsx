@@ -1,59 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
-  Settings, Database, Lock, User, LogOut, Sun, Moon, Trash2, 
-  Printer, AlertTriangle, Download, TrendingUp, Calendar, CheckSquare, Shield,
-  Building, Phone, MapPin, DollarSign, Tag, Edit, Save, X, Package, QrCode, Layers, Box
+  Plus, Users, Edit, X, Package, AlertTriangle, 
+  Printer, Download, FileText, CheckCircle, Search, Trash2, ArrowRightLeft, DollarSign, Calendar
 } from 'lucide-react';
 
-// === Advanced Product Interface ===
+// === Interfaces ===
 export interface AdvancedProduct {
   id: string;
-  sku: string; // کد یکتای کالا
-  barcode?: string; // بارکد کالا
-  taxId?: string; // شناسه کالا (سامانه مودیان / جامع تجارت)
+  sku: string;
+  barcode?: string;
+  taxId?: string;
   name: string;
-  brand?: string; // برند یا مدل
-  category: string; // گروه اصلی
-  subCategory?: string; // گروه فرعی
-  
-  // واحدهای سنجش
-  mainUnit: string; // واحد اصلی (مثلا عدد)
-  subUnit?: string; // واحد فرعی (مثلا بسته/کارتن)
-  conversionRatio?: number; // ضریب تبدیل (مثلا 24)
-  
-  // انبارداری و موقعیت
-  warehouseName: string; // نام انبار پیش‌فرض
-  location: string; // موقعیت فیزیکی (راهرو/قفسه/طبقه)
-  stock: number; // موجودی واقعی (بر اساس واحد اصلی)
-  reservedStock: number; // موجودی رزرو شده در پیش‌فاکتورها
-  minStock: number; // حداقل موجودی (نقطه سفارش)
-  maxStock?: number; // حداکثر موجودی مجاز
-
-  // قیمت‌گذاری
-  lastBuyPrice: number; // آخرین قیمت خرید
-  avgBuyPrice: number; // میانگین قیمت خرید
-  sellPrice: number; // قیمت فروش خرده‌فروشی
-  wholesalePrice?: number; // قیمت فروش عمده
-  taxPercent: number; // درصد مالیات بر ارزش افزوده
-
-  // ردیابی و انقضا
+  brand?: string;
+  category: string;
+  mainUnit: string;
+  warehouseName: string;
+  location: string;
+  stock: number;
+  reservedStock: number;
+  minStock: number;
+  lastBuyPrice: number;
+  avgBuyPrice: number;
+  sellPrice: number;
+  taxPercent: number;
   productType: 'کالای خریدی' | 'کالای ساختنی' | 'خدمات';
-  hasSerial: boolean; // نیاز به شماره سریال
-  hasBatch: boolean; // نیاز به سری ساخت
-  batchNumber?: string;
-  expireDate?: string; // تاریخ انقضا
-
-  // وضعیت و ملاحظات
   isActive: boolean;
-  notes?: string;
-}
-
-export interface BankAccount {
-  bankName: string;
-  accountNumber: string;
-  cardNumber: string;
-  sheba: string;
 }
 
 export interface AdvancedContact {
@@ -66,176 +37,230 @@ export interface AdvancedContact {
   companyName?: string;
   nationalId: string;
   economicCode?: string;
-  registrationNumber?: string;
   mobile: string;
   phone?: string;
-  email?: string;
-  postalCode?: string;
   address?: string;
-  deliveryAddress?: string;
   creditLimit: number;
-  paymentTermsDays: number;
-  defaultDiscountPercent: number;
-  bankAccounts: BankAccount[];
-  group: string;
   isActive: boolean;
-  notes?: string;
 }
 
-interface InvoiceItem {
+export interface InvoiceItem {
   productId: string;
+  sku: string;
+  taxId?: string;
   productName: string;
+  unit: string;
   quantity: number;
   unitPrice: number;
   buyPrice: number;
-  discount: number;
-  tax: number;
-  total: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxPercent: number;
+  taxAmount: number;
+  totalPrice: number;
 }
 
-interface Invoice {
+export interface PaymentDetail {
+  type: 'cash' | 'pos' | 'cheque';
+  amount: number;
+  refCode?: string;
+  bankName?: string;
+  chequeNumber?: string;
+  dueDate?: string;
+}
+
+export interface AdvancedInvoice {
   id: string;
-  type: 'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید';
-  customerName: string;
+  invoiceNumber: string;
+  taxInvoiceId?: string;
+  type: 'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید' | 'برگشت از فروش';
+  contactId: string;
+  contactName: string;
+  contactNationalId: string;
+  contactMobile: string;
+  contactAddress?: string;
   date: string;
+  dueDate?: string;
   items: InvoiceItem[];
   subtotal: number;
   totalDiscount: number;
   totalTax: number;
+  shippingCost: number;
   grandTotal: number;
-  totalProfit: number;
+  payments: PaymentDetail[];
+  paidAmount: number;
+  remainingAmount: number;
   status: 'پرداخت شده' | 'پیشنویس' | 'بدهکار';
-}
-
-interface Cheque {
-  id: string;
-  contactName: string;
-  amount: number;
-  dueDate: string;
-  bankName: string;
-  chequeNumber: string;
-  type: 'دریافتی' | 'پرداختی';
-  status: 'در جریان' | 'پاس شده' | 'برگشتی';
-}
-
-interface AppUser {
-  id: string;
-  username: string;
-  role: 'مدیر کل' | 'فروشنده' | 'انباردار';
+  notes?: string;
 }
 
 export const InvoiceApp: React.FC = () => {
-  const [currentUser] = useState<AppUser | null>({ id: '1', username: 'مدیر سیستم', role: 'مدیر کل' });
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'contacts' | 'inventory' | 'cheques' | 'reports'>('inventory');
+  const [theme] = useState<'dark' | 'light'>('dark');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'inventory' | 'contacts'>('invoices');
 
   // App Data State
   const [products, setProducts] = useState<AdvancedProduct[]>(() => JSON.parse(localStorage.getItem('divan_products_v2') || '[]'));
   const [contacts, setContacts] = useState<AdvancedContact[]>(() => JSON.parse(localStorage.getItem('divan_contacts_v2') || '[]'));
-  const [invoices, setInvoices] = useState<Invoice[]>(() => JSON.parse(localStorage.getItem('divan_invoices') || '[]'));
-  const [cheques, setCheques] = useState<Cheque[]>(() => JSON.parse(localStorage.getItem('divan_cheques') || '[]'));
+  const [invoices, setInvoices] = useState<AdvancedInvoice[]>(() => JSON.parse(localStorage.getItem('divan_invoices_v2') || '[]'));
 
-  useEffect(() => { localStorage.setItem('divan_products_v2', JSON.stringify(products)); }, [products]);
+  useEffect(() => { localStorage.setItem('divan_invoices_v2', JSON.stringify(invoices)); }, [invoices]);
 
-  // Product Modal / Form State
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [editingProdId, setEditingProdId] = useState<string | null>(null);
+  // Invoice Modal / Form State
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
-  // Form Fields for Product
-  const [pSku, setPSku] = useState('');
-  const [pBarcode, setPBarcode] = useState('');
-  const [pTaxId, setPTaxId] = useState('');
-  const [pName, setPName] = useState('');
-  const [pBrand, setPBrand] = useState('');
-  const [pCategory, setPCategory] = useState('عمومی');
-  const [pSubCategory, setPSubCategory] = useState('');
-  const [pMainUnit, setPMainUnit] = useState('عدد');
-  const [pSubUnit, setPSubUnit] = useState('');
-  const [pConversionRatio, setPConversionRatio] = useState<number>(1);
-  const [pWarehouseName, setPWarehouseName] = useState('انبار مرکزی');
-  const [pLocation, setPLocation] = useState('');
-  const [pStock, setPStock] = useState<number>(0);
-  const [pReservedStock, setPReservedStock] = useState<number>(0);
-  const [pMinStock, setPMinStock] = useState<number>(5);
-  const [pMaxStock, setPMaxStock] = useState<number>(100);
-  const [pLastBuyPrice, setPLastBuyPrice] = useState<number>(0);
-  const [pAvgBuyPrice, setPAvgBuyPrice] = useState<number>(0);
-  const [pSellPrice, setPSellPrice] = useState<number>(0);
-  const [pWholesalePrice, setPWholesalePrice] = useState<number>(0);
-  const [pTaxPercent, setPTaxPercent] = useState<number>(10);
-  const [pProductType, setPProductType] = useState<'کالای خریدی' | 'کالای ساختنی' | 'خدمات'>('کالای خریدی');
-  const [pHasSerial, setPHasSerial] = useState(false);
-  const [pHasBatch, setPHasBatch] = useState(false);
-  const [pBatchNumber, setPBatchNumber] = useState('');
-  const [pExpireDate, setPExpireDate] = useState('');
-  const [pNotes, setPNotes] = useState('');
+  // Form Header State
+  const [invType, setInvType] = useState<'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید' | 'برگشت از فروش'>('فاکتور فروش');
+  const [invNumber, setInvNumber] = useState('');
+  const [invTaxId, setInvTaxId] = useState('');
+  const [invDate, setInvDate] = useState('1405/06/23');
+  const [invDueDate, setInvDueDate] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState('');
+  const [invNotes, setInvNotes] = useState('');
+  const [shippingCost, setShippingCost] = useState<number>(0);
 
-  const handleOpenProductModal = (prod?: AdvancedProduct) => {
-    if (prod) {
-      setEditingProdId(prod.id);
-      setPSku(prod.sku); setPBarcode(prod.barcode || ''); setPTaxId(prod.taxId || '');
-      setPName(prod.name); setPBrand(prod.brand || ''); setPCategory(prod.category); setPSubCategory(prod.subCategory || '');
-      setPMainUnit(prod.mainUnit); setPSubUnit(prod.subUnit || ''); setPConversionRatio(prod.conversionRatio || 1);
-      setPWarehouseName(prod.warehouseName); setPLocation(prod.location || '');
-      setPStock(prod.stock); setPReservedStock(prod.reservedStock || 0); setPMinStock(prod.minStock); setPMaxStock(prod.maxStock || 0);
-      setPLastBuyPrice(prod.lastBuyPrice); setPAvgBuyPrice(prod.avgBuyPrice); setPSellPrice(prod.sellPrice); setPWholesalePrice(prod.wholesalePrice || 0);
-      setPTaxPercent(prod.taxPercent); setPProductType(prod.productType); setPHasSerial(prod.hasSerial); setPHasBatch(prod.hasBatch);
-      setPBatchNumber(prod.batchNumber || ''); setPExpireDate(prod.expireDate || ''); setPNotes(prod.notes || '');
+  // Items State
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+
+  // Item Addition Form State
+  const [selectedProdId, setSelectedProdId] = useState('');
+  const [itemQty, setItemQty] = useState<number>(1);
+  const [itemPrice, setItemPrice] = useState<number>(0);
+  const [itemDiscount, setItemDiscount] = useState<number>(0);
+
+  // Payments State
+  const [payments, setPayments] = useState<PaymentDetail[]>([]);
+  const [payType, setPayType] = useState<'cash' | 'pos' | 'cheque'>('cash');
+  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payRef, setPayRef] = useState('');
+  const [payBank, setPayBank] = useState('');
+
+  // Print Preview Modal State
+  const [previewInvoice, setPreviewInvoice] = useState<AdvancedInvoice | null>(null);
+
+  const handleOpenInvoiceModal = (inv?: AdvancedInvoice) => {
+    if (inv) {
+      setEditingInvoiceId(inv.id);
+      setInvType(inv.type);
+      setInvNumber(inv.invoiceNumber);
+      setInvTaxId(inv.taxInvoiceId || '');
+      setInvDate(inv.date);
+      setInvDueDate(inv.dueDate || '');
+      setSelectedContactId(inv.contactId);
+      setInvoiceItems(inv.items);
+      setShippingCost(inv.shippingCost || 0);
+      setPayments(inv.payments || []);
+      setInvNotes(inv.notes || '');
     } else {
-      setEditingProdId(null);
-      setPSku(`PRD-${1000 + products.length + 1}`);
-      setPBarcode(''); setPTaxId(''); setPName(''); setPBrand(''); setPCategory('عمومی'); setPSubCategory('');
-      setPMainUnit('عدد'); setPSubUnit(''); setPConversionRatio(1); setPWarehouseName('انبار مرکزی'); setPLocation('');
-      setPStock(0); setPReservedStock(0); setPMinStock(5); setPMaxStock(100);
-      setPLastBuyPrice(0); setPAvgBuyPrice(0); setPSellPrice(0); setPWholesalePrice(0); setPTaxPercent(10);
-      setPProductType('کالای خریدی'); setPHasSerial(false); setPHasBatch(false); setPBatchNumber(''); setPExpireDate(''); setPNotes('');
+      setEditingInvoiceId(null);
+      setInvType('فاکتور فروش');
+      setInvNumber(`INV-${1000 + invoices.length + 1}`);
+      setInvTaxId('');
+      setInvDate(new Date().toLocaleDateString('fa-IR'));
+      setInvDueDate('');
+      setSelectedContactId(contacts[0]?.id || '');
+      setInvoiceItems([]);
+      setShippingCost(0);
+      setPayments([]);
+      setInvNotes('');
     }
-    setShowProductModal(true);
+    setShowInvoiceModal(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pName || !pSku) return;
+  const handleAddItem = () => {
+    const prod = products.find(p => p.id === selectedProdId);
+    if (!prod || itemQty <= 0) return;
 
-    const newProd: AdvancedProduct = {
-      id: editingProdId || Date.now().toString(),
-      sku: pSku,
-      barcode: pBarcode,
-      taxId: pTaxId,
-      name: pName,
-      brand: pBrand,
-      category: pCategory,
-      subCategory: pSubCategory,
-      mainUnit: pMainUnit,
-      subUnit: pSubUnit,
-      conversionRatio: pConversionRatio,
-      warehouseName: pWarehouseName,
-      location: pLocation,
-      stock: pStock,
-      reservedStock: pReservedStock,
-      minStock: pMinStock,
-      maxStock: pMaxStock,
-      lastBuyPrice: pLastBuyPrice,
-      avgBuyPrice: pAvgBuyPrice || pLastBuyPrice,
-      sellPrice: pSellPrice,
-      wholesalePrice: pWholesalePrice,
-      taxPercent: pTaxPercent,
-      productType: pProductType,
-      hasSerial: pHasSerial,
-      hasBatch: pHasBatch,
-      batchNumber: pBatchNumber,
-      expireDate: pExpireDate,
-      isActive: true,
-      notes: pNotes,
+    const discountAmount = (itemPrice * itemQty * itemDiscount) / 100;
+    const priceAfterDiscount = (itemPrice * itemQty) - discountAmount;
+    const taxAmount = (priceAfterDiscount * prod.taxPercent) / 100;
+    const totalPrice = priceAfterDiscount + taxAmount;
+
+    const newItem: InvoiceItem = {
+      productId: prod.id,
+      sku: prod.sku,
+      taxId: prod.taxId,
+      productName: prod.name,
+      unit: prod.mainUnit,
+      quantity: itemQty,
+      unitPrice: itemPrice,
+      buyPrice: prod.lastBuyPrice,
+      discountPercent: itemDiscount,
+      discountAmount,
+      taxPercent: prod.taxPercent,
+      taxAmount,
+      totalPrice
     };
 
-    if (editingProdId) {
-      setProducts(products.map(p => p.id === editingProdId ? newProd : p));
+    setInvoiceItems([...invoiceItems, newItem]);
+    setSelectedProdId('');
+    setItemQty(1);
+    setItemPrice(0);
+    setItemDiscount(0);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setInvoiceItems(invoiceItems.filter((_, i) => i !== index));
+  };
+
+  const handleAddPayment = () => {
+    if (payAmount <= 0) return;
+    setPayments([...payments, { type: payType, amount: payAmount, refCode: payRef, bankName: payBank }]);
+    setPayAmount(0);
+    setPayRef('');
+    setPayBank('');
+  };
+
+  // Calculations
+  const subtotal = invoiceItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  const totalDiscount = invoiceItems.reduce((acc, item) => acc + item.discountAmount, 0);
+  const totalTax = invoiceItems.reduce((acc, item) => acc + item.taxAmount, 0);
+  const grandTotal = subtotal - totalDiscount + totalTax + Number(shippingCost || 0);
+  const paidAmount = payments.reduce((acc, p) => acc + p.amount, 0);
+  const remainingAmount = grandTotal - paidAmount;
+
+  const handleSaveInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    const contact = contacts.find(c => c.id === selectedContactId);
+    if (!contact || invoiceItems.length === 0) return;
+
+    const newInvoice: AdvancedInvoice = {
+      id: editingInvoiceId || Date.now().toString(),
+      invoiceNumber: invNumber,
+      taxInvoiceId: invTaxId,
+      type: invType,
+      contactId: contact.id,
+      contactName: `${contact.name} ${contact.lastName || ''}`,
+      contactNationalId: contact.nationalId,
+      contactMobile: contact.mobile,
+      contactAddress: contact.address,
+      date: invDate,
+      dueDate: invDueDate,
+      items: invoiceItems,
+      subtotal,
+      totalDiscount,
+      totalTax,
+      shippingCost,
+      grandTotal,
+      payments,
+      paidAmount,
+      remainingAmount,
+      status: remainingAmount <= 0 ? 'پرداخت شده' : 'بدهکار',
+      notes: invNotes
+    };
+
+    if (editingInvoiceId) {
+      setInvoices(invoices.map(i => i.id === editingInvoiceId ? newInvoice : i));
     } else {
-      setProducts([newProd, ...products]);
+      setInvoices([newInvoice, ...invoices]);
     }
 
-    setShowProductModal(false);
+    setShowInvoiceModal(false);
+  };
+
+  const convertPreInvoiceToSale = (inv: AdvancedInvoice) => {
+    const updated = { ...inv, type: 'فاکتور فروش' as const, invoiceNumber: `INV-${1000 + invoices.length + 1}` };
+    setInvoices(invoices.map(i => i.id === inv.id ? updated : i));
   };
 
   const isDark = theme === 'dark';
@@ -249,81 +274,77 @@ export const InvoiceApp: React.FC = () => {
       <aside className={`w-64 border-l p-4 flex flex-col ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="text-xl font-bold text-center py-3 border-b border-slate-800/40 text-indigo-500">نرم‌افزار دیوان</div>
         <nav className="flex-1 space-y-1 mt-4 text-sm">
-          <button onClick={() => setActiveTab('inventory')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : ''}`}>انبارداری و مدیریت کالا</button>
+          <button onClick={() => setActiveTab('invoices')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : ''}`}>مدیریت فاکتورها</button>
+          <button onClick={() => setActiveTab('inventory')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : ''}`}>انبارداری و کالاها</button>
           <button onClick={() => setActiveTab('contacts')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : ''}`}>طرف حساب‌ها (اشخاص)</button>
-          <button onClick={() => setActiveTab('invoices')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : ''}`}>فاکتورها</button>
-          <button onClick={() => setActiveTab('cheques')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'cheques' ? 'bg-indigo-600 text-white font-bold' : ''}`}>چک‌ها</button>
         </nav>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6 space-y-6">
         <header className="flex justify-between items-center border-b pb-4">
-          <h1 className="text-xl font-bold text-indigo-500">مدیریت جامع انبار و محصولات</h1>
-          <button onClick={() => handleOpenProductModal()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2">
-            <Plus className="w-4 h-4" /> تعریف کالای جدید
+          <h1 className="text-xl font-bold text-indigo-500">سیستم صدور و مدیریت جامع فاکتورها</h1>
+          <button onClick={() => handleOpenInvoiceModal()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2">
+            <Plus className="w-4 h-4" /> صدور فاکتور جدید
           </button>
         </header>
 
-        {/* Inventory List */}
-        {activeTab === 'inventory' && (
+        {/* Invoices List */}
+        {activeTab === 'invoices' && (
           <div className="space-y-4">
-            {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">تعداد کل عناوین کالا</p>
-                <p className="text-lg font-bold text-indigo-400 mt-1">{products.length} کالا</p>
+                <p className="text-xs text-slate-400">تعداد کل فاکتورها</p>
+                <p className="text-lg font-bold text-indigo-400 mt-1">{invoices.length} فاکتور</p>
               </div>
               <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">کالاهای نیازمند سفارش (کسری)</p>
-                <p className="text-lg font-bold text-rose-400 mt-1">
-                  {products.filter(p => p.stock <= p.minStock).length} کالا
-                </p>
-              </div>
-              <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مجموع ارزش ریالی انبار (خرید)</p>
+                <p className="text-xs text-slate-400">مجموع فروش کل</p>
                 <p className="text-lg font-bold text-emerald-400 mt-1">
-                  {products.reduce((acc, p) => acc + (p.stock * p.lastBuyPrice), 0).toLocaleString()} ریال
+                  {invoices.filter(i => i.type === 'فاکتور فروش').reduce((acc, i) => acc + i.grandTotal, 0).toLocaleString()} ریال
                 </p>
               </div>
               <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مجموع موجودی رزرو شده</p>
+                <p className="text-xs text-slate-400">مطالبات (بدهکاران)</p>
+                <p className="text-lg font-bold text-rose-400 mt-1">
+                  {invoices.reduce((acc, i) => acc + i.remainingAmount, 0).toLocaleString()} ریال
+                </p>
+              </div>
+              <div className={`p-4 border rounded-xl ${bgCard}`}>
+                <p className="text-xs text-slate-400">پیش‌فاکتورها</p>
                 <p className="text-lg font-bold text-amber-400 mt-1">
-                  {products.reduce((acc, p) => acc + (p.reservedStock || 0), 0).toLocaleString()}
+                  {invoices.filter(i => i.type === 'پیش‌فاکتور').length} عدد
                 </p>
               </div>
             </div>
 
-            {/* Product Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((p) => (
-                <div key={p.id} className={`p-4 border rounded-xl flex flex-col justify-between space-y-3 ${bgCard}`}>
+              {invoices.map((inv) => (
+                <div key={inv.id} className={`p-4 border rounded-xl flex flex-col justify-between space-y-3 ${bgCard}`}>
                   <div>
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">کد: {p.sku}</span>
-                      {p.stock <= p.minStock ? (
-                        <span className="text-[10px] bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded flex items-center gap-1 font-bold">
-                          <AlertTriangle className="w-3 h-3" /> هشدار موجودی
-                        </span>
-                      ) : (
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">موجود</span>
-                      )}
+                      <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">{inv.invoiceNumber}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${
+                        inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' :
+                        inv.type === 'پیش‌فاکتور' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
+                      }`}>{inv.type}</span>
                     </div>
-                    <h3 className="font-bold text-sm mt-2 text-indigo-300">{p.name} {p.brand ? `(${p.brand})` : ''}</h3>
-                    <p className="text-xs text-slate-400 mt-1">دسته: {p.category} | بارکد: {p.barcode || '-'}</p>
-                    <p className="text-xs text-slate-400 mt-1">انبار: {p.warehouseName} {p.location ? `(قفسه: ${p.location})` : ''}</p>
+                    <h3 className="font-bold text-sm mt-2 text-indigo-300">{inv.contactName}</h3>
+                    <p className="text-xs text-slate-400 mt-1">تاریخ: {inv.date} | اقلام: {inv.items.length} کالا</p>
                     <div className="flex justify-between items-center text-xs mt-2 p-2 bg-slate-950/40 rounded border border-slate-800">
-                      <span>موجودی: <strong className="text-indigo-400">{p.stock} {p.mainUnit}</strong></span>
-                      <span>قابل فروش: <strong className="text-emerald-400">{p.stock - (p.reservedStock || 0)}</strong></span>
-                    </div>
-                    <div className="text-xs space-y-1 mt-2">
-                      <p className="text-slate-400">قیمت خرید: {p.lastBuyPrice.toLocaleString()} ریال</p>
-                      <p className="text-slate-200 font-bold">قیمت فروش: {p.sellPrice.toLocaleString()} ریال</p>
+                      <span>مبلغ کل: <strong className="text-indigo-400">{inv.grandTotal.toLocaleString()} ریال</strong></span>
+                      <span>مانده: <strong className={inv.remainingAmount > 0 ? "text-rose-400" : "text-emerald-400"}>{inv.remainingAmount.toLocaleString()}</strong></span>
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
-                    <span className="text-[10px] text-slate-500">شناسه مودیان: {p.taxId || '-'}</span>
-                    <button onClick={() => handleOpenProductModal(p)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg text-xs flex items-center gap-1">
+                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                    <button onClick={() => setPreviewInvoice(inv)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg flex items-center gap-1">
+                      <Printer className="w-3.5 h-3.5" /> مشاهده / چاپ
+                    </button>
+                    {inv.type === 'پیش‌فاکتور' && (
+                      <button onClick={() => convertPreInvoiceToSale(inv)} className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg flex items-center gap-1">
+                        <ArrowRightLeft className="w-3.5 h-3.5" /> تبدیل به فروش
+                      </button>
+                    )}
+                    <button onClick={() => handleOpenInvoiceModal(inv)} className="p-1.5 text-slate-400 hover:bg-slate-500/10 rounded-lg flex items-center gap-1">
                       <Edit className="w-3.5 h-3.5" /> ویرایش
                     </button>
                   </div>
@@ -333,84 +354,229 @@ export const InvoiceApp: React.FC = () => {
           </div>
         )}
 
-        {/* Modal Form for Advanced Product */}
-        {showProductModal && (
+        {/* Invoice Creation / Edition Modal */}
+        {showInvoiceModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className={`w-full max-w-4xl border rounded-2xl p-6 space-y-6 my-8 ${bgCard}`}>
+            <div className={`w-full max-w-5xl border rounded-2xl p-6 space-y-6 my-8 ${bgCard}`}>
               <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-lg text-indigo-400">{editingProdId ? 'ویرایش مشخصات کالا' : 'تعریف کالای جدید (انبارداری کامل)'}</h3>
-                <button onClick={() => setShowProductModal(false)}><X className="w-5 h-5" /></button>
+                <h3 className="font-bold text-lg text-indigo-400">{editingInvoiceId ? 'ویرایش فاکتور' : 'صدور فاکتور جدید (کامل)'}</h3>
+                <button onClick={() => setShowInvoiceModal(false)}><X className="w-5 h-5" /></button>
               </div>
 
-              <form onSubmit={handleSaveProduct} className="space-y-6">
-                {/* 1. شناسه و اطلاعات اصلی کالا */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۱. اطلاعات شناسه و عمومی کالا</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input type="text" value={pSku} onChange={e => setPSku(e.target.value)} placeholder="کد اختصاصی (SKU)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                    <input type="text" value={pBarcode} onChange={e => setPBarcode(e.target.value)} placeholder="بارکد کالا" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={pTaxId} onChange={e => setPTaxId(e.target.value)} placeholder="شناسه کالا (سامانه مودیان)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <select value={pProductType} onChange={(e: any) => setPProductType(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`}>
-                      <option value="کالای خریدی">کالای خریدی</option>
-                      <option value="کالای ساختنی">کالای ساختنی/تولیدی</option>
-                      <option value="خدمات">خدماتی (بدون انبار)</option>
+              <form onSubmit={handleSaveInvoice} className="space-y-6">
+                {/* 1. سربرگ فاکتور */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-[11px] text-slate-400 block mb-1">نوع فاکتور</label>
+                    <select value={invType} onChange={(e: any) => setInvType(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`}>
+                      <option value="فاکتور فروش">فاکتور فروش</option>
+                      <option value="پیش‌فاکتور">پیش‌فاکتور</option>
+                      <option value="فاکتور خرید">فاکتور خرید</option>
+                      <option value="برگشت از فروش">برگشت از فروش</option>
                     </select>
-                    <input type="text" value={pName} onChange={e => setPName(e.target.value)} placeholder="نام کامل کالا" className={`p-2.5 border rounded-lg text-xs md:col-span-2 ${bgInput}`} required />
-                    <input type="text" value={pBrand} onChange={e => setPBrand(e.target.value)} placeholder="برند / مدل" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={pCategory} onChange={e => setPCategory(e.target.value)} placeholder="دسته اصلی (مثلا: قطعات)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-400 block mb-1">شماره فاکتور</label>
+                    <input type="text" value={invNumber} onChange={e => setInvNumber(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-400 block mb-1">تاریخ صدور</label>
+                    <input type="text" value={invDate} onChange={e => setInvDate(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-400 block mb-1">انتخاب طرف حساب (مشتری)</label>
+                    <select value={selectedContactId} onChange={e => setSelectedContactId(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required>
+                      <option value="">-- انتخاب کنید --</option>
+                      {contacts.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} {c.lastName} ({c.mobile})</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {/* 2. واحدها و ضرایب تبدیل */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۲. واحدهای سنجش و بسته بندی</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" value={pMainUnit} onChange={e => setPMainUnit(e.target.value)} placeholder="واحد سنجش اصلی (مثلا: عدد/کیلو)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                    <input type="text" value={pSubUnit} onChange={e => setPSubUnit(e.target.value)} placeholder="واحد فرعی (مثلا: کارتن/بسته)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pConversionRatio || ''} onChange={e => setPConversionRatio(Number(e.target.value))} placeholder="ضریب تبدیل (مثلا 24 عدد در کارتن)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                {/* 2. افزودن اقلام به فاکتور */}
+                <div className="space-y-3 p-3 bg-slate-950/40 rounded-xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">افزودن کالا / خدمت به فاکتور</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                    <select value={selectedProdId} onChange={e => {
+                      setSelectedProdId(e.target.value);
+                      const p = products.find(prod => prod.id === e.target.value);
+                      if (p) setItemPrice(p.sellPrice);
+                    }} className={`p-2 border rounded-lg text-xs ${bgInput}`}>
+                      <option value="">-- انتخاب کالا --</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} (موجودی: {p.stock})</option>
+                      ))}
+                    </select>
+                    <input type="number" value={itemQty || ''} onChange={e => setItemQty(Number(e.target.value))} placeholder="تعداد / مقدار" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="number" value={itemPrice || ''} onChange={e => setItemPrice(Number(e.target.value))} placeholder="قیمت واحد (فی)" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="number" value={itemDiscount || ''} onChange={e => setItemDiscount(Number(e.target.value))} placeholder="درصد تخفیف" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <button type="button" onClick={handleAddItem} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1">
+                      <Plus className="w-4 h-4" /> افزودن سطر
+                    </button>
                   </div>
+
+                  {/* جدول اقلام ثبت شده */}
+                  {invoiceItems.length > 0 && (
+                    <div className="overflow-x-auto mt-3">
+                      <table className="w-full text-xs text-right border-collapse">
+                        <thead>
+                          <tr className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                            <th className="p-2">کالا</th>
+                            <th className="p-2">تعداد</th>
+                            <th className="p-2">قیمت واحد</th>
+                            <th className="p-2">تخفیف</th>
+                            <th className="p-2">مالیات</th>
+                            <th className="p-2">جمع نهایی</th>
+                            <th className="p-2 text-center">حذف</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoiceItems.map((item, index) => (
+                            <tr key={index} className="border-b border-slate-800/60">
+                              <td className="p-2 font-bold text-indigo-300">{item.productName}</td>
+                              <td className="p-2">{item.quantity} {item.unit}</td>
+                              <td className="p-2">{item.unitPrice.toLocaleString()}</td>
+                              <td className="p-2">{item.discountAmount.toLocaleString()} ({item.discountPercent}%)</td>
+                              <td className="p-2">{item.taxAmount.toLocaleString()}</td>
+                              <td className="p-2 font-bold text-emerald-400">{item.totalPrice.toLocaleString()}</td>
+                              <td className="p-2 text-center">
+                                <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-4 h-4" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
-                {/* 3. موجودی و کنترل انبار */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۳. کنترل موجودی و موقعیت فیزیکی انبار</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input type="text" value={pWarehouseName} onChange={e => setPWarehouseName(e.target.value)} placeholder="نام انبار پیش‌فرض" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={pLocation} onChange={e => setPLocation(e.target.value)} placeholder="موقعیت در انبار (مثلا: راهرو A، قفسه 3)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pStock || ''} onChange={e => setPStock(Number(e.target.value))} placeholder="موجودی فعلی (واحد اصلی)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pReservedStock || ''} onChange={e => setPReservedStock(Number(e.target.value))} placeholder="موجودی رزرو شده" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pMinStock || ''} onChange={e => setPMinStock(Number(e.target.value))} placeholder="حداقل موجودی (نقطه سفارش)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pMaxStock || ''} onChange={e => setPMaxStock(Number(e.target.value))} placeholder="حداکثر موجودی مجاز" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                {/* 3. نحوه تسویه و پرداخت‌ها */}
+                <div className="space-y-3 p-3 bg-slate-950/40 rounded-xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">ثبت دریافتی / پرداخت</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <select value={payType} onChange={(e: any) => setPayType(e.target.value)} className={`p-2 border rounded-lg text-xs ${bgInput}`}>
+                      <option value="cash">نقدی</option>
+                      <option value="pos">کارتخوان / واریز به حساب</option>
+                      <option value="cheque">چک</option>
+                    </select>
+                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Number(e.target.value))} placeholder="مبلغ دریافتی" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={payRef} onChange={e => setPayRef(e.target.value)} placeholder="شماره پیگیری / صیادی" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <button type="button" onClick={handleAddPayment} className="p-2 bg-slate-800 text-indigo-400 border border-indigo-500/20 rounded-lg text-xs font-bold">افزودن پرداخت</button>
                   </div>
+                  {payments.length > 0 && (
+                    <div className="space-y-1">
+                      {payments.map((p, i) => (
+                        <p key={i} className="text-[11px] text-slate-400 bg-slate-900 p-1.5 rounded border border-slate-800 flex justify-between">
+                          <span>روش: {p.type === 'cash' ? 'نقدی' : p.type === 'pos' ? 'کارتخوان' : 'چک'} - کد پیگیری: {p.refCode || '-'}</span>
+                          <strong className="text-emerald-400">{p.amount.toLocaleString()} ریال</strong>
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* 4. قیمت‌گذاری و مالیات */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۴. قیمت‌گذاری و ارزش‌گذاری انبار</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <input type="number" value={pLastBuyPrice || ''} onChange={e => setPLastBuyPrice(Number(e.target.value))} placeholder="آخرین قیمت خرید (ریال)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pAvgBuyPrice || ''} onChange={e => setPAvgBuyPrice(Number(e.target.value))} placeholder="میانگین قیمت خرید" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pSellPrice || ''} onChange={e => setPSellPrice(Number(e.target.value))} placeholder="قیمت فروش خرده‌فروشی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pWholesalePrice || ''} onChange={e => setPWholesalePrice(Number(e.target.value))} placeholder="قیمت فروش عمده" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={pTaxPercent || ''} onChange={e => setPTaxPercent(Number(e.target.value))} placeholder="درصد مالیات ارزش افزوده" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                {/* 4. خلاصه محاسبات مالی فاکتور */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs">
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-slate-400 block mb-1">هزینه حمل و نقل (ریال)</label>
+                      <input type="number" value={shippingCost || ''} onChange={e => setShippingCost(Number(e.target.value))} className={`w-full p-2 border rounded-lg ${bgInput}`} />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1">توضیحات و یادداشت فاکتور</label>
+                      <input type="text" value={invNotes} onChange={e => setInvNotes(e.target.value)} placeholder="شرایط تسویه، نحوه ارسال و..." className={`w-full p-2 border rounded-lg ${bgInput}`} />
+                    </div>
                   </div>
-                </div>
-
-                {/* 5. ردیابی، سری ساخت و انقضا */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۵. ردیابی، سری ساخت و انقضا</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" value={pBatchNumber} onChange={e => setPBatchNumber(e.target.value)} placeholder="شماره سری ساخت / بچ (Batch No)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={pExpireDate} onChange={e => setPExpireDate(e.target.value)} placeholder="تاریخ انقضا (مثلا: 1406/12/29)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={pNotes} onChange={e => setPNotes(e.target.value)} placeholder="توضیحات و یادداشت انباردار" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  <div className="space-y-1.5 text-left flex flex-col justify-center">
+                    <p className="flex justify-between text-slate-400"><span>جمع اولیه اقلام:</span> <span>{subtotal.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between text-rose-400"><span>مجموع تخفیفات:</span> <span>({totalDiscount.toLocaleString()}) ریال</span></p>
+                    <p className="flex justify-between text-slate-400"><span>مجموع مالیات ارزش افزوده:</span> <span>{totalTax.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between text-indigo-400 font-bold text-sm border-t border-slate-800 pt-1"><span>مبلغ نهایی فاکتور:</span> <span>{grandTotal.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between text-emerald-400"><span>مجموع دریافتی:</span> <span>{paidAmount.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between text-rose-400 font-bold"><span>مانده بدهکاری:</span> <span>{remainingAmount.toLocaleString()} ریال</span></p>
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                  <button type="button" onClick={() => setShowProductModal(false)} className="px-5 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">انصراف</button>
-                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">ذخیره مشخصات کالا</button>
+                  <button type="button" onClick={() => setShowInvoiceModal(false)} className="px-5 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">انصراف</button>
+                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">ذخیره و ثبت نهایی فاکتور</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Invoice Printable View Modal */}
+        {previewInvoice && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white text-slate-900 w-full max-w-3xl rounded-2xl p-8 space-y-6 my-8 font-sans">
+              <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">{previewInvoice.type}</h2>
+                  <p className="text-xs text-slate-500 mt-1">شماره: {previewInvoice.invoiceNumber} | تاریخ: {previewInvoice.date}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => window.print()} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Printer className="w-4 h-4" /> چاپ فاکتور</button>
+                  <button onClick={() => setPreviewInvoice(null)} className="px-3 py-1.5 bg-slate-200 text-slate-800 text-xs font-bold rounded-lg"><X className="w-4 h-4" /></button>
+                </div>
+              </div>
+
+              {/* Printable Content */}
+              <div className="space-y-4 text-xs">
+                <div className="border p-3 rounded-lg flex justify-between bg-slate-50">
+                  <div>
+                    <p className="font-bold">خریدار / طرف حساب:</p>
+                    <p className="text-sm font-bold text-indigo-900 mt-1">{previewInvoice.contactName}</p>
+                    <p className="text-slate-600 mt-1">کد/شناسه ملی: {previewInvoice.contactNationalId}</p>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-slate-600">شماره همراه: {previewInvoice.contactMobile}</p>
+                    <p className="text-slate-600 mt-1">آدرس: {previewInvoice.contactAddress || '-'}</p>
+                  </div>
+                </div>
+
+                <table className="w-full border-collapse border text-right">
+                  <thead>
+                    <tr className="bg-slate-100 border-b">
+                      <th className="p-2 border">ردیف</th>
+                      <th className="p-2 border">شرح کالا / خدمت</th>
+                      <th className="p-2 border">تعداد</th>
+                      <th className="p-2 border">قیمت واحد</th>
+                      <th className="p-2 border">تخفیف</th>
+                      <th className="p-2 border">مالیات</th>
+                      <th className="p-2 border">مبلغ کل</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewInvoice.items.map((item, idx) => (
+                      <tr key={idx} className="border-b">
+                        <td className="p-2 border text-center">{idx + 1}</td>
+                        <td className="p-2 border font-bold">{item.productName}</td>
+                        <td className="p-2 border">{item.quantity} {item.unit}</td>
+                        <td className="p-2 border">{item.unitPrice.toLocaleString()}</td>
+                        <td className="p-2 border">{item.discountAmount.toLocaleString()}</td>
+                        <td className="p-2 border">{item.taxAmount.toLocaleString()}</td>
+                        <td className="p-2 border font-bold">{item.totalPrice.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex justify-between items-start border-t pt-4">
+                  <div className="w-1/2 space-y-1">
+                    <p className="font-bold">توضیحات فاکتور:</p>
+                    <p className="text-slate-600">{previewInvoice.notes || 'فاقد توضیحات تکمیلی.'}</p>
+                  </div>
+                  <div className="w-1/2 space-y-1 text-left">
+                    <p className="flex justify-between"><span>جمع کل اقلام:</span> <span>{previewInvoice.subtotal.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between text-rose-600"><span>تخفیف:</span> <span>({previewInvoice.totalDiscount.toLocaleString()}) ریال</span></p>
+                    <p className="flex justify-between"><span>مالیات ارزش افزوده:</span> <span>{previewInvoice.totalTax.toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between"><span>هزینه حمل:</span> <span>{(previewInvoice.shippingCost || 0).toLocaleString()} ریال</span></p>
+                    <p className="flex justify-between font-bold text-sm border-t pt-1 text-indigo-900"><span>مبلغ قابل پرداخت:</span> <span>{previewInvoice.grandTotal.toLocaleString()} ریال</span></p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
