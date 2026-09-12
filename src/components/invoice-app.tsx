@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 import { 
   Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
   ChevronDown, ChevronLeft, Package, Settings, Database, 
-  Printer, Wrench, Search, Trash2, Edit, Save, Check
+  Printer, Wrench, Search, Trash2, Edit, Save, Check, LogOut, Lock, User
 } from 'lucide-react';
 
 export const InvoiceApp: React.FC = () => {
+  // مدیریت وضعیت ورود/خروج
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'new-invoice' | 'inventory' | 'contacts' | 'accounting' | 'tools' | 'settings'>('dashboard');
   const [openSubmenu, setOpenSubmenu] = useState<string | null>('sales');
@@ -26,6 +32,24 @@ export const InvoiceApp: React.FC = () => {
     { id: 'C2', name: 'شرکت آریا', phone: '02188889999', type: 'همکار' }
   ]);
 
+  // تابع بررسی ورود
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim() !== '' && password.trim() !== '') {
+      setIsAuthenticated(true);
+      setLoginError('');
+    } else {
+      setLoginError('لطفاً نام کاربری و رمز عبور را وارد کنید.');
+    }
+  };
+
+  // تابع خروج
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUsername('');
+    setPassword('');
+  };
+
   const toggleSubmenu = (menu: string) => {
     setOpenSubmenu(openSubmenu === menu ? null : menu);
   };
@@ -34,6 +58,69 @@ export const InvoiceApp: React.FC = () => {
     setActiveTab(tab);
     setMobileSidebarOpen(false);
   };
+
+  // فرم ورود به سیستم (اگر کاربر وارد نشده باشد)
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-4 dir-rtl font-sans">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 bg-indigo-600/10 text-indigo-400 rounded-xl mb-2">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-indigo-400">ورود به نرم‌افزار دیوان</h2>
+            <p className="text-xs text-slate-400">جهت دسترسی به سیستم، حساب خود را وارد کنید</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg text-xs text-center">
+                {loginError}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">نام کاربری</label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                <input 
+                  type="text" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="مثال: admin" 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">رمز عبور</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-sm transition-colors shadow-lg shadow-indigo-600/20"
+            >
+              ورود به سیستم
+            </button>
+          </form>
+
+          <div className="text-center text-xs text-slate-500 border-t border-slate-800/60 pt-4">
+            نرم‌افزار مدیریت فروش و انبارداری دیوان
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200 border-l border-slate-800 p-4 select-none">
@@ -155,8 +242,18 @@ export const InvoiceApp: React.FC = () => {
         </div>
       </nav>
 
-      <div className="text-center text-xs text-slate-500 pt-4 border-t border-slate-800">
-        نسخه کشویی سایدبار (v3.1.6)
+      {/* دکمه خروج از حساب */}
+      <div className="pt-4 border-t border-slate-800 space-y-2">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-bold transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>خروج از سیستم ({username})</span>
+        </button>
+        <div className="text-center text-[10px] text-slate-500">
+          نسخه سیستم ورود/خروج (v3.2.0)
+        </div>
       </div>
     </div>
   );
@@ -202,13 +299,22 @@ export const InvoiceApp: React.FC = () => {
               {activeTab === 'settings' && 'تنظیمات سیستم'}
             </h1>
           </div>
-          <button 
-            onClick={() => setActiveTab('new-invoice')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            فاکتور جدید
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setActiveTab('new-invoice')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              فاکتور جدید
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+              title="خروج"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950 space-y-6">
