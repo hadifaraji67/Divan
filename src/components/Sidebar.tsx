@@ -85,7 +85,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 h-screen p-4 flex flex-col dir-rtl select-none shadow-xl border-l border-slate-800 z-50">
       <div className="flex items-center justify-center h-14 mb-2 border-b border-slate-800">
-        <h1 className="text-xl font-bold tracking-wide text-indigo-400">نرم‌افزار دیوان (v3.1.5)</h1>
+        <h1 className="text-xl font-bold tracking-wide text-indigo-400">نرم‌افزار دیوان</h1>
       </div>
 
       <nav className="flex-1 overflow-y-auto space-y-2 pr-1 mt-2">
@@ -96,6 +96,7 @@ export const Sidebar: React.FC = () => {
           return (
             <div key={group.id} className="border-b border-slate-800/60 pb-2">
               <button
+                type="button"
                 onClick={() => toggleGroup(group.id)}
                 className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-800 transition-colors text-slate-200 font-medium text-sm"
               >
@@ -133,7 +134,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       <div className="pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
-        نسخه ۳.۱.۵ - برنامه دیوان
+        نسخه کشویی سایدبار (v3.1.6)
       </div>
     </aside>
   );
