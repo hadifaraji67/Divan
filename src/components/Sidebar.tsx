@@ -18,6 +18,7 @@ import {
   ChevronDown, 
   ChevronLeft 
 } from 'lucide-react';
+import { UpdateChecker } from './UpdateChecker';
 
 interface MenuItem {
   title: string;
@@ -84,11 +85,14 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-100 h-screen p-4 flex flex-col dir-rtl select-none shadow-xl border-l border-slate-800">
-      <div className="flex items-center justify-center h-14 mb-4 border-b border-slate-800">
+      <div className="flex items-center justify-center h-14 mb-2 border-b border-slate-800">
         <h1 className="text-xl font-bold tracking-wide text-indigo-400">نرم‌افزار دیوان</h1>
       </div>
 
-      <nav className="flex-1 overflow-y-auto space-y-2 pr-1">
+      {/* بخش بررسی و اطلاع‌رسانی بروزرسانی */}
+      <UpdateChecker />
+
+      <nav className="flex-1 overflow-y-auto space-y-2 pr-1 mt-2">
         {menuGroups.map((group) => {
           const GroupIcon = group.icon;
           const isOpen = openGroup === group.id;
