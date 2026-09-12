@@ -1,43 +1,163 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
   ChevronDown, ChevronLeft, Package, Settings, Database, 
   Wrench, Lock, User, LogOut, RefreshCw, CheckCircle, ArrowUpCircle,
-  Sun, Moon
+  Sun, Moon, Trash2, Printer, Search, AlertTriangle, Download, Upload, Eye
 } from 'lucide-react';
 
+// === Types ===
+interface Product {
+  id: string;
+  name: string;
+  category: string;
+  unit: string;
+  buyPrice: number;
+  sellPrice: number;
+  stock: number;
+  minStock: number;
+}
+
+interface Contact {
+  id: string;
+  name: string;
+  phone: string;
+  economicCode?: string;
+  address?: string;
+  type: 'مشتری' | 'تامین‌کننده' | 'همکار';
+}
+
+interface InvoiceItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number; // percentage or fixed
+  tax: number;
+  total: number;
+}
+
+interface Invoice {
+  id: string;
+  type: 'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید';
+  customerName: string;
+  date: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  totalDiscount: number;
+  totalTax: number;
+  grandTotal: number;
+  status: 'پرداخت شده' | 'پیشنویس' | 'بدهکار';
+}
+
+interface Transaction {
+  id: string;
+  contactName: string;
+  type: 'دریافت' | 'پرداخت';
+  amount: number;
+  date: string;
+  method: 'نقد' | 'کارتخوان' | 'چک' | 'کارت به کارت';
+  description: string;
+}
+
 export const InvoiceApp: React.FC = () => {
+  // Auth & Theme
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
+  // Navigation
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'new-invoice' | 'inventory' | 'contacts' | 'accounting' | 'tools' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'new-invoice' | 'inventory' | 'contacts' | 'accounting' | 'settings'>('dashboard');
   const [openSubmenu, setOpenSubmenu] = useState<string | null>('sales');
 
-  const [currentVersion] = useState('3.3.0');
+  // App System
+  const [currentVersion] = useState('4.0.0');
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'latest' | 'available'>('idle');
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'latest'>('idle');
 
-  const [invoices] = useState([
-    { id: '1001', customer: 'علی محمدی', date: '1405/06/20', total: 12500000, status: 'پرداخت شده' },
-    { id: '1002', customer: 'شرکت آریا', date: '1405/06/22', total: 48000000, status: 'پیشنویس' }
-  ]);
+  // State / Data
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('divan_products');
+    return saved ? JSON.parse(saved) : [
+      { id: 'P-101', name: 'سنسور SpO2 بزرگسال', category: 'تجهیزات پزشکی', unit: 'عدد', buyPrice: 1200000, sellPrice: 1500000, stock: 120, minStock: 20 },
+      { id: 'P-102', name: 'پروب پالس اکسی متر', category: 'تجهیزات پزشکی', unit: 'عدد', buyPrice: 2200000, sellPrice: 2800000, stock: 8, minStock: 10 }
+    ];
+  });
 
-  const [products] = useState([
-    { id: 'P1', name: 'سنسور SpO2 بزرگسال', price: 1500000, stock: 120 },
-    { id: 'P2', name: 'پروب پالس اکسی متر', price: 2800000, stock: 45 }
-  ]);
+  const [contacts, setContacts] = useState<Contact[]>(() => {
+    const saved = localStorage.getItem('divan_contacts');
+    return saved ? JSON.parse(saved) : [
+      { id: 'C-101', name: 'علی محمدی', phone: '09121112233', economicCode: '10101010', type: 'مشتری', address: 'تهران، خیابان ولیعصر' },
+      { id: 'C-102', name: 'شرکت تجهیزات پزشکی آریا', phone: '02188889999', economicCode: '41111111', type: 'تامین‌کننده', address: 'تهران، میدان ونک' }
+    ];
+  });
 
-  const [contacts] = useState([
-    { id: 'C1', name: 'علی محمدی', phone: '09121112233', type: 'مشتری' },
-    { id: 'C2', name: 'شرکت آریا', phone: '02188889999', type: 'همکار' }
-  ]);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    const saved = localStorage.getItem('divan_invoices');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: '1001',
+        type: 'فاکتور فروش',
+        customerName: 'علی محمدی',
+        date: '1405/06/20',
+        items: [{ productId: 'P-101', productName: 'سنسور SpO2 بزرگسال', quantity: 2, unitPrice: 1500000, discount: 0, tax: 270000, total: 3270000 }],
+        subtotal: 3000000,
+        totalDiscount: 0,
+        totalTax: 270000,
+        grandTotal: 3270000,
+        status: 'پرداخت شده'
+      }
+    ];
+  });
 
-  // بررسی اعتبار نام کاربری و رمز عبور
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('divan_transactions');
+    return saved ? JSON.parse(saved) : [
+      { id: 'T-101', contactName: 'علی محمدی', type: 'دریافت', amount: 3270000, date: '1405/06/20', method: 'کارتخوان', description: 'تسویه فاکتور 1001' }
+    ];
+  });
+
+  // LocalStorage Persist
+  useEffect(() => { localStorage.setItem('divan_products', JSON.stringify(products)); }, [products]);
+  useEffect(() => { localStorage.setItem('divan_contacts', JSON.stringify(contacts)); }, [contacts]);
+  useEffect(() => { localStorage.setItem('divan_invoices', JSON.stringify(invoices)); }, [invoices]);
+  useEffect(() => { localStorage.setItem('divan_transactions', JSON.stringify(transactions)); }, [transactions]);
+
+  // Invoice Form State
+  const [invType, setInvType] = useState<'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید'>('فاکتور فروش');
+  const [invCustomer, setInvCustomer] = useState('');
+  const [invDate, setInvDate] = useState('1405/06/23');
+  const [invItems, setInvItems] = useState<InvoiceItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [itemQty, setItemQty] = useState(1);
+  const [itemDiscount, setItemDiscount] = useState(0);
+  const [selectedInvoiceToPrint, setSelectedInvoiceToPrint] = useState<Invoice | null>(null);
+
+  // New Product Modal/Form State
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('تجهیزات پزشکی');
+  const [newProdUnit, setNewProdUnit] = useState('عدد');
+  const [newProdBuyPrice, setNewProdBuyPrice] = useState(0);
+  const [newProdSellPrice, setNewProdSellPrice] = useState(0);
+  const [newProdStock, setNewProdStock] = useState(0);
+  const [newProdMinStock, setNewProdMinStock] = useState(5);
+
+  // New Contact State
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactType, setNewContactType] = useState<'مشتری' | 'تامین‌کننده' | 'همکار'>('مشتری');
+
+  // New Transaction State
+  const [txContact, setTxContact] = useState('');
+  const [txType, setTxType] = useState<'دریافت' | 'پرداخت'>('دریافت');
+  const [txAmount, setTxAmount] = useState(0);
+  const [txMethod, setTxMethod] = useState<'نقد' | 'کارتخوان' | 'چک' | 'کارت به کارت'>('کارتخوان');
+  const [txDesc, setTxDesc] = useState('');
+
+  // Handlers
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (username.trim() === 'admin' && password === '123456') {
@@ -54,28 +174,135 @@ export const InvoiceApp: React.FC = () => {
     setPassword('');
   };
 
-  const handleCheckUpdate = () => {
-    setCheckingUpdate(true);
-    setUpdateStatus('idle');
-    setTimeout(() => {
-      setCheckingUpdate(false);
-      setUpdateStatus('latest');
-    }, 1500);
+  const handleAddItemToInvoice = () => {
+    const prod = products.find(p => p.id === selectedProductId);
+    if (!prod) return;
+
+    const baseTotal = prod.sellPrice * itemQty;
+    const discAmount = (baseTotal * itemDiscount) / 100;
+    const taxAmount = (baseTotal - discAmount) * 0.09; // 9% VAT
+    const finalTotal = baseTotal - discAmount + taxAmount;
+
+    const newItem: InvoiceItem = {
+      productId: prod.id,
+      productName: prod.name,
+      quantity: itemQty,
+      unitPrice: prod.sellPrice,
+      discount: discAmount,
+      tax: taxAmount,
+      total: finalTotal
+    };
+
+    setInvItems([...invItems, newItem]);
+    setSelectedProductId('');
+    setItemQty(1);
+    setItemDiscount(0);
   };
 
-  const toggleSubmenu = (menu: string) => {
-    setOpenSubmenu(openSubmenu === menu ? null : menu);
+  const handleRemoveInvoiceItem = (index: number) => {
+    setInvItems(invItems.filter((_, i) => i !== index));
   };
 
-  const handleNavClick = (tab: any) => {
-    setActiveTab(tab);
-    setMobileSidebarOpen(false);
+  const handleSaveInvoice = () => {
+    if (!invCustomer || invItems.length === 0) return;
+
+    const subtotal = invItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
+    const totalDiscount = invItems.reduce((acc, item) => acc + item.discount, 0);
+    const totalTax = invItems.reduce((acc, item) => acc + item.tax, 0);
+    const grandTotal = subtotal - totalDiscount + totalTax;
+
+    const newInv: Invoice = {
+      id: (1000 + invoices.length + 1).toString(),
+      type: invType,
+      customerName: invCustomer,
+      date: invDate,
+      items: invItems,
+      subtotal,
+      totalDiscount,
+      totalTax,
+      grandTotal,
+      status: invType === 'پیش‌فاکتور' ? 'پیشنویس' : 'پرداخت شده'
+    };
+
+    // Update stock if sales invoice
+    if (invType === 'فاکتور فروش') {
+      setProducts(products.map(p => {
+        const item = invItems.find(i => i.productId === p.id);
+        if (item) {
+          return { ...p, stock: Math.max(0, p.stock - item.quantity) };
+        }
+        return p;
+      }));
+    }
+
+    setInvoices([newInv, ...invoices]);
+    setInvItems([]);
+    setInvCustomer('');
+    setActiveTab('invoices');
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+  const handleAddProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdName) return;
+    const p: Product = {
+      id: `P-${100 + products.length + 1}`,
+      name: newProdName,
+      category: newProdCategory,
+      unit: newProdUnit,
+      buyPrice: Number(newProdBuyPrice),
+      sellPrice: Number(newProdSellPrice),
+      stock: Number(newProdStock),
+      minStock: Number(newProdMinStock)
+    };
+    setProducts([...products, p]);
+    setNewProdName('');
+    setNewProdBuyPrice(0);
+    setNewProdSellPrice(0);
+    setNewProdStock(0);
   };
 
+  const handleAddContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newContactName) return;
+    const c: Contact = {
+      id: `C-${100 + contacts.length + 1}`,
+      name: newContactName,
+      phone: newContactPhone,
+      type: newContactType
+    };
+    setContacts([...contacts, c]);
+    setNewContactName('');
+    setNewContactPhone('');
+  };
+
+  const handleAddTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!txContact || txAmount <= 0) return;
+    const t: Transaction = {
+      id: `T-${100 + transactions.length + 1}`,
+      contactName: txContact,
+      type: txType,
+      amount: Number(txAmount),
+      date: '1405/06/23',
+      method: txMethod,
+      description: txDesc
+    };
+    setTransactions([t, ...transactions]);
+    setTxAmount(0);
+    setTxDesc('');
+  };
+
+  const exportDataJSON = () => {
+    const data = { products, contacts, invoices, transactions };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `divan-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  };
+
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800';
   const bgCard = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm';
@@ -96,8 +323,8 @@ export const InvoiceApp: React.FC = () => {
             <div className="inline-flex p-3 bg-indigo-600/10 text-indigo-500 rounded-xl mb-2">
               <Lock className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-indigo-500">ورود به نرم‌افزار دیوان</h2>
-            <p className="text-xs text-slate-400">نام کاربری پیش‌فرض: admin | رمز عبور: 123456</p>
+            <h2 className="text-2xl font-bold text-indigo-500">ورود به سیستم دیوان</h2>
+            <p className="text-xs text-slate-400">نام کاربری: admin | رمز عبور: 123456</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -115,7 +342,7 @@ export const InvoiceApp: React.FC = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin" 
-                  className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors ${bgInput}`}
+                  className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 ${bgInput}`}
                 />
               </div>
             </div>
@@ -129,7 +356,7 @@ export const InvoiceApp: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="123456" 
-                  className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors ${bgInput}`}
+                  className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 ${bgInput}`}
                 />
               </div>
             </div>
@@ -141,10 +368,6 @@ export const InvoiceApp: React.FC = () => {
               ورود به سیستم
             </button>
           </form>
-
-          <div className="text-center text-xs text-slate-400 border-t border-slate-800/40 pt-4">
-            نرم‌افزار مدیریت فروش و انبارداری دیوان (نسخه {currentVersion})
-          </div>
         </div>
       </div>
     );
@@ -157,113 +380,53 @@ export const InvoiceApp: React.FC = () => {
       </div>
       
       <nav className="flex-1 mt-4 space-y-1.5 overflow-y-auto text-sm">
-        <div>
-          <button 
-            onClick={() => toggleSubmenu('base')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${bgHover}`}
-          >
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-indigo-500" />
-              <span>اطلاعات پایه و داشبورد</span>
-            </div>
-            {openSubmenu === 'base' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-          {openSubmenu === 'base' && (
-            <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700/40 pr-2 text-xs">
-              <button 
-                onClick={() => handleNavClick('dashboard')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white font-bold' : `${bgHover}`} `}
-              >
-                <span>داشبورد اصلی</span>
-              </button>
-              <button 
-                onClick={() => handleNavClick('contacts')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : `${bgHover}`} `}
-              >
-                <span>مدیریت طرف حساب‌ها</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <button 
+          onClick={() => { setActiveTab('dashboard'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <Database className="w-4 h-4" />
+          <span>داشبورد اصلی</span>
+        </button>
 
-        <div>
-          <button 
-            onClick={() => toggleSubmenu('sales')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${bgHover}`}
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4 text-emerald-500" />
-              <span>فروش و انبارداری</span>
-            </div>
-            {openSubmenu === 'sales' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
+        <button 
+          onClick={() => { setActiveTab('invoices'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'invoices' || activeTab === 'new-invoice' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <ShoppingCart className="w-4 h-4 text-emerald-500" />
+          <span>فاکتورها و فروش</span>
+        </button>
 
-          {openSubmenu === 'sales' && (
-            <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700/40 pr-2 text-xs">
-              <button 
-                onClick={() => handleNavClick('invoices')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : `${bgHover}`}`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>صدور و مدیریت فاکتور</span>
-              </button>
-              <button 
-                onClick={() => handleNavClick('inventory')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : `${bgHover}`}`}
-              >
-                <Package className="w-3.5 h-3.5" />
-                <span>مدیریت انبار و کالا</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <button 
+          onClick={() => { setActiveTab('inventory'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <Package className="w-4 h-4 text-amber-500" />
+          <span>مدیریت انبار و کالا</span>
+        </button>
 
-        <div>
-          <button 
-            onClick={() => toggleSubmenu('finance')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${bgHover}`}
-          >
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-amber-500" />
-              <span>حسابداری و مالی</span>
-            </div>
-            {openSubmenu === 'finance' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-          {openSubmenu === 'finance' && (
-            <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700/40 pr-2 text-xs">
-              <button 
-                onClick={() => handleNavClick('accounting')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'accounting' ? 'bg-indigo-600 text-white font-bold' : `${bgHover}`}`}
-              >
-                <span>دفتر معین و تراکنش‌ها</span>
-              </button>
-            </div>
-          )}
-        </div>
+        <button 
+          onClick={() => { setActiveTab('contacts'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <Users className="w-4 h-4 text-sky-500" />
+          <span>طرف حساب‌ها و مشتریان</span>
+        </button>
 
-        <div>
-          <button 
-            onClick={() => handleNavClick('tools')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${activeTab === 'tools' ? 'bg-indigo-600 text-white' : bgHover}`}
-          >
-            <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-sky-500" />
-              <span>ابزارهای هوشمند</span>
-            </div>
-          </button>
-        </div>
+        <button 
+          onClick={() => { setActiveTab('accounting'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'accounting' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <CreditCard className="w-4 h-4 text-purple-500" />
+          <span>حسابداری و دفتر معین</span>
+        </button>
 
-        <div>
-          <button 
-            onClick={() => handleNavClick('settings')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : bgHover}`}
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span>تنظیمات و آپدیت</span>
-            </div>
-          </button>
-        </div>
+        <button 
+          onClick={() => { setActiveTab('settings'); setMobileSidebarOpen(false); }}
+          className={`w-full flex items-center gap-2 p-2.5 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white font-bold' : bgHover}`}
+        >
+          <Settings className="w-4 h-4 text-slate-400" />
+          <span>تنظیمات و پشتیبان‌گیری</span>
+        </button>
       </nav>
 
       <div className="pt-4 border-t border-slate-800/40 space-y-2">
@@ -272,11 +435,8 @@ export const InvoiceApp: React.FC = () => {
           className="w-full flex items-center justify-center gap-2 p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg text-xs font-bold transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          <span>خروج از سیستم ({username})</span>
+          <span>خروج از حساب</span>
         </button>
-        <div className="text-center text-[10px] text-slate-400">
-          نسخه فعال: v{currentVersion}
-        </div>
       </div>
     </div>
   );
@@ -289,113 +449,111 @@ export const InvoiceApp: React.FC = () => {
 
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div 
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="relative z-10 w-64 h-full">
-            {renderSidebarContent()}
-          </div>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="relative z-10 w-64 h-full">{renderSidebarContent()}</div>
         </div>
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className={`flex items-center justify-between px-4 py-3 border-b ${bgCard}`}>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setMobileSidebarOpen(true)}
-              className="md:hidden p-2 rounded-lg bg-slate-800/20 hover:bg-slate-800/40"
-            >
+            <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden p-2 rounded-lg bg-slate-800/20">
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="text-base md:text-lg font-bold text-indigo-500">
-              {activeTab === 'dashboard' && 'داشبورد مدیریت دیوان'}
+              {activeTab === 'dashboard' && 'داشبورد مدیریتی'}
               {activeTab === 'invoices' && 'صدور و مدیریت فاکتورها'}
-              {activeTab === 'new-invoice' && 'صدور فاکتور جدید'}
-              {activeTab === 'inventory' && 'مدیریت موجودی انبار'}
-              {activeTab === 'contacts' && 'طرف حساب‌ها و مشتریان'}
-              {activeTab === 'accounting' && 'حسابداری و دفتر معین'}
-              {activeTab === 'tools' && 'ابزارهای هوشمند'}
-              {activeTab === 'settings' && 'تنظیمات و بروزرسانی سیستم'}
+              {activeTab === 'new-invoice' && 'ثبت فاکتور / پیش‌فاکتور جدید'}
+              {activeTab === 'inventory' && 'انبارداری و موجودی کالا'}
+              {activeTab === 'contacts' && 'طرف حساب‌ها'}
+              {activeTab === 'accounting' && 'دفتر معین و امور مالی'}
+              {activeTab === 'settings' && 'تنظیمات و پشتیبان‌گیری'}
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={toggleTheme}
-              className="p-2 rounded-lg border border-slate-700/30 hover:bg-slate-800/20 transition-colors"
-              title="تغییر پوسته (تاریک/روشن)"
-            >
+            <button onClick={toggleTheme} className="p-2 rounded-lg border border-slate-700/30">
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
             <button 
               onClick={() => setActiveTab('new-invoice')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium"
             >
               <Plus className="w-4 h-4" />
               فاکتور جدید
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
-              title="خروج"
-            >
-              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
 
         <main className={`flex-1 overflow-y-auto p-4 md:p-6 space-y-6 ${bgMain}`}>
+          {/* DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div onClick={() => setActiveTab('invoices')} className={`p-4 border rounded-xl cursor-pointer hover:border-indigo-500/50 flex items-center gap-3 transition-colors ${bgCard}`}>
-                  <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-lg"><FileText className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs text-slate-400">فاکتورها</p>
-                    <p className="text-sm font-bold">{invoices.length} فاکتور ثبت‌شده</p>
-                  </div>
+                <div className={`p-4 border rounded-xl ${bgCard}`}>
+                  <p className="text-xs text-slate-400">کل فاکتورها</p>
+                  <p className="text-xl font-bold mt-1">{invoices.length} عدد</p>
                 </div>
-                <div onClick={() => setActiveTab('inventory')} className={`p-4 border rounded-xl cursor-pointer hover:border-emerald-500/50 flex items-center gap-3 transition-colors ${bgCard}`}>
-                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-lg"><Package className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs text-slate-400">انبار</p>
-                    <p className="text-sm font-bold">{products.length} کالا موجود</p>
-                  </div>
+                <div className={`p-4 border rounded-xl ${bgCard}`}>
+                  <p className="text-xs text-slate-400">تعداد کالا در انبار</p>
+                  <p className="text-xl font-bold mt-1 text-emerald-500">{products.length} کالا</p>
                 </div>
-                <div onClick={() => setActiveTab('contacts')} className={`p-4 border rounded-xl cursor-pointer hover:border-blue-500/50 flex items-center gap-3 transition-colors ${bgCard}`}>
-                  <div className="p-3 bg-blue-500/10 text-blue-500 rounded-lg"><Users className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs text-slate-400">طرف حساب‌ها</p>
-                    <p className="text-sm font-bold">{contacts.length} شخص ثبت‌شده</p>
-                  </div>
+                <div className={`p-4 border rounded-xl ${bgCard}`}>
+                  <p className="text-xs text-slate-400">طرف حساب‌های ثبت‌شده</p>
+                  <p className="text-xl font-bold mt-1 text-blue-500">{contacts.length} نفر</p>
                 </div>
-                <div onClick={() => setActiveTab('accounting')} className={`p-4 border rounded-xl cursor-pointer hover:border-amber-500/50 flex items-center gap-3 transition-colors ${bgCard}`}>
-                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-lg"><CreditCard className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs text-slate-400">تراکنش‌ها</p>
-                    <p className="text-sm font-bold">دفتر معین فعال</p>
-                  </div>
+                <div className={`p-4 border rounded-xl ${bgCard}`}>
+                  <p className="text-xs text-slate-400">مجموع تراکنش‌ها</p>
+                  <p className="text-xl font-bold mt-1 text-amber-500">{transactions.length} مورد</p>
                 </div>
               </div>
+
+              {/* Low Stock Warning */}
+              {products.some(p => p.stock <= p.minStock) && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+                    <AlertTriangle className="w-5 h-5" />
+                    هشدار کمبود موجودی انبار
+                  </div>
+                  <p className="text-xs text-slate-400">کالاهای زیر به نقطه سفارش رسیده یا کمتر از حد مجاز هستند:</p>
+                  <ul className="list-disc list-inside text-xs space-y-1">
+                    {products.filter(p => p.stock <= p.minStock).map(p => (
+                      <li key={p.id}>{p.name} - موجودی فعلی: <strong className="text-rose-500">{p.stock}</strong> (حداقل مجاز: {p.minStock})</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
+          {/* INVOICES LIST */}
           {activeTab === 'invoices' && (
             <div className={`border rounded-xl overflow-hidden ${bgCard}`}>
               <div className="p-4 border-b border-slate-800/40 flex justify-between items-center">
-                <h3 className="font-bold">لیست فاکتورهای اخیر</h3>
-                <button onClick={() => setActiveTab('new-invoice')} className="px-3 py-1 bg-indigo-600 text-white rounded text-xs">ثبت جدید</button>
+                <h3 className="font-bold">فهرست فاکتورها و پیش‌فاکتورها</h3>
+                <button onClick={() => setActiveTab('new-invoice')} className="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs">ثبت فاکتور جدید</button>
               </div>
               <div className="divide-y divide-slate-800/40">
                 {invoices.map((inv) => (
                   <div key={inv.id} className={`p-4 flex items-center justify-between ${bgHover}`}>
                     <div>
-                      <p className="font-semibold">فاکتور #{inv.id} - {inv.customer}</p>
-                      <p className="text-xs text-slate-400">تاریخ: {inv.date}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">فاکتور #{inv.id}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{inv.type}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">خریدار: {inv.customerName} | تاریخ: {inv.date}</p>
                     </div>
-                    <div className="text-left">
-                      <p className="font-bold text-emerald-500">{inv.total.toLocaleString()} ریال</p>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800/20">{inv.status}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-left">
+                        <p className="font-bold text-emerald-500">{inv.grandTotal.toLocaleString()} ریال</p>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800/20">{inv.status}</span>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedInvoiceToPrint(inv)}
+                        className="p-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-500 rounded-lg"
+                        title="مشاهده و چاپ فاکتور"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -403,125 +561,258 @@ export const InvoiceApp: React.FC = () => {
             </div>
           )}
 
+          {/* NEW INVOICE FORM */}
           {activeTab === 'new-invoice' && (
-            <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
-              <h3 className="font-bold">صدور فاکتور رسمی/غیررسمی</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="نام خریدار / مشتری" className={`border rounded-lg p-2.5 text-sm ${bgInput}`} />
-                <input type="text" placeholder="تاریخ (مثال: 1405/06/23)" className={`border rounded-lg p-2.5 text-sm ${bgInput}`} />
+            <div className={`border rounded-xl p-6 space-y-6 ${bgCard}`}>
+              <h3 className="font-bold text-lg border-b border-slate-800/40 pb-3">صدور فاکتور / پیش‌فاکتور جدید</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">نوع فاکتور</label>
+                  <select value={invType} onChange={(e: any) => setInvType(e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${bgInput}`}>
+                    <option value="فاکتور فروش">فاکتور فروش</option>
+                    <option value="پیش‌فاکتور">پیش‌فاکتور</option>
+                    <option value="فاکتور خرید">فاکتور خرید</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">نام خریدار / مشتری</label>
+                  <select value={invCustomer} onChange={(e) => setInvCustomer(e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${bgInput}`}>
+                    <option value="">انتخاب از لیست طرف حساب‌ها...</option>
+                    {contacts.map(c => <option key={c.id} value={c.name}>{c.name} ({c.type})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">تاریخ</label>
+                  <input type="text" value={invDate} onChange={(e) => setInvDate(e.target.value)} className={`w-full p-2.5 border rounded-lg text-sm ${bgInput}`} />
+                </div>
               </div>
-              <div className={`border rounded-lg p-4 text-center text-slate-400 text-sm ${bgInput}`}>
-                اقلام فاکتور را از انبار انتخاب کنید.
+
+              {/* Add Item Box */}
+              <div className="p-4 border border-indigo-500/30 rounded-xl bg-indigo-500/5 space-y-4">
+                <h4 className="text-xs font-bold text-indigo-400">افزودن کالا به فاکتور</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <select value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)} className={`w-full p-2 border rounded-lg text-xs ${bgInput}`}>
+                    <option value="">انتخاب کالا از انبار...</option>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name} (موجودی: {p.stock}) - {p.sellPrice.toLocaleString()} ریال</option>)}
+                  </select>
+                  <input type="number" min="1" value={itemQty} onChange={(e) => setItemQty(Number(e.target.value))} placeholder="تعداد" className={`w-full p-2 border rounded-lg text-xs ${bgInput}`} />
+                  <input type="number" min="0" max="100" value={itemDiscount} onChange={(e) => setItemDiscount(Number(e.target.value))} placeholder="درصد تخفیف" className={`w-full p-2 border rounded-lg text-xs ${bgInput}`} />
+                  <button onClick={handleAddItemToInvoice} className="p-2 bg-indigo-600 text-white rounded-lg text-xs font-bold">افزودن به ردیف‌ها</button>
+                </div>
               </div>
-              <button onClick={() => setActiveTab('invoices')} className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm">ثبت و ذخیره فاکتور</button>
+
+              {/* Items Table */}
+              {invItems.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-800/40 border-b border-slate-700/50">
+                      <tr>
+                        <th className="p-3">نام کالا</th>
+                        <th className="p-3">تعداد</th>
+                        <th className="p-3">قیمت واحد</th>
+                        <th className="p-3">تخفیف</th>
+                        <th className="p-3">مالیات (9%)</th>
+                        <th className="p-3">جمع کل</th>
+                        <th className="p-3">عملیات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/40">
+                      {invItems.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="p-3">{item.productName}</td>
+                          <td className="p-3">{item.quantity}</td>
+                          <td className="p-3">{item.unitPrice.toLocaleString()}</td>
+                          <td className="p-3 text-rose-400">{item.discount.toLocaleString()}</td>
+                          <td className="p-3">{item.tax.toLocaleString()}</td>
+                          <td className="p-3 font-bold text-emerald-400">{item.total.toLocaleString()}</td>
+                          <td className="p-3">
+                            <button onClick={() => handleRemoveInvoiceItem(idx)} className="text-rose-500 hover:text-rose-400"><Trash2 className="w-4 h-4" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <button onClick={handleSaveInvoice} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-sm">ثبت و ذخیره نهایی فاکتور</button>
             </div>
           )}
 
+          {/* INVENTORY */}
           {activeTab === 'inventory' && (
-            <div className={`border rounded-xl p-4 ${bgCard}`}>
-              <h3 className="font-bold mb-4">مدیریت موجودی کالا</h3>
-              <div className="space-y-3">
-                {products.map((p) => (
-                  <div key={p.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
-                    <div>
-                      <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-slate-400">قیمت: {p.price.toLocaleString()} ریال</p>
+            <div className="space-y-6">
+              <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
+                <h3 className="font-bold">تعریف کالای جدید</h3>
+                <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input type="text" value={newProdName} onChange={(e) => setNewProdName(e.target.value)} placeholder="نام کالا" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  <input type="number" value={newProdBuyPrice || ''} onChange={(e) => setNewProdBuyPrice(Number(e.target.value))} placeholder="قیمت خرید (ریال)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  <input type="number" value={newProdSellPrice || ''} onChange={(e) => setNewProdSellPrice(Number(e.target.value))} placeholder="قیمت فروش (ریال)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  <input type="number" value={newProdStock || ''} onChange={(e) => setNewProdStock(Number(e.target.value))} placeholder="موجودی اولیه" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  <button type="submit" className="md:col-span-4 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">افزودن کالا به انبار</button>
+                </form>
+              </div>
+
+              <div className={`border rounded-xl p-4 ${bgCard}`}>
+                <h3 className="font-bold mb-4">موجودی انبار</h3>
+                <div className="space-y-3">
+                  {products.map((p) => (
+                    <div key={p.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
+                      <div>
+                        <p className="font-bold">{p.name} <span className="text-[10px] text-slate-400">({p.category})</span></p>
+                        <p className="text-xs text-slate-400">قیمت فروش: {p.sellPrice.toLocaleString()} ریال</p>
+                      </div>
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold ${p.stock <= p.minStock ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                        موجودی: {p.stock} {p.unit}
+                      </span>
                     </div>
-                    <span className="text-xs bg-indigo-500/10 text-indigo-500 px-2.5 py-1 rounded-full">موجودی: {p.stock}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
+          {/* CONTACTS */}
           {activeTab === 'contacts' && (
-            <div className={`border rounded-xl p-4 ${bgCard}`}>
-              <h3 className="font-bold mb-4">فهرست مشتریان و همکاران</h3>
-              <div className="space-y-3">
-                {contacts.map((c) => (
-                  <div key={c.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
-                    <div>
-                      <p className="font-bold">{c.name}</p>
-                      <p className="text-xs text-slate-400">شماره تماس: {c.phone}</p>
+            <div className="space-y-6">
+              <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
+                <h3 className="font-bold">تعریف طرف حساب جدید</h3>
+                <form onSubmit={handleAddContact} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder="نام و نام خانوادگی / شرکت" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  <input type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder="شماره تماس" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  <select value={newContactType} onChange={(e: any) => setNewContactType(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`}>
+                    <option value="مشتری">مشتری</option>
+                    <option value="تامین‌کننده">تامین‌کننده</option>
+                    <option value="همکار">همکار</option>
+                  </select>
+                  <button type="submit" className="md:col-span-3 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">ثبت طرف حساب</button>
+                </form>
+              </div>
+
+              <div className={`border rounded-xl p-4 ${bgCard}`}>
+                <h3 className="font-bold mb-4">لیست طرف حساب‌ها</h3>
+                <div className="space-y-3">
+                  {contacts.map((c) => (
+                    <div key={c.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
+                      <div>
+                        <p className="font-bold">{c.name}</p>
+                        <p className="text-xs text-slate-400">تلفن: {c.phone || 'ثبت نشده'}</p>
+                      </div>
+                      <span className="text-xs bg-slate-800/40 px-2.5 py-1 rounded">{c.type}</span>
                     </div>
-                    <span className="text-xs bg-slate-800/20 px-2 py-1 rounded">{c.type}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
+          {/* ACCOUNTING */}
           {activeTab === 'accounting' && (
-            <div className={`border rounded-xl p-6 text-center text-slate-400 space-y-2 ${bgCard}`}>
-              <CreditCard className="w-10 h-10 text-amber-500 mx-auto" />
-              <h3 className="font-bold">دفتر معین و تراکنش‌های مالی</h3>
-              <p className="text-xs">تمام بدهکاری‌ها و بستانکاری‌های ثبت شده در سیستم آماده دریافت خروجی PDF و چاپی می‌باشد.</p>
+            <div className="space-y-6">
+              <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
+                <h3 className="font-bold">ثبت تراکنش مالی جدید (دریافت / پرداخت)</h3>
+                <form onSubmit={handleAddTransaction} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <select value={txContact} onChange={(e) => setTxContact(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required>
+                    <option value="">انتخاب طرف حساب...</option>
+                    {contacts.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                  <select value={txType} onChange={(e: any) => setTxType(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`}>
+                    <option value="دریافت">دریافت (ورودی نقد/بانک)</option>
+                    <option value="پرداخت">پرداخت (خروجی)</option>
+                  </select>
+                  <input type="number" value={txAmount || ''} onChange={(e) => setTxAmount(Number(e.target.value))} placeholder="مبلغ (ریال)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                  <input type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="توضیحات تراکنش" className={`md:col-span-2 p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  <button type="submit" className="py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">ثبت تراکنش</button>
+                </form>
+              </div>
+
+              <div className={`border rounded-xl p-4 ${bgCard}`}>
+                <h3 className="font-bold mb-4">دفتر معین تراکنش‌ها</h3>
+                <div className="space-y-3">
+                  {transactions.map((t) => (
+                    <div key={t.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
+                      <div>
+                        <p className="font-bold">{t.contactName} - <span className="text-xs font-normal text-slate-400">{t.description}</span></p>
+                        <p className="text-xs text-slate-400">روش: {t.method} | تاریخ: {t.date}</p>
+                      </div>
+                      <span className={`text-xs font-bold ${t.type === 'دریافت' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {t.type === 'دریافت' ? '+' : '-'} {t.amount.toLocaleString()} ریال
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {activeTab === 'tools' && (
-            <div className={`border rounded-xl p-6 text-center text-slate-400 ${bgCard}`}>
-              <Wrench className="w-10 h-10 text-sky-500 mx-auto mb-2" />
-              <h3 className="font-bold">ابزارهای هوشمند نرم‌افزار</h3>
-              <p className="text-xs mt-1">محاسبه مالیات بر ارزش افزوده، تبدیل قیمت و تولید کد QR فاکتور.</p>
-            </div>
-          )}
-
+          {/* SETTINGS */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
               <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
-                <h3 className="font-bold flex items-center gap-2">
-                  <Sun className="w-5 h-5 text-amber-500" />
-                  پوسته و ظاهر برنامه
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => setTheme('dark')} 
-                    className={`p-4 rounded-xl border text-center flex flex-col items-center gap-2 transition-all ${theme === 'dark' ? 'border-indigo-500 bg-indigo-500/10 font-bold' : 'border-slate-700/30'}`}
-                  >
-                    <Moon className="w-6 h-6 text-indigo-400" />
-                    <span className="text-xs">تاریک (Dark Mode)</span>
-                  </button>
-                  <button 
-                    onClick={() => setTheme('light')} 
-                    className={`p-4 rounded-xl border text-center flex flex-col items-center gap-2 transition-all ${theme === 'light' ? 'border-indigo-500 bg-indigo-500/10 font-bold' : 'border-slate-700/30'}`}
-                  >
-                    <Sun className="w-6 h-6 text-amber-500" />
-                    <span className="text-xs">روشن (Light Mode)</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
-                <div className="flex items-center justify-between border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h3 className="font-bold flex items-center gap-2">
-                      <ArrowUpCircle className="w-5 h-5 text-indigo-500" />
-                      بررسی و بروزرسانی سیستم
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">نسخه فعلی: v{currentVersion}</p>
-                  </div>
-                  <button 
-                    onClick={handleCheckUpdate}
-                    disabled={checkingUpdate}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
-                    {checkingUpdate ? 'در حال بررسی...' : 'بررسی آپدیت جدید'}
-                  </button>
-                </div>
-
-                {updateStatus === 'latest' && (
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg text-xs flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 shrink-0" />
-                    شما در حال استفاده از آخرین نسخه نرم‌افزار (v{currentVersion}) هستید.
-                  </div>
-                )}
+                <h3 className="font-bold">پشتیبان‌گیری و خروجی داده‌ها</h3>
+                <p className="text-xs text-slate-400">تمام فاکتورها، کالاها و طرف حساب‌ها را به‌صورت فایل JSON دانلود کنید تا در صورت نیاز بازیابی شوند.</p>
+                <button onClick={exportDataJSON} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">
+                  <Download className="w-4 h-4" />
+                  دانلود فایل پشتیبان (JSON)
+                </button>
               </div>
             </div>
           )}
         </main>
       </div>
+
+      {/* PRINT INVOICE MODAL */}
+      {selectedInvoiceToPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full p-6 space-y-6 overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center border-b pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-indigo-600">فاکتور فروش دیوان</h2>
+                <p className="text-xs text-slate-500">شماره فاکتور: #{selectedInvoiceToPrint.id}</p>
+              </div>
+              <button onClick={() => setSelectedInvoiceToPrint(null)} className="text-rose-500 font-bold text-sm">بستن</button>
+            </div>
+
+            <div className="grid grid-cols-2 text-xs gap-2 bg-slate-50 p-3 rounded-lg border">
+              <p><strong>خریدار:</strong> {selectedInvoiceToPrint.customerName}</p>
+              <p><strong>تاریخ:</strong> {selectedInvoiceToPrint.date}</p>
+            </div>
+
+            <table className="w-full text-right text-xs border border-collapse">
+              <thead>
+                <tr className="bg-slate-100 border-b">
+                  <th className="p-2 border">شرح کالا</th>
+                  <th className="p-2 border">تعداد</th>
+                  <th className="p-2 border">قیمت واحد</th>
+                  <th className="p-2 border">جمع کل</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedInvoiceToPrint.items.map((item, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="p-2 border">{item.productName}</td>
+                    <td className="p-2 border">{item.quantity}</td>
+                    <td className="p-2 border">{item.unitPrice.toLocaleString()}</td>
+                    <td className="p-2 border font-bold">{item.total.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="text-left font-bold text-sm space-y-1">
+              <p>جمع فاکتور: {selectedInvoiceToPrint.grandTotal.toLocaleString()} ریال</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <button onClick={() => window.print()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-2">
+                <Printer className="w-4 h-4" />
+                چاپ / پرینت فاکتور
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
