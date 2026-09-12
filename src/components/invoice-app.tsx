@@ -2,10 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { 
   Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
   Settings, Database, Lock, User, LogOut, Sun, Moon, Trash2, 
-  Printer, AlertTriangle, Download, TrendingUp, Calendar, CheckSquare, Shield
+  Printer, AlertTriangle, Download, TrendingUp, Calendar, CheckSquare, Shield,
+  Building, Phone, MapPin, DollarSign, Tag, Edit, Save, X
 } from 'lucide-react';
 
-// === Interfaces ===
+// === Detailed Contact Interface ===
+export interface BankAccount {
+  bankName: string;
+  accountNumber: string;
+  cardNumber: string;
+  sheba: string;
+}
+
+export interface AdvancedContact {
+  id: string;
+  code: string;
+  personType: 'حقیقی' | 'حقوقی';
+  roles: ('مشتری' | 'تامین‌کننده' | 'همکار' | 'پرسنل')[];
+  name: string;
+  lastName?: string;
+  companyName?: string;
+  nationalId: string; // کد ملی یا شناسه ملی
+  economicCode?: string; // کد اقتصادی
+  registrationNumber?: string; // شماره ثبت
+  mobile: string;
+  phone?: string;
+  email?: string;
+  postalCode?: string;
+  address?: string;
+  deliveryAddress?: string;
+  creditLimit: number; // سقف اعتبار ریالی
+  paymentTermsDays: number; // مهلت تسویه (روز)
+  defaultDiscountPercent: number;
+  bankAccounts: BankAccount[];
+  group: string;
+  isActive: boolean;
+  notes?: string;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -15,14 +49,6 @@ interface Product {
   sellPrice: number;
   stock: number;
   minStock: number;
-}
-
-interface Contact {
-  id: string;
-  name: string;
-  phone: string;
-  economicCode?: string;
-  type: 'مشتری' | 'تامین‌کننده' | 'همکار';
 }
 
 interface InvoiceItem {
@@ -68,253 +94,272 @@ interface AppUser {
 }
 
 export const InvoiceApp: React.FC = () => {
-  // Auth & User Management
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [currentUser, setCurrentUser] = useState<AppUser | null>({ id: '1', username: 'مدیر سیستم', role: 'مدیر کل' });
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'contacts' | 'inventory' | 'cheques' | 'reports'>('contacts');
 
-  // Navigation
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'new-invoice' | 'inventory' | 'contacts' | 'cheques' | 'reports' | 'settings'>('dashboard');
-
-  // App Data (LocalStorage Persisted)
+  // App Data
   const [products, setProducts] = useState<Product[]>(() => JSON.parse(localStorage.getItem('divan_products') || '[]'));
-  const [contacts, setContacts] = useState<Contact[]>(() => JSON.parse(localStorage.getItem('divan_contacts') || '[]'));
+  const [contacts, setContacts] = useState<AdvancedContact[]>(() => JSON.parse(localStorage.getItem('divan_contacts_v2') || '[]'));
   const [invoices, setInvoices] = useState<Invoice[]>(() => JSON.parse(localStorage.getItem('divan_invoices') || '[]'));
   const [cheques, setCheques] = useState<Cheque[]>(() => JSON.parse(localStorage.getItem('divan_cheques') || '[]'));
 
-  useEffect(() => { localStorage.setItem('divan_products', JSON.stringify(products)); }, [products]);
-  useEffect(() => { localStorage.setItem('divan_contacts', JSON.stringify(contacts)); }, [contacts]);
-  useEffect(() => { localStorage.setItem('divan_invoices', JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem('divan_cheques', JSON.stringify(cheques)); }, [cheques]);
+  useEffect(() => { localStorage.setItem('divan_contacts_v2', JSON.stringify(contacts)); }, [contacts]);
 
-  // Invoice Creation Form State
-  const [invType, setInvType] = useState<'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید'>('فاکتور فروش');
-  const [invCustomer, setInvCustomer] = useState('');
-  const [invDate, setInvDate] = useState('1405/06/23');
-  const [invItems, setInvItems] = useState<InvoiceItem[]>([]);
-  const [selectedProdId, setSelectedProdId] = useState('');
-  const [itemQty, setItemQty] = useState(1);
-  const [selectedInvoicePrint, setSelectedInvoicePrint] = useState<Invoice | null>(null);
+  // Modal / Form state for Advanced Contact
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
 
-  // New Cheque State
-  const [cqContact, setCqContact] = useState('');
-  const [cqAmount, setCqAmount] = useState(0);
-  const [cqDueDate, setCqDueDate] = useState('');
-  const [cqBank, setCqBank] = useState('');
-  const [cqNum, setCqNum] = useState('');
-  const [cqType, setCqType] = useState<'دریافتی' | 'پرداختی'>('دریافتی');
+  // Form Fields
+  const [formCode, setFormCode] = useState('');
+  const [formPersonType, setFormPersonType] = useState<'حقیقی' | 'حقوقی'>('حقیقی');
+  const [formRoles, setFormRoles] = useState<('مشتری' | 'تامین‌کننده' | 'همکار' | 'پرسنل')[]>(['مشتری']);
+  const [formName, setFormName] = useState('');
+  const [formLastName, setFormLastName] = useState('');
+  const [formCompanyName, setFormCompanyName] = useState('');
+  const [formNationalId, setFormNationalId] = useState('');
+  const [formEconomicCode, setFormEconomicCode] = useState('');
+  const [formRegistrationNumber, setFormRegistrationNumber] = useState('');
+  const [formMobile, setFormMobile] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formPostalCode, setFormPostalCode] = useState('');
+  const [formAddress, setFormAddress] = useState('');
+  const [formDeliveryAddress, setFormDeliveryAddress] = useState('');
+  const [formCreditLimit, setFormCreditLimit] = useState<number>(0);
+  const [formPaymentTermsDays, setFormPaymentTermsDays] = useState<number>(0);
+  const [formDefaultDiscountPercent, setFormDefaultDiscountPercent] = useState<number>(0);
+  const [formGroup, setFormGroup] = useState('عمومی');
+  const [formNotes, setFormNotes] = useState('');
 
-  // Login Handler
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username === 'admin' && password === '123456') {
-      setCurrentUser({ id: '1', username: 'مدیر سیستم', role: 'مدیر کل' });
-      setLoginError('');
-    } else if (username === 'seller' && password === '123456') {
-      setCurrentUser({ id: '2', username: 'اپراتور فروش', role: 'فروشنده' });
-      setLoginError('');
+  // Bank Account State for Form
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [sheba, setSheba] = useState('');
+  const [bankList, setBankList] = useState<BankAccount[]>([]);
+
+  const handleAddBank = () => {
+    if (!bankName || !accountNumber) return;
+    setBankList([...bankList, { bankName, accountNumber, cardNumber, sheba }]);
+    setBankName(''); setAccountNumber(''); setCardNumber(''); setSheba('');
+  };
+
+  const handleOpenContactModal = (contact?: AdvancedContact) => {
+    if (contact) {
+      setEditingContactId(contact.id);
+      setFormCode(contact.code);
+      setFormPersonType(contact.personType);
+      setFormRoles(contact.roles);
+      setFormName(contact.name);
+      setFormLastName(contact.lastName || '');
+      setFormCompanyName(contact.companyName || '');
+      setFormNationalId(contact.nationalId);
+      setFormEconomicCode(contact.economicCode || '');
+      setFormRegistrationNumber(contact.registrationNumber || '');
+      setFormMobile(contact.mobile);
+      setFormPhone(contact.phone || '');
+      setFormEmail(contact.email || '');
+      setFormPostalCode(contact.postalCode || '');
+      setFormAddress(contact.address || '');
+      setFormDeliveryAddress(contact.deliveryAddress || '');
+      setFormCreditLimit(contact.creditLimit);
+      setFormPaymentTermsDays(contact.paymentTermsDays);
+      setFormDefaultDiscountPercent(contact.defaultDiscountPercent);
+      setFormGroup(contact.group);
+      setFormNotes(contact.notes || '');
+      setBankList(contact.bankAccounts || []);
     } else {
-      setLoginError('نام کاربری یا رمز عبور نامعتبر است.');
+      setEditingContactId(null);
+      setFormCode(`100${contacts.length + 1}`);
+      setFormPersonType('حقیقی');
+      setFormRoles(['مشتری']);
+      setFormName(''); setFormLastName(''); setFormCompanyName('');
+      setFormNationalId(''); setFormEconomicCode(''); setFormRegistrationNumber('');
+      setFormMobile(''); setFormPhone(''); setFormEmail(''); setFormPostalCode('');
+      setFormAddress(''); setFormDeliveryAddress('');
+      setFormCreditLimit(0); setFormPaymentTermsDays(0); setFormDefaultDiscountPercent(0);
+      setFormGroup('عمومی'); setFormNotes(''); setBankList([]);
     }
+    setShowContactModal(true);
   };
 
-  // Invoice Handlers
-  const handleAddItem = () => {
-    const prod = products.find(p => p.id === selectedProdId);
-    if (!prod) return;
-
-    const base = prod.sellPrice * itemQty;
-    const tax = base * 0.09;
-    const total = base + tax;
-
-    setInvItems([...invItems, {
-      productId: prod.id,
-      productName: prod.name,
-      quantity: itemQty,
-      unitPrice: prod.sellPrice,
-      buyPrice: prod.buyPrice,
-      discount: 0,
-      tax,
-      total
-    }]);
-    setSelectedProdId('');
-    setItemQty(1);
-  };
-
-  const handleSaveInvoice = () => {
-    if (!invCustomer || invItems.length === 0) return;
-
-    const subtotal = invItems.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
-    const totalTax = invItems.reduce((acc, i) => acc + i.tax, 0);
-    const grandTotal = subtotal + totalTax;
-    const totalProfit = invItems.reduce((acc, i) => acc + ((i.unitPrice - i.buyPrice) * i.quantity), 0);
-
-    const newInv: Invoice = {
-      id: (1000 + invoices.length + 1).toString(),
-      type: invType,
-      customerName: invCustomer,
-      date: invDate,
-      items: invItems,
-      subtotal,
-      totalDiscount: 0,
-      totalTax,
-      grandTotal,
-      totalProfit,
-      status: 'پرداخت شده'
-    };
-
-    if (invType === 'فاکتور فروش') {
-      setProducts(products.map(p => {
-        const item = invItems.find(i => i.productId === p.id);
-        return item ? { ...p, stock: Math.max(0, p.stock - item.quantity) } : p;
-      }));
-    }
-
-    setInvoices([newInv, ...invoices]);
-    setInvItems([]);
-    setActiveTab('invoices');
-  };
-
-  // Cheque Handler
-  const handleAddCheque = (e: React.FormEvent) => {
+  const handleSaveContact = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cqContact || cqAmount <= 0) return;
-    const newCq: Cheque = {
-      id: `CQ-${100 + cheques.length + 1}`,
-      contactName: cqContact,
-      amount: cqAmount,
-      dueDate: cqDueDate,
-      bankName: cqBank,
-      chequeNumber: cqNum,
-      type: cqType,
-      status: 'در جریان'
+    if (!formName || !formMobile || !formNationalId) return;
+
+    const newContact: AdvancedContact = {
+      id: editingContactId || Date.now().toString(),
+      code: formCode,
+      personType: formPersonType,
+      roles: formRoles,
+      name: formName,
+      lastName: formLastName,
+      companyName: formCompanyName,
+      nationalId: formNationalId,
+      economicCode: formEconomicCode,
+      registrationNumber: formRegistrationNumber,
+      mobile: formMobile,
+      phone: formPhone,
+      email: formEmail,
+      postalCode: formPostalCode,
+      address: formAddress,
+      deliveryAddress: formDeliveryAddress,
+      creditLimit: formCreditLimit,
+      paymentTermsDays: formPaymentTermsDays,
+      defaultDiscountPercent: formDefaultDiscountPercent,
+      bankAccounts: bankList,
+      group: formGroup,
+      isActive: true,
+      notes: formNotes,
     };
-    setCheques([...cheques, newCq]);
-    setCqAmount(0);
-    setCqNum('');
+
+    if (editingContactId) {
+      setContacts(contacts.map(c => c.id === editingContactId ? newContact : c));
+    } else {
+      setContacts([newContact, ...contacts]);
+    }
+
+    setShowContactModal(false);
   };
 
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800';
   const bgCard = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm';
   const bgInput = isDark ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-900';
-
-  if (!currentUser) {
-    return (
-      <div className={`flex items-center justify-center min-h-screen p-4 dir-rtl font-sans ${bgMain}`}>
-        <div className={`w-full max-w-md border rounded-2xl p-8 shadow-2xl space-y-6 ${bgCard}`}>
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-indigo-500">سیستم جامع دیوان</h2>
-            <p className="text-xs text-slate-400">ورود مدیر: admin / 123456 | ورود فروشنده: seller / 123456</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            {loginError && <div className="p-3 bg-rose-500/10 text-rose-500 rounded-lg text-xs text-center">{loginError}</div>}
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="نام کاربری" className={`w-full p-3 border rounded-lg text-sm ${bgInput}`} />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="رمز عبور" className={`w-full p-3 border rounded-lg text-sm ${bgInput}`} />
-            <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-sm transition-colors">ورود به پنل</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`flex h-screen w-screen overflow-hidden dir-rtl font-sans ${bgMain}`}>
       {/* Sidebar */}
       <aside className={`w-64 border-l p-4 flex flex-col ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="text-xl font-bold text-center py-3 border-b border-slate-800/40 text-indigo-500">نرم‌افزار دیوان</div>
-        <div className="my-2 p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-xs">
-          <p className="font-bold text-indigo-400">{currentUser.username}</p>
-          <p className="text-[10px] text-slate-400">نقش: {currentUser.role}</p>
-        </div>
-        <nav className="flex-1 space-y-1 mt-2 text-sm">
+        <nav className="flex-1 space-y-1 mt-4 text-sm">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white font-bold' : ''}`}>داشبورد</button>
+          <button onClick={() => setActiveTab('contacts')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : ''}`}>طرف حساب‌ها (اشخاص)</button>
           <button onClick={() => setActiveTab('invoices')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : ''}`}>فاکتورها</button>
-          <button onClick={() => setActiveTab('inventory')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : ''}`}>انبارداری</button>
-          <button onClick={() => setActiveTab('cheques')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'cheques' ? 'bg-indigo-600 text-white font-bold' : ''}`}>مدیریت چک‌ها</button>
-          {currentUser.role === 'مدیر کل' && (
-            <button onClick={() => setActiveTab('reports')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'reports' ? 'bg-indigo-600 text-white font-bold' : ''}`}>گزارش سود و زیان</button>
-          )}
+          <button onClick={() => setActiveTab('cheques')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'cheques' ? 'bg-indigo-600 text-white font-bold' : ''}`}>چک‌ها</button>
         </nav>
-        <button onClick={() => setCurrentUser(null)} className="w-full p-2 bg-rose-500/10 text-rose-500 rounded-lg text-xs font-bold mt-auto">خروج</button>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6 space-y-6">
         <header className="flex justify-between items-center border-b pb-4">
-          <h1 className="text-xl font-bold text-indigo-500">
-            {activeTab === 'dashboard' && 'داشبورد مدیریتی'}
-            {activeTab === 'invoices' && 'مدیریت فاکتورها'}
-            {activeTab === 'new-invoice' && 'صدور فاکتور جدید'}
-            {activeTab === 'inventory' && 'مدیریت انبار'}
-            {activeTab === 'cheques' && 'مدیریت چک‌های دریافتی و پرداختی'}
-            {activeTab === 'reports' && 'گزارشات مالی و تحلیل سود'}
-          </h1>
-          <button onClick={toggleTheme} className="p-2 border rounded-lg">{isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}</button>
+          <h1 className="text-xl font-bold text-indigo-500">مدیریت جامع طرف حساب‌ها (اشخاص)</h1>
+          <button onClick={() => handleOpenContactModal()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2">
+            <Plus className="w-4 h-4" /> تعریف طرف حساب جدید
+          </button>
         </header>
 
-        {/* CHEQUES TAB */}
-        {activeTab === 'cheques' && (
-          <div className="space-y-6">
-            <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
-              <h3 className="font-bold text-sm">ثبت چک جدید</h3>
-              <form onSubmit={handleAddCheque} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input type="text" value={cqContact} onChange={e => setCqContact(e.target.value)} placeholder="صادرکننده / دریافت‌کننده" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                <input type="number" value={cqAmount || ''} onChange={e => setCqAmount(Number(e.target.value))} placeholder="مبلغ چک (ریال)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                <input type="text" value={cqDueDate} onChange={e => setCqDueDate(e.target.value)} placeholder="تاریخ سررسید (مثال: 1405/07/15)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                <input type="text" value={cqBank} onChange={e => setCqBank(e.target.value)} placeholder="نام بانک" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                <input type="text" value={cqNum} onChange={e => setCqNum(e.target.value)} placeholder="شماره صیادی / چک" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
-                <select value={cqType} onChange={(e: any) => setCqType(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`}>
-                  <option value="دریافتی">چک دریافتی</option>
-                  <option value="پرداختی">چک پرداختی</option>
-                </select>
-                <button type="submit" className="md:col-span-3 py-2.5 bg-indigo-600 text-white rounded-lg text-xs font-bold">ثبت برگه چک</button>
-              </form>
-            </div>
-
-            <div className={`border rounded-xl p-4 ${bgCard}`}>
-              <h3 className="font-bold mb-4 text-sm">لیست چک‌ها</h3>
-              <div className="space-y-3">
-                {cheques.map((c) => (
-                  <div key={c.id} className={`p-3 border rounded-lg flex justify-between items-center ${bgInput}`}>
-                    <div>
-                      <p className="font-bold text-xs">{c.contactName} - <span className="text-indigo-400">{c.bankName} ({c.chequeNumber})</span></p>
-                      <p className="text-[11px] text-slate-400">سررسید: {c.dueDate} | نوع: {c.type}</p>
-                    </div>
-                    <span className="font-bold text-xs text-emerald-400">{c.amount.toLocaleString()} ریال</span>
+        {/* Contacts List */}
+        {activeTab === 'contacts' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {contacts.map((c) => (
+              <div key={c.id} className={`p-4 border rounded-xl flex flex-col justify-between space-y-3 ${bgCard}`}>
+                <div>
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">کد: {c.code}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded ${c.personType === 'حقیقی' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{c.personType}</span>
                   </div>
-                ))}
+                  <h3 className="font-bold text-sm mt-2 text-indigo-300">{c.name} {c.lastName} {c.companyName ? `(${c.companyName})` : ''}</h3>
+                  <p className="text-xs text-slate-400 mt-1">کد/شناسه ملی: {c.nationalId} | کد اقتصادی: {c.economicCode || ' ثبت نشده '}</p>
+                  <p className="text-xs text-slate-400 mt-1">همراه: {c.mobile} | تلفن: {c.phone || '-'}</p>
+                  <p className="text-xs text-slate-400 mt-1">سقف اعتبار: {c.creditLimit.toLocaleString()} ریال</p>
+                </div>
+                <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
+                  <span className="text-[10px] text-slate-500">گروه: {c.group}</span>
+                  <button onClick={() => handleOpenContactModal(c)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg text-xs flex items-center gap-1">
+                    <Edit className="w-3.5 h-3.5" /> ویرایش
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         )}
 
-        {/* REPORTS TAB */}
-        {activeTab === 'reports' && currentUser.role === 'مدیر کل' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`p-5 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مجموع فروش کل</p>
-                <p className="text-xl font-bold mt-2 text-emerald-400">
-                  {invoices.reduce((acc, i) => acc + i.grandTotal, 0).toLocaleString()} ریال
-                </p>
+        {/* Modal Form for Advanced Contact */}
+        {showContactModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className={`w-full max-w-4xl border rounded-2xl p-6 space-y-6 my-8 ${bgCard}`}>
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="font-bold text-lg text-indigo-400">{editingContactId ? 'ویرایش طرف حساب' : 'تعریف طرف حساب جدید (کامل)'}</h3>
+                <button onClick={() => setShowContactModal(false)}><X className="w-5 h-5" /></button>
               </div>
-              <div className={`p-5 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">سود ناخالص از فروش</p>
-                <p className="text-xl font-bold mt-2 text-indigo-400">
-                  {invoices.reduce((acc, i) => acc + i.totalProfit, 0).toLocaleString()} ریال
-                </p>
-              </div>
-              <div className={`p-5 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مجموع مالیات دریافت شده</p>
-                <p className="text-xl font-bold mt-2 text-amber-400">
-                  {invoices.reduce((acc, i) => acc + i.totalTax, 0).toLocaleString()} ریال
-                </p>
-              </div>
+
+              <form onSubmit={handleSaveContact} className="space-y-6">
+                {/* 1. اطلاعات عمومی */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۱. اطلاعات شناسه و عمومی</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input type="text" value={formCode} onChange={e => setFormCode(e.target.value)} placeholder="کد اختصاصی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                    <select value={formPersonType} onChange={(e: any) => setFormPersonType(e.target.value)} className={`p-2.5 border rounded-lg text-xs ${bgInput}`}>
+                      <option value="حقیقی">شخص حقیقی</option>
+                      <option value="حقوقی">شخص حقوقی (شرکت)</option>
+                    </select>
+                    <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder={formPersonType === 'حقیقی' ? "نام" : "نام شرکت"} className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                    {formPersonType === 'حقیقی' && (
+                      <input type="text" value={formLastName} onChange={e => setFormLastName(e.target.value)} placeholder="نام خانوادگی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    )}
+                    <input type="text" value={formGroup} onChange={e => setFormGroup(e.target.value)} placeholder="گروه (مثلاً: مشتریان عمده)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  </div>
+                </div>
+
+                {/* 2. اطلاعات قانونی و مالیاتی */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۲. اطلاعات هویتی و مالیاتی (سامانه مودیان)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" value={formNationalId} onChange={e => setFormNationalId(e.target.value)} placeholder="کد ملی / شناسه ملی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                    <input type="text" value={formEconomicCode} onChange={e => setFormEconomicCode(e.target.value)} placeholder="شماره / کد اقتصادی (۱۲ رقم)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={formRegistrationNumber} onChange={e => setFormRegistrationNumber(e.target.value)} placeholder="شماره ثبت (برای شرکت‌ها)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  </div>
+                </div>
+
+                {/* 3. اطلاعات تماس و آدرس */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۳. اطلاعات تماس و نشانی</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" value={formMobile} onChange={e => setFormMobile(e.target.value)} placeholder="شماره همراه اصلی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} required />
+                    <input type="text" value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="تلفن ثابت" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={formPostalCode} onChange={e => setFormPostalCode(e.target.value)} placeholder="کد پستی (۱۰ رقمی)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={formAddress} onChange={e => setFormAddress(e.target.value)} placeholder="نشانی دقیق دفتر/منزل" className={`p-2.5 border rounded-lg text-xs md:col-span-3 ${bgInput}`} />
+                    <input type="text" value={formDeliveryAddress} onChange={e => setFormDeliveryAddress(e.target.value)} placeholder="آدرس دوم / محل تحویل بار" className={`p-2.5 border rounded-lg text-xs md:col-span-3 ${bgInput}`} />
+                  </div>
+                </div>
+
+                {/* 4. تنظیمات مالی و اعتباری */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۴. تنظیمات مالی و شرایط تسویه</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="number" value={formCreditLimit || ''} onChange={e => setFormCreditLimit(Number(e.target.value))} placeholder="سقف اعتبار ریالی" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="number" value={formPaymentTermsDays || ''} onChange={e => setFormPaymentTermsDays(Number(e.target.value))} placeholder="مهلت تسویه نسیه (روز)" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="number" value={formDefaultDiscountPercent || ''} onChange={e => setFormDefaultDiscountPercent(Number(e.target.value))} placeholder="درصد تخفیف پایه" className={`p-2.5 border rounded-lg text-xs ${bgInput}`} />
+                  </div>
+                </div>
+
+                {/* 5. حساب‌های بانکی */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">۵. اطلاعات حساب‌های بانکی</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="نام بانک" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="شماره حساب" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <input type="text" value={cardNumber} onChange={e => setCardNumber(e.target.value)} placeholder="شماره کارت" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
+                    <button type="button" onClick={handleAddBank} className="p-2 bg-slate-800 text-indigo-400 border border-indigo-500/20 rounded-lg text-xs font-bold">افزودن حساب</button>
+                  </div>
+                  {bankList.length > 0 && (
+                    <div className="space-y-1">
+                      {bankList.map((b, i) => (
+                        <p key={i} className="text-[11px] text-slate-400 bg-slate-950/40 p-2 rounded border border-slate-800">
+                          بانک {b.bankName} - شماره حساب: {b.accountNumber} - کارت: {b.cardNumber || '-'}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                  <button type="button" onClick={() => setShowContactModal(false)} className="px-5 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">انصراف</button>
+                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">ذخیره طرف حساب</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
