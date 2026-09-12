@@ -3,7 +3,7 @@ import {
   Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
   ChevronDown, ChevronLeft, Package, Settings, Database, 
   Wrench, Lock, User, LogOut, RefreshCw, CheckCircle, ArrowUpCircle,
-  Sun, Moon, Laptop
+  Sun, Moon
 } from 'lucide-react';
 
 export const InvoiceApp: React.FC = () => {
@@ -37,13 +37,14 @@ export const InvoiceApp: React.FC = () => {
     { id: 'C2', name: 'شرکت آریا', phone: '02188889999', type: 'همکار' }
   ]);
 
+  // بررسی اعتبار نام کاربری و رمز عبور
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim() !== '' && password.trim() !== '') {
+    if (username.trim() === 'admin' && password === '123456') {
       setIsAuthenticated(true);
       setLoginError('');
     } else {
-      setLoginError('لطفاً نام کاربری و رمز عبور را وارد کنید.');
+      setLoginError('نام کاربری یا رمز عبور اشتباه است.');
     }
   };
 
@@ -75,7 +76,6 @@ export const InvoiceApp: React.FC = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  // استایل‌های پویا بر اساس تم
   const isDark = theme === 'dark';
   const bgMain = isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800';
   const bgCard = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm';
@@ -97,12 +97,12 @@ export const InvoiceApp: React.FC = () => {
               <Lock className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold text-indigo-500">ورود به نرم‌افزار دیوان</h2>
-            <p className="text-xs text-slate-400">جهت دسترسی به سیستم، حساب خود را وارد کنید</p>
+            <p className="text-xs text-slate-400">نام کاربری پیش‌فرض: admin | رمز عبور: 123456</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {loginError && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-xs text-center">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-lg text-xs text-center font-semibold">
                 {loginError}
               </div>
             )}
@@ -114,7 +114,7 @@ export const InvoiceApp: React.FC = () => {
                   type="text" 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="مثال: admin" 
+                  placeholder="admin" 
                   className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors ${bgInput}`}
                 />
               </div>
@@ -128,7 +128,7 @@ export const InvoiceApp: React.FC = () => {
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••" 
+                  placeholder="123456" 
                   className={`w-full border rounded-lg py-2.5 pr-10 pl-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors ${bgInput}`}
                 />
               </div>
@@ -469,7 +469,6 @@ export const InvoiceApp: React.FC = () => {
 
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              {/* بخش انتخاب پوسته */}
               <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
                 <h3 className="font-bold flex items-center gap-2">
                   <Sun className="w-5 h-5 text-amber-500" />
@@ -493,7 +492,6 @@ export const InvoiceApp: React.FC = () => {
                 </div>
               </div>
 
-              {/* بروزرسانی */}
               <div className={`border rounded-xl p-6 space-y-4 ${bgCard}`}>
                 <div className="flex items-center justify-between border-b border-slate-800/40 pb-4">
                   <div>
