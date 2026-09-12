@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Plus, FileText, ShoppingCart, Users, CreditCard, ChevronDown, ChevronLeft, Package, Settings, Database, Layers } from 'lucide-react';
+import { Menu, Plus, FileText, ShoppingCart, Users, CreditCard, ChevronDown, ChevronLeft, Package, Settings, Database } from 'lucide-react';
 
 export const InvoiceApp: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -22,7 +22,6 @@ export const InvoiceApp: React.FC = () => {
       </div>
       
       <nav className="flex-1 mt-4 space-y-2 overflow-y-auto text-sm">
-        {/* اطلاعات پایه و داشبورد */}
         <div>
           <button 
             onClick={() => handleNavClick('dashboard')}
@@ -35,7 +34,6 @@ export const InvoiceApp: React.FC = () => {
           </button>
         </div>
 
-        {/* فروش و انبارداری */}
         <div>
           <button 
             onClick={() => toggleSubmenu('sales')}
@@ -68,7 +66,6 @@ export const InvoiceApp: React.FC = () => {
           )}
         </div>
 
-        {/* تنظیمات */}
         <div>
           <button 
             onClick={() => handleNavClick('settings')}
@@ -90,12 +87,10 @@ export const InvoiceApp: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 dir-rtl font-sans">
-      {/* سایدبار دسکتاپ */}
       <div className="hidden md:block w-64 h-full">
         {renderSidebarContent()}
       </div>
 
-      {/* سایدبار کشویی موبایل */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div 
@@ -108,7 +103,6 @@ export const InvoiceApp: React.FC = () => {
         </div>
       )}
 
-      {/* محتوای اصلی صفحات */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center gap-3">
