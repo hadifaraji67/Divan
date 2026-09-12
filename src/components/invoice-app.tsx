@@ -1,46 +1,85 @@
 import React, { useState } from 'react';
-import { Menu, Plus, FileText, ShoppingCart, Users, CreditCard, ChevronDown, ChevronLeft, Package, Settings, Database } from 'lucide-react';
+import { 
+  Menu, Plus, FileText, ShoppingCart, Users, CreditCard, 
+  ChevronDown, ChevronLeft, Package, Settings, Database, 
+  Printer, Wrench, Search, Trash2, Edit, Save, Check
+} from 'lucide-react';
 
 export const InvoiceApp: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'inventory' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'invoices' | 'new-invoice' | 'inventory' | 'contacts' | 'accounting' | 'tools' | 'settings'>('dashboard');
   const [openSubmenu, setOpenSubmenu] = useState<string | null>('sales');
+
+  // نمونه داده‌ها جهت تست امکانات
+  const [invoices, setInvoices] = useState([
+    { id: '1001', customer: 'علی محمدی', date: '1405/06/20', total: 12500000, status: 'پرداخت شده' },
+    { id: '1002', customer: 'شرکت آریا', date: '1405/06/22', total: 48000000, status: 'پیشنویس' }
+  ]);
+
+  const [products, setProducts] = useState([
+    { id: 'P1', name: 'سنسور SpO2 بزرگسال', price: 1500000, stock: 120 },
+    { id: 'P2', name: 'پروب پالس اکسی متر', price: 2800000, stock: 45 }
+  ]);
+
+  const [contacts, setContacts] = useState([
+    { id: 'C1', name: 'علی محمدی', phone: '09121112233', type: 'مشتری' },
+    { id: 'C2', name: 'شرکت آریا', phone: '02188889999', type: 'همکار' }
+  ]);
 
   const toggleSubmenu = (menu: string) => {
     setOpenSubmenu(openSubmenu === menu ? null : menu);
   };
 
-  const handleNavClick = (tab: 'dashboard' | 'invoices' | 'inventory' | 'settings') => {
+  const handleNavClick = (tab: any) => {
     setActiveTab(tab);
     setMobileSidebarOpen(false);
   };
 
   const renderSidebarContent = () => (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-200 border-l border-slate-800 p-4">
+    <div className="flex flex-col h-full bg-slate-900 text-slate-200 border-l border-slate-800 p-4 select-none">
       <div className="text-xl font-bold text-center py-4 border-b border-slate-800 text-indigo-400">
         نرم‌افزار دیوان
       </div>
       
-      <nav className="flex-1 mt-4 space-y-2 overflow-y-auto text-sm">
+      <nav className="flex-1 mt-4 space-y-1.5 overflow-y-auto text-sm">
+        {/* اطلاعات پایه و داشبورد */}
         <div>
           <button 
-            onClick={() => handleNavClick('dashboard')}
-            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}
+            onClick={() => toggleSubmenu('base')}
+            className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <Database className="w-4 h-4" />
+              <Database className="w-4 h-4 text-indigo-400" />
               <span>اطلاعات پایه و داشبورد</span>
             </div>
+            {openSubmenu === 'base' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
+          {openSubmenu === 'base' && (
+            <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700 pr-2 text-xs">
+              <button 
+                onClick={() => handleNavClick('dashboard')}
+                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'}`}
+              >
+                <span>داشبورد اصلی</span>
+              </button>
+              <button 
+                onClick={() => handleNavClick('contacts')}
+                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'}`}
+              >
+                <span>مدیریت طرف حساب‌ها</span>
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* فروش و انبارداری */}
         <div>
           <button 
             onClick={() => toggleSubmenu('sales')}
             className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-4 h-4 text-emerald-400" />
               <span>فروش و انبارداری</span>
             </div>
             {openSubmenu === 'sales' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -50,20 +89,57 @@ export const InvoiceApp: React.FC = () => {
             <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700 pr-2 text-xs">
               <button 
                 onClick={() => handleNavClick('invoices')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'invoices' ? 'bg-indigo-500/20 text-indigo-400 font-bold' : 'hover:bg-slate-800 text-slate-400'}`}
+                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'}`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>صدور و مدیریت فاکتور</span>
               </button>
               <button 
                 onClick={() => handleNavClick('inventory')}
-                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'inventory' ? 'bg-indigo-500/20 text-indigo-400 font-bold' : 'hover:bg-slate-800 text-slate-400'}`}
+                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'}`}
               >
                 <Package className="w-3.5 h-3.5" />
-                <span>مدیریت انبار</span>
+                <span>مدیریت انبار و کالا</span>
               </button>
             </div>
           )}
+        </div>
+
+        {/* حسابداری و مالی */}
+        <div>
+          <button 
+            onClick={() => toggleSubmenu('finance')}
+            className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-amber-400" />
+              <span>حسابداری و مالی</span>
+            </div>
+            {openSubmenu === 'finance' ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+          {openSubmenu === 'finance' && (
+            <div className="mr-4 mt-1 space-y-1 border-r-2 border-slate-700 pr-2 text-xs">
+              <button 
+                onClick={() => handleNavClick('accounting')}
+                className={`w-full flex items-center gap-2 p-2 rounded-md ${activeTab === 'accounting' ? 'bg-indigo-600 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'}`}
+              >
+                <span>دفتر معین و تراکنش‌ها</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ابزارهای هوشمند & تنظیمات */}
+        <div>
+          <button 
+            onClick={() => handleNavClick('tools')}
+            className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${activeTab === 'tools' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}
+          >
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-sky-400" />
+              <span>ابزارهای هوشمند</span>
+            </div>
+          </button>
         </div>
 
         <div>
@@ -72,8 +148,8 @@ export const InvoiceApp: React.FC = () => {
             className={`w-full flex items-center justify-between p-2.5 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800'}`}
           >
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              <span>تنظیمات</span>
+              <Settings className="w-4 h-4 text-slate-400" />
+              <span>تنظیمات چاپ و سیستم</span>
             </div>
           </button>
         </div>
@@ -87,10 +163,12 @@ export const InvoiceApp: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 dir-rtl font-sans">
-      <div className="hidden md:block w-64 h-full">
+      {/* سایدبار دسکتاپ */}
+      <div className="hidden md:block w-64 h-full shrink-0">
         {renderSidebarContent()}
       </div>
 
+      {/* سایدبار کشویی موبایل */}
       {mobileSidebarOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div 
@@ -103,6 +181,7 @@ export const InvoiceApp: React.FC = () => {
         </div>
       )}
 
+      {/* محتوای اصلی صفحات */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -112,20 +191,28 @@ export const InvoiceApp: React.FC = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-bold text-indigo-400">
+            <h1 className="text-base md:text-lg font-bold text-indigo-400">
               {activeTab === 'dashboard' && 'داشبورد مدیریت دیوان'}
-              {activeTab === 'invoices' && 'مدیریت و صدور فاکتور'}
+              {activeTab === 'invoices' && 'صدور و مدیریت فاکتورها'}
+              {activeTab === 'new-invoice' && 'صدور فاکتور جدید'}
               {activeTab === 'inventory' && 'مدیریت موجودی انبار'}
+              {activeTab === 'contacts' && 'طرف حساب‌ها و مشتریان'}
+              {activeTab === 'accounting' && 'حسابداری و دفتر معین'}
+              {activeTab === 'tools' && 'ابزارهای هوشمند'}
               {activeTab === 'settings' && 'تنظیمات سیستم'}
             </h1>
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-medium transition-colors">
+          <button 
+            onClick={() => setActiveTab('new-invoice')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-medium transition-colors"
+          >
             <Plus className="w-4 h-4" />
             فاکتور جدید
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950 space-y-6">
+          {/* داشبورد */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -133,38 +220,141 @@ export const InvoiceApp: React.FC = () => {
                   <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg"><FileText className="w-6 h-6" /></div>
                   <div>
                     <p className="text-xs text-slate-400">فاکتورها</p>
-                    <p className="text-base font-bold">مدیریت فاکتورها</p>
+                    <p className="text-sm font-bold">{invoices.length} فاکتور ثبت‌شده</p>
                   </div>
                 </div>
                 <div onClick={() => setActiveTab('inventory')} className="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:border-emerald-500/50 flex items-center gap-3">
-                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><ShoppingCart className="w-6 h-6" /></div>
+                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><Package className="w-6 h-6" /></div>
                   <div>
                     <p className="text-xs text-slate-400">انبار</p>
-                    <p className="text-base font-bold">موجودی کالا</p>
+                    <p className="text-sm font-bold">{products.length} کالا موجود</p>
+                  </div>
+                </div>
+                <div onClick={() => setActiveTab('contacts')} className="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:border-blue-500/50 flex items-center gap-3">
+                  <div className="p-3 bg-blue-500/10 text-blue-400 rounded-lg"><Users className="w-6 h-6" /></div>
+                  <div>
+                    <p className="text-xs text-slate-400">طرف حساب‌ها</p>
+                    <p className="text-sm font-bold">{contacts.length} شخص ثبت‌شده</p>
+                  </div>
+                </div>
+                <div onClick={() => setActiveTab('accounting')} className="p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:border-amber-500/50 flex items-center gap-3">
+                  <div className="p-3 bg-amber-500/10 text-amber-400 rounded-lg"><CreditCard className="w-6 h-6" /></div>
+                  <div>
+                    <p className="text-xs text-slate-400">تراکنش‌ها</p>
+                    <p className="text-sm font-bold">دفتر معین فعال</p>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
+          {/* لیست فاکتورها */}
           {activeTab === 'invoices' && (
-            <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <h2 className="text-lg font-bold text-indigo-400 mb-2">بخش فاکتورها</h2>
-              <p className="text-sm text-slate-400">لیست فاکتورهای صادر شده در این بخش نمایش داده می‌شود.</p>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 className="font-bold text-slate-200">لیست فاکتورهای اخیر</h3>
+                <button onClick={() => setActiveTab('new-invoice')} className="px-3 py-1 bg-indigo-600 rounded text-xs">ثبت جدید</button>
+              </div>
+              <div className="divide-y divide-slate-800">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="p-4 flex items-center justify-between hover:bg-slate-800/50">
+                    <div>
+                      <p className="font-semibold text-slate-200">فاکتور #{inv.id} - {inv.customer}</p>
+                      <p className="text-xs text-slate-400">تاریخ: {inv.date}</p>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-emerald-400">{inv.total.toLocaleString()} ریال</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">{inv.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* فاکتور جدید */}
+          {activeTab === 'new-invoice' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+              <h3 className="font-bold text-slate-200">صدور فاکتور رسمی/غیررسمی</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="نام خریدار / مشتری" className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm" />
+                <input type="text" placeholder="تاریخ (مثال: 1405/06/23)" className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm" />
+              </div>
+              <div className="border border-slate-800 rounded-lg p-4 bg-slate-950 text-center text-slate-400 text-sm">
+                اقلام فاکتور را از انبار انتخاب کنید.
+              </div>
+              <button onClick={() => setActiveTab('invoices')} className="w-full py-2.5 bg-indigo-600 rounded-lg font-bold text-sm">ثبت و ذخیره فاکتور</button>
+            </div>
+          )}
+
+          {/* انبارداری */}
           {activeTab === 'inventory' && (
-            <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <h2 className="text-lg font-bold text-emerald-400 mb-2">بخش انبارداری</h2>
-              <p className="text-sm text-slate-400">لیست کالاها و موجودی انبار در این بخش مدیریت می‌شود.</p>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <h3 className="font-bold text-slate-200 mb-4">مدیریت موجودی کالا</h3>
+              <div className="space-y-3">
+                {products.map((p) => (
+                  <div key={p.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-200">{p.name}</p>
+                      <p className="text-xs text-slate-400">قیمت: {p.price.toLocaleString()} ریال</p>
+                    </div>
+                    <span className="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-full">موجودی: {p.stock}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* طرف حساب‌ها */}
+          {activeTab === 'contacts' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+              <h3 className="font-bold text-slate-200 mb-4">فهرست مشتریان و همکاران</h3>
+              <div className="space-y-3">
+                {contacts.map((c) => (
+                  <div key={c.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-200">{c.name}</p>
+                      <p className="text-xs text-slate-400">شماره تماس: {c.phone}</p>
+                    </div>
+                    <span className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">{c.type}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* حسابداری */}
+          {activeTab === 'accounting' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center text-slate-400 space-y-2">
+              <CreditCard className="w-10 h-10 text-amber-400 mx-auto" />
+              <h3 className="font-bold text-slate-200">دفتر معین و تراکنش‌های مالی</h3>
+              <p className="text-xs">تمام بدهکاری‌ها و بستانکاری‌های ثبت شده در سیستم آماده دریافت خروجی PDF و چاپی می‌باشد.</p>
+            </div>
+          )}
+
+          {/* ابزارها */}
+          {activeTab === 'tools' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center text-slate-400">
+              <Wrench className="w-10 h-10 text-sky-400 mx-auto mb-2" />
+              <h3 className="font-bold text-slate-200">ابزارهای هوشمند نرم‌افزار</h3>
+              <p className="text-xs mt-1">محاسبه مالیات بر ارزش افزوده، تبدیل قیمت و تولید کد QR فاکتور.</p>
+            </div>
+          )}
+
+          {/* تنظیمات */}
           {activeTab === 'settings' && (
-            <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <h2 className="text-lg font-bold text-slate-300 mb-2">تنظیمات نرم‌افزار</h2>
-              <p className="text-sm text-slate-400">پیکربندی چاپی و اطلاعات فروشگاه.</p>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+              <h3 className="font-bold text-slate-200">تنظیمات چاپ و فاکتور</h3>
+              <div className="space-y-2 text-sm text-slate-300">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" defaultChecked className="rounded bg-slate-950 border-slate-800 text-indigo-600" />
+                  نمایش لوگو و اطلاعات فروشگاه در سربرگ فاکتور
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" defaultChecked className="rounded bg-slate-950 border-slate-800 text-indigo-600" />
+                  محاسبه ۱۰٪ مالیات بر ارزش افزوده به صورت خودکار
+                </label>
+              </div>
             </div>
           )}
         </main>
