@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Printer, Trash2, X, FileText, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Plus, Edit, Printer, Trash2, X } from 'lucide-react';
 
 export interface InvoiceItem {
   productId: string;
@@ -54,7 +54,6 @@ export const InvoiceModule: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form States
   const [invType, setInvType] = useState<'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید' | 'برگشت از فروش'>('فاکتور فروش');
   const [invNumber, setInvNumber] = useState('');
   const [invDate, setInvDate] = useState('1405/06/23');
@@ -62,19 +61,13 @@ export const InvoiceModule: React.FC = () => {
   const [shippingCost, setShippingCost] = useState<number>(0);
   const [invNotes, setInvNotes] = useState('');
 
-  // Item Addition States
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [selectedProdId, setSelectedProdId] = useState('');
   const [itemQty, setItemQty] = useState<number>(1);
   const [itemPrice, setItemPrice] = useState<number>(0);
   const [itemDiscount, setItemDiscount] = useState<number>(0);
 
-  // Payments States
   const [payments, setPayments] = useState<PaymentDetail[]>([]);
-  const [payType, setPayType] = useState<'cash' | 'pos' | 'cheque'>('cash');
-  const [payAmount, setPayAmount] = useState<number>(0);
-  const [payRef, setPayRef] = useState('');
-
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
 
   const handleOpenModal = (inv?: Invoice) => {
@@ -130,13 +123,6 @@ export const InvoiceModule: React.FC = () => {
     setItemDiscount(0);
   };
 
-  const handleAddPayment = () => {
-    if (payAmount <= 0) return;
-    setPayments([...payments, { type: payType, amount: payAmount, refCode: payRef }]);
-    setPayAmount(0);
-    setPayRef('');
-  };
-
   const subtotal = items.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0);
   const totalDiscount = items.reduce((acc, i) => acc + i.discountAmount, 0);
   const totalTax = items.reduce((acc, i) => acc + i.taxAmount, 0);
@@ -189,8 +175,7 @@ export const InvoiceModule: React.FC = () => {
         </button>
       </div>
 
-      {/* خلاصه وضعیت */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
           <p className="text-xs text-slate-400">کل فاکتورها</p>
           <p className="text-lg font-bold text-indigo-400 mt-1">{invoices.length} عدد</p>
@@ -202,7 +187,7 @@ export const InvoiceModule: React.FC = () => {
           </p>
         </div>
         <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <p className="text-xs text-slate-400">مانده مطالبات (بدهکاران)</p>
+          <p className="text-xs text-slate-400">مانده مطالبات</p>
           <p className="text-lg font-bold text-rose-400 mt-1">
             {invoices.reduce((acc, i) => acc + i.remainingAmount, 0).toLocaleString()} ریال
           </p>
@@ -215,7 +200,6 @@ export const InvoiceModule: React.FC = () => {
         </div>
       </div>
 
-      {/* لیست فاکتورها */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {invoices.map((inv) => (
           <div key={inv.id} className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
@@ -223,8 +207,7 @@ export const InvoiceModule: React.FC = () => {
               <div className="flex justify-between items-start">
                 <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">{inv.invoiceNumber}</span>
                 <span className={`text-[10px] px-2 py-0.5 rounded ${
-                  inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' :
-                  inv.type === 'پیش‌فاکتور' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
+                  inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
                 }`}>{inv.type}</span>
               </div>
               <h3 className="font-bold text-sm mt-2 text-indigo-300">{inv.contactName}</h3>
@@ -246,7 +229,6 @@ export const InvoiceModule: React.FC = () => {
         ))}
       </div>
 
-      {/* مودال ثبت فاکتور */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-2xl p-6 space-y-6 my-8">
@@ -275,9 +257,9 @@ export const InvoiceModule: React.FC = () => {
                   <input type="text" value={invDate} onChange={e => setInvDate(e.target.value)} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100" required />
                 </div>
                 <div>
-                  <label className="text-slate-400 block mb-1">انتخاب طرف حساب</label>
+                  <label className="text-slate-400 block mb-1">طرف حساب</label>
                   <select value={selectedContactId} onChange={e => setSelectedContactId(e.target.value)} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100" required>
-                    <option value="">-- انتخاب طرف حساب --</option>
+                    <option value="">-- انتخاب کنید --</option>
                     {contacts.map((c: any) => (
                       <option key={c.id} value={c.id}>{c.name} {c.lastName} ({c.mobile})</option>
                     ))}
@@ -285,7 +267,6 @@ export const InvoiceModule: React.FC = () => {
                 </div>
               </div>
 
-              {/* افزودن کالا */}
               <div className="space-y-3 p-3 bg-slate-950 rounded-xl border border-slate-800">
                 <h4 className="font-bold text-slate-400">افزودن کالا به فاکتور</h4>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
@@ -335,7 +316,6 @@ export const InvoiceModule: React.FC = () => {
                 )}
               </div>
 
-              {/* محاسبات و تسویه */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
                 <div className="space-y-2">
                   <label className="text-slate-400 block">هزینه حمل و نقل (ریال)</label>
@@ -360,7 +340,6 @@ export const InvoiceModule: React.FC = () => {
         </div>
       )}
 
-      {/* پیش‌نمایش چاپ */}
       {previewInvoice && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white text-slate-900 w-full max-w-2xl rounded-2xl p-6 space-y-4">
@@ -379,7 +358,7 @@ export const InvoiceModule: React.FC = () => {
                   <tr className="bg-slate-100 border-b">
                     <th className="p-1 border">کالا</th>
                     <th className="p-1 border">تعداد</th>
-                    <th className="p-1 border">قیمت unit</th>
+                    <th className="p-1 border">قیمت واحد</th>
                     <th className="p-1 border">مبلغ کل</th>
                   </tr>
                 </thead>
