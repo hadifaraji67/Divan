@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Printer, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Printer, Trash2, X, Menu, Package, Users, FileText } from 'lucide-react';
 
 export interface InvoiceItem {
   productId: string;
@@ -41,6 +41,9 @@ export interface Invoice {
 }
 
 export const InvoiceModule: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'invoices' | 'inventory' | 'contacts'>('invoices');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const [invoices, setInvoices] = useState<Invoice[]>(() => 
     JSON.parse(localStorage.getItem('divan_invoices_v3') || '[]')
   );
@@ -133,7 +136,7 @@ export const InvoiceModule: React.FC = () => {
   const handleSaveInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     const contact = contacts.find(c => c.id === selectedContactId);
-    
+
     const newInv: Invoice = {
       id: editingId || Date.now().toString(),
       invoiceNumber: invNumber,
@@ -164,71 +167,129 @@ export const InvoiceModule: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 dir-rtl text-slate-100">
-      <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-        <div>
-          <h2 className="text-xl font-bold text-indigo-400">بخش مدیریت و صدور فاکتورها</h2>
-          <p className="text-xs text-slate-400 mt-1">صدور فاکتور فروش، پیش‌فاکتور، فاکتور خرید و تسویه حساب</p>
-        </div>
-        <button onClick={() => handleOpenModal()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2">
-          <Plus className="w-4 h-4" /> صدور فاکتور جدید
+    <div className="flex flex-col md:flex-row min-h-screen w-full bg-slate-950 text-slate-100 font-sans dir-rtl">
+      {/* هدر بالایی در حالت موبایل */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+        <h1 className="text-base font-bold text-indigo-400">نرم‌افزار دیوان</h1>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 text-slate-300 hover:bg-slate-800 rounded-lg">
+          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <p className="text-xs text-slate-400">کل فاکتورها</p>
-          <p className="text-lg font-bold text-indigo-400 mt-1">{invoices.length} عدد</p>
+      {/* منوی کناری (Sidebar) کشویی */}
+      <aside className={`
+        fixed md:static inset-y-0 right-0 z-40 w-64 bg-slate-900 border-l border-slate-800 p-4 flex flex-col transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
+        <div className="hidden md:block text-lg font-bold text-center py-4 border-b border-slate-800 text-indigo-500">
+          نرم‌افزار دیوان
         </div>
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <p className="text-xs text-slate-400">مجموع فروش</p>
-          <p className="text-lg font-bold text-emerald-400 mt-1">
-            {invoices.filter(i => i.type === 'فاکتور فروش').reduce((acc, i) => acc + i.grandTotal, 0).toLocaleString()} ریال
-          </p>
-        </div>
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <p className="text-xs text-slate-400">مانده مطالبات</p>
-          <p className="text-lg font-bold text-rose-400 mt-1">
-            {invoices.reduce((acc, i) => acc + i.remainingAmount, 0).toLocaleString()} ریال
-          </p>
-        </div>
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
-          <p className="text-xs text-slate-400">پیش‌فاکتورها</p>
-          <p className="text-lg font-bold text-amber-400 mt-1">
-            {invoices.filter(i => i.type === 'پیش‌فاکتور').length} عدد
-          </p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {invoices.map((inv) => (
-          <div key={inv.id} className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex justify-between items-start">
-                <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">{inv.invoiceNumber}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded ${
-                  inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                }`}>{inv.type}</span>
+        <nav className="flex-1 space-y-2 mt-4 text-xs">
+          <button
+            onClick={() => { setActiveTab('invoices'); setIsSidebarOpen(false); }}
+            className={`w-full text-right p-3 rounded-xl flex items-center gap-2.5 transition-all ${
+              activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:bg-slate-800'
+            }`}>
+            <FileText className="w-4 h-4" /> مدیریت فاکتورها
+          </button>
+          <button
+            onClick={() => { setActiveTab('inventory'); setIsSidebarOpen(false); }}
+            className={`w-full text-right p-3 rounded-xl flex items-center gap-2.5 transition-all ${
+              activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:bg-slate-800'
+            }`}>
+            <Package className="w-4 h-4" /> انبارداری و کالاها
+          </button>
+          <button
+            onClick={() => { setActiveTab('contacts'); setIsSidebarOpen(false); }}
+            className={`w-full text-right p-3 rounded-xl flex items-center gap-2.5 transition-all ${
+              activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:bg-slate-800'
+            }`}>
+            <Users className="w-4 h-4" /> طرف حساب‌ها (اشخاص)
+          </button>
+        </nav>
+      </aside>
+
+      {/* اوورلی پس‌زمینه منو در موبایل */}
+      {isSidebarOpen && (
+        <div onClick={() => setIsSidebarOpen(false)} className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30" />
+      )}
+
+      {/* محتوای اصلی */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        {activeTab === 'invoices' && (
+          <>
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-lg md:text-xl font-bold text-indigo-400">بخش مدیریت و صدور فاکتورها</h2>
+                <p className="text-xs text-slate-400 mt-1">صدور فاکتور فروش، پیش‌فاکتور و تسویه حساب</p>
               </div>
-              <h3 className="font-bold text-sm mt-2 text-indigo-300">{inv.contactName}</h3>
-              <p className="text-xs text-slate-400 mt-1">تاریخ: {inv.date} | اقلام: {inv.items.length}</p>
-              <div className="flex justify-between items-center text-xs mt-2 p-2 bg-slate-950 rounded border border-slate-800/80">
-                <span>مبلغ کل: <strong className="text-indigo-400">{inv.grandTotal.toLocaleString()}</strong></span>
-                <span>مانده: <strong className={inv.remainingAmount > 0 ? "text-rose-400" : "text-emerald-400"}>{inv.remainingAmount.toLocaleString()}</strong></span>
+              <button onClick={() => handleOpenModal()} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-1.5">
+                <Plus className="w-4 h-4" /> فاکتور جدید
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                <p className="text-[11px] text-slate-400">کل فاکتورها</p>
+                <p className="text-base font-bold text-indigo-400 mt-1">{invoices.length} عدد</p>
+              </div>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                <p className="text-[11px] text-slate-400">مجموع فروش</p>
+                <p className="text-base font-bold text-emerald-400 mt-1">
+                  {invoices.filter(i => i.type === 'فاکتور فروش').reduce((acc, i) => acc + i.grandTotal, 0).toLocaleString()} ریال
+                </p>
+              </div>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                <p className="text-[11px] text-slate-400">مانده مطالبات</p>
+                <p className="text-base font-bold text-rose-400 mt-1">
+                  {invoices.reduce((acc, i) => acc + i.remainingAmount, 0).toLocaleString()} ریال
+                </p>
+              </div>
+              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                <p className="text-[11px] text-slate-400">پیش‌فاکتورها</p>
+                <p className="text-base font-bold text-amber-400 mt-1">
+                  {invoices.filter(i => i.type === 'پیش‌فاکتور').length} عدد
+                </p>
               </div>
             </div>
-            <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-              <button onClick={() => setPreviewInvoice(inv)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg flex items-center gap-1">
-                <Printer className="w-3.5 h-3.5" /> چاپ
-              </button>
-              <button onClick={() => handleOpenModal(inv)} className="p-1.5 text-slate-400 hover:bg-slate-500/10 rounded-lg flex items-center gap-1">
-                <Edit className="w-3.5 h-3.5" /> ویرایش
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {invoices.map((inv) => (
+                <div key={inv.id} className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">{inv.invoiceNumber}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{inv.type}</span>
+                    </div>
+                    <h3 className="font-bold text-sm mt-2 text-indigo-300">{inv.contactName}</h3>
+                    <p className="text-xs text-slate-400 mt-1">تاریخ: {inv.date} | اقلام: {inv.items.length}</p>
+                    <div className="flex justify-between items-center text-xs mt-2 p-2 bg-slate-950 rounded border border-slate-800/80">
+                      <span>مبلغ کل: <strong className="text-indigo-400">{inv.grandTotal.toLocaleString()}</strong></span>
+                      <span>مانده: <strong className={inv.remainingAmount > 0 ? "text-rose-400" : "text-emerald-400"}>{inv.remainingAmount.toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                    <button onClick={() => setPreviewInvoice(inv)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg flex items-center gap-1">
+                      <Printer className="w-3.5 h-3.5" /> چاپ
+                    </button>
+                    <button onClick={() => handleOpenModal(inv)} className="p-1.5 text-slate-400 hover:bg-slate-500/10 rounded-lg flex items-center gap-1">
+                      <Edit className="w-3.5 h-3.5" /> ویرایش
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'inventory' && <div className="p-6 text-center text-slate-400">بخش کالاها و انبارداری</div>}
+        {activeTab === 'contacts' && <div className="p-6 text-center text-slate-400">بخش طرف حساب‌ها</div>}
+      </main>
+
+      {/* مودال فاکتور */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl rounded-2xl p-6 space-y-6 my-8">
@@ -336,45 +397,6 @@ export const InvoiceModule: React.FC = () => {
                 <button type="submit" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold">ذخیره فاکتور</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {previewInvoice && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white text-slate-900 w-full max-w-2xl rounded-2xl p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-bold text-lg">{previewInvoice.type} - {previewInvoice.invoiceNumber}</h3>
-              <div className="flex gap-2">
-                <button onClick={() => window.print()} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg flex items-center gap-1"><Printer className="w-4 h-4" /> چاپ</button>
-                <button onClick={() => setPreviewInvoice(null)} className="px-3 py-1 bg-slate-200 text-slate-800 text-xs rounded-lg">بستن</button>
-              </div>
-            </div>
-            <div className="text-xs space-y-2">
-              <p><strong>طرف حساب:</strong> {previewInvoice.contactName}</p>
-              <p><strong>تاریخ:</strong> {previewInvoice.date}</p>
-              <table className="w-full border-collapse border text-right mt-2">
-                <thead>
-                  <tr className="bg-slate-100 border-b">
-                    <th className="p-1 border">کالا</th>
-                    <th className="p-1 border">تعداد</th>
-                    <th className="p-1 border">قیمت واحد</th>
-                    <th className="p-1 border">مبلغ کل</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewInvoice.items.map((it, idx) => (
-                    <tr key={idx} className="border-b">
-                      <td className="p-1 border">{it.productName}</td>
-                      <td className="p-1 border">{it.quantity}</td>
-                      <td className="p-1 border">{it.unitPrice.toLocaleString()}</td>
-                      <td className="p-1 border">{it.totalPrice.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="text-left font-bold text-sm pt-2">مبلغ قابل پرداخت: {previewInvoice.grandTotal.toLocaleString()} ریال</p>
-            </div>
           </div>
         </div>
       )}
