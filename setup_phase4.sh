@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# ۱. ایجاد پوشه و تنظیم فایل ورک‌فلوی GitHub Actions برای بیلد خودکار APK
+mkdir -p .github/workflows
+cat << 'ES1' > .github/workflows/build-android.yml
 name: Build Android APK
 
 on:
@@ -46,3 +51,11 @@ jobs:
         with:
           name: divan-app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+ES1
+
+# ۲. ثبت تغییرات فاز ۴ در Git و Push به GitHub
+git add .
+git commit -m "Feat: Complete Phase 4 - Configure GitHub Actions Workflow for Automatic Android APK Build"
+git push origin main
+
+echo "✅ تنظیمات فاز ۴ اعمال شد و خودکار روی گیت‌هاب آپلود شد."
