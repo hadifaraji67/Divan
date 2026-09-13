@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Sidebar, { type ViewKey } from './components/Sidebar';
 import Header from './components/Header';
+import { UpdateBanner } from './components/UpdateBanner';
 
 // ماژول‌ها
 import { ContactsModule } from './components/ContactsModule';
@@ -115,6 +116,8 @@ export const App: React.FC = () => {
           )}
           {renderView()}
         </div>
+
+        <UpdateBanner />
       </main>
     </div>
   );

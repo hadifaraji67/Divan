@@ -14,3 +14,11 @@ self.addEventListener('activate', (event) => {
   );
   self.clients.claim();
 });
+
+
+/* ============ پشتیبانی از آپدیت درون‌برنامه‌ای ============ */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
