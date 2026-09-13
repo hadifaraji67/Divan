@@ -1,35 +1,54 @@
 package ir.divan.app;
 
-import android.content.Context;
-import android.print.PrintAttributes;
-import android.print.PrintDocumentAdapter;
-import android.print.PrintManager;
-import android.webkit.WebView;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-// window.print() is a no-op inside a plain Android WebView (unlike Chrome),
-// so the web code's print/PDF button silently did nothing in the installed
-// app. This bridges to WebView's own createPrintDocumentAdapter(), which
-// Android's print system renders using the page's normal @media print CSS —
-// the same layout the browser/PWA path already produces.
+import java.io.OutputStream;
+import java.util.UUID;
+
 @CapacitorPlugin(name = "NativePrint")
 public class NativePrintPlugin extends Plugin {
 
+    private static final UUID PRINTER_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
     @PluginMethod
-    public void printPage(PluginCall call) {
-        getActivity().runOnUiThread(() -> {
-            WebView webView = getBridge().getWebView();
-            PrintManager printManager = (PrintManager) getContext().getSystemService(Context.PRINT_SERVICE);
-            String jobName = "divan-invoice";
-            PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(jobName);
-            printManager.print(jobName, adapter, new PrintAttributes.Builder().build());
-        });
-        JSObject ret = new JSObject();
-        ret.put("started", true);
-        call.resolve(ret);
+    public void printText(PluginCall call) {
+        String macAddress = call.getString("macAddress");
+        String textToPrint = call.getString("text");
+
+        if (macAddress == null || textToPrint == null) {
+            call.reject("ورودی نامعتبر است");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
+                BluetoothSocket socket = device.createRfcommSocketToServiceRecord(PRINTER_UUID);
+                
+                socket.connect();
+                OutputStream os = socket.getOutputStream();
+
+                os.write(new byte[]{0x1B, 0x40});
+                os.write(textToPrint.getBytes("UTF-8"));
+                os.write(new byte[]{0x0A, 0x0A, 0x0A});
+
+                os.close();
+                socket.close();
+
+                JSObject ret = new JSObject();
+                ret.put("success", true);
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject("خطا در چاپ: " + e.getMessage());
+            }
+        }).start();
     }
 }
