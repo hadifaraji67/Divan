@@ -121,3 +121,4 @@ export const InvoiceModule: React.FC = () => {
     </div>
   );
 };
+export default InvoiceModule;

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import InvoiceModule from "../components/InvoiceModule";
+import App from "../App";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
 function Index() {
-  return <InvoiceModule />;
+  return <App />;
 }

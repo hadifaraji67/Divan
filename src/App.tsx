@@ -1,140 +1,123 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Sidebar, { type ViewKey } from './components/Sidebar';
+import Header from './components/Header';
+
+// ماژول‌ها
+import { ContactsModule } from './components/ContactsModule';
+import { ProductsModule } from './components/ProductsModule';
+import { InvoicesModule } from './components/InvoicesModule';
+import { PaymentsModule } from './components/PaymentsModule';
+import { ChequesModule } from './components/ChequesModule';
+import { SettingsModule } from './components/SettingsModule';
+import { DashboardModule } from './components/DashboardModule';
 import { InvoiceModule } from './components/InvoiceModule';
-import { Dashboard } from './components/Dashboard';
-import { exportBackupData, importBackupData } from './services/backupService';
-import { getPrintSettings, savePrintSettings, PrintSettings } from './services/printSettings';
-import { exportInvoicesToCSV } from './services/reportService';
-import { getCheques, saveCheque, Cheque } from './services/chequeService';
-import { calculateLoyaltyGroup } from './services/crmService';
+import { SmsImportPanel } from './components/sms-import-panel';
+import { FinancePanel } from './components/finance-panel';
+import { CustomerLedger } from './components/customer-ledger';
+import { JournalEntryForm } from './components/JournalEntryForm';
+import { FinancialReports } from './components/FinancialReports';
+import { ReportsModule } from './components/ReportsModule';
+import { FiscalYearClosing } from './components/FiscalYearClosing';
+import type { Account, JournalEntry, JournalLine } from './types/accounting';
+import { DEFAULT_ACCOUNTS } from './lib/accounting';
+
+const VIEW_TITLES: Record<ViewKey, string> = {
+  home: 'صفحه اصلی',
+  contacts: 'اشخاص و مشتریان',
+  invoice: 'صدور سریع فاکتور',
+  invoices: 'مدیریت فاکتورها',
+  inventory: 'انبار و کالا',
+  'invoice-print': 'تنظیمات چاپ',
+  payments: 'پرداخت‌ها',
+  'customer-ledger': 'دفتر معین مشتریان',
+  cheques: 'مدیریت چک‌ها',
+  'journal-entry': 'ثبت سند دستی',
+  'financial-reports': 'گزارش‌های مالی',
+  'fiscal-year-closing': 'بستن سال مالی',
+  reports: 'گزارش‌های جامع',
+  finance: 'پنل مالی',
+  'sms-import': 'استخراج پیامک بانکی',
+  settings: 'تنظیمات سیستم',
+};
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'invoice' | 'dashboard' | 'cheques' | 'crm' | 'settings'>('invoice');
-  const [cheques, setCheques] = useState<Cheque[]>([]);
-  const [printConfig, setPrintConfig] = useState<PrintSettings>(getPrintSettings());
-  
-  // نمونه داده مانیتورینگ فاز 2 و 7
-  const [stats] = useState({
-    todaySales: 12500000,
-    monthlySales: 340000000,
-    pendingInvoices: 4
-  });
+  const [active, setActive] = useState<ViewKey>('home');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [accounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
 
-  useEffect(() => {
-    setCheques(getCheques());
-  }, []);
+  const handleSelect = (key: ViewKey) => {
+    setActive(key);
+    setSidebarOpen(false);
+  };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    savePrintSettings(printConfig);
-    alert('تنظیمات چاپ و فاکتور با موفقیت ذخیره شد.');
+  const handleSaveJournal = (description: string, lines: JournalLine[]) => {
+    const e: JournalEntry = {
+      id: Date.now().toString(),
+      entryNumber: entries.length + 1,
+      date: new Date().toLocaleDateString('fa-IR'),
+      description,
+      lines,
+      referenceType: 'MANUAL',
+      createdAt: new Date().toISOString(),
+    } as JournalEntry;
+    setEntries(p => [...p, e]);
+  };
+
+  const renderView = () => {
+    switch (active) {
+      case 'home': return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
+      case 'contacts': return <ContactsModule />;
+      case 'invoice': return <InvoiceModule />;
+      case 'invoices': return <InvoicesModule />;
+      case 'inventory': return <ProductsModule />;
+      case 'invoice-print': return <SmsImportPanel />;
+      case 'payments': return <PaymentsModule />;
+      case 'customer-ledger': return <CustomerLedger />;
+      case 'cheques': return <ChequesModule />;
+      case 'journal-entry': return <JournalEntryForm accounts={accounts} onSave={handleSaveJournal} />;
+      case 'financial-reports': return <FinancialReports accounts={accounts} entries={entries} />;
+      case 'fiscal-year-closing': return (
+        <FiscalYearClosing
+          accounts={accounts}
+          entries={entries}
+          onCloseFiscalYear={() => { if (confirm('بستن سال مالی؟')) { setEntries([]); alert('سال مالی بسته شد'); } }}
+        />
+      );
+      case 'reports': return <ReportsModule />;
+      case 'finance': return <FinancePanel />;
+      case 'sms-import': return <SmsImportPanel />;
+      case 'settings': return <SettingsModule />;
+      default: return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
+    }
   };
 
   return (
-    <div style={{ fontFamily: 'Tahoma, sans-serif', direction: 'rtl', minHeight: '100vh', background: '#f4f6f8' }}>
-      {/* منوی اصلی - فاز 2، 6 و 7 */}
-      <header style={{ background: '#1e293b', color: '#fff', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, marginLeft: 'auto' }}>نرم‌افزار دیوان</h2>
-        <button onClick={() => setActiveTab('invoice')} style={tabStyle(activeTab === 'invoice')}>صدور فاکتور</button>
-        <button onClick={() => setActiveTab('dashboard')} style={tabStyle(activeTab === 'dashboard')}>داشبورد و گزارش‌ها</button>
-        <button onClick={() => setActiveTab('cheques')} style={tabStyle(activeTab === 'cheques')}>مدیریت چک‌ها</button>
-        <button onClick={() => setActiveTab('crm')} style={tabStyle(activeTab === 'crm')}>باشگاه مشتریان</button>
-        <button onClick={() => setActiveTab('settings')} style={tabStyle(activeTab === 'settings')}>تنظیمات و بکاپ</button>
-      </header>
+    <div className="flex h-screen overflow-hidden" dir="rtl">
+      <Sidebar
+        active={active}
+        onSelect={handleSelect}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <main style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* فاز 1، 2، 3: صدور فاکتور و پرینت */}
-        {activeTab === 'invoice' && <InvoiceModule />}
+      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+        <Header title={VIEW_TITLES[active]} onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* فاز 2 و 7: داشبورد و خروجی اکسل */}
-        {activeTab === 'dashboard' && (
-          <div>
-            <Dashboard stats={stats} />
-            <div style={{ marginTop: '1.5rem', background: '#fff', padding: '1rem', borderRadius: '8px' }}>
-              <h4>خروجی گزارش‌ها</h4>
-              <button 
-                onClick={() => exportInvoicesToCSV([{ id: 101, createdAt: '1403/01/15', customerName: 'علی محمدی', totalAmount: 1200000, status: 'تسویه شده' }])}
-                style={{ padding: '0.5rem 1rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                دریافت گزارش اکسل (CSV) فاکتورها
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* فاز 7: سیستم مدیریت چک‌ها */}
-        {activeTab === 'cheques' && (
-          <div style={{ background: '#fff', padding: '1rem', borderRadius: '8px' }}>
-            <h3>مدیریت چک‌های دریافتی / پرداختی</h3>
-            <p>لیست چک‌های ثبت شده در سیستم:</p>
-            {cheques.length === 0 ? <p>هیچ چکی ثبت نشده است.</p> : (
-              <ul>
-                {cheques.map(c => (
-                  <li key={c.id}>{c.bankName} - {c.amount.toLocaleString()} تومان (تاریخ: {c.dueDate})</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* فاز 8: مدیریت مشتریان CRM */}
-        {activeTab === 'crm' && (
-          <div style={{ background: '#fff', padding: '1rem', borderRadius: '8px' }}>
-            <h3>باشگاه مشتریان (CRM)</h3>
-            <p>سطح‌بندی مشتریان بر اساس میزان خرید:</p>
-            <ul>
-              <li>مشتری نمونه ۱: <b>سطح VIP</b> (گروه: {calculateLoyaltyGroup(60000000)})</li>
-              <li>مشتری نمونه ۲: <b>سطح نقره‌ای</b> (گروه: {calculateLoyaltyGroup(8000000)})</li>
-            </ul>
-          </div>
-        )}
-
-        {/* فاز 6: بکاپ، ریستور و تنظیمات فاکتور */}
-        {activeTab === 'settings' && (
-          <div style={{ background: '#fff', padding: '1rem', borderRadius: '8px' }}>
-            <h3>تنظیمات فاکتور و پشتیبان‌گیری</h3>
-            <form onSubmit={handleSaveSettings} style={{ marginBottom: '2rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label>نام فروشگاه/کسب‌ؤکار: </label>
-                <input 
-                  type="text" 
-                  value={printConfig.storeName} 
-                  onChange={(e) => setPrintConfig({ ...printConfig, storeName: e.target.value })}
-                  style={{ padding: '0.5rem', width: '100%', marginTop: '0.25rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label>پیام پایانی فاکتور: </label>
-                <input 
-                  type="text" 
-                  value={printConfig.footerMessage} 
-                  onChange={(e) => setPrintConfig({ ...printConfig, footerMessage: e.target.value })}
-                  style={{ padding: '0.5rem', width: '100%', marginTop: '0.25rem' }}
-                />
-              </div>
-              <button type="submit" style={{ padding: '0.5rem 1.5rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px' }}>ذخیره تنظیمات</button>
-            </form>
-
-            <hr />
-            <h4>پشتیبان‌گیری و بازگردانی داده‌ها</h4>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button onClick={() => exportBackupData({ version: '1.0', exportDate: new Date() })} style={{ padding: '0.5rem 1rem', background: '#475569', color: '#fff', border: 'none', borderRadius: '4px' }}>
-                دانلود پشتیبان (JSON)
-              </button>
-            </div>
-          </div>
-        )}
+        <div key={active} className="p-4 md:p-6 flex-1 view-enter">
+          {active !== 'home' && (
+            <button
+              onClick={() => handleSelect('home')}
+              className="mb-4 text-xs md:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+            >
+              ← بازگشت به داشبورد
+            </button>
+          )}
+          {renderView()}
+        </div>
       </main>
     </div>
   );
 };
-
-const tabStyle = (active: boolean) => ({
-  background: active ? '#2563eb' : 'transparent',
-  color: '#fff',
-  border: 'none',
-  padding: '0.5rem 1rem',
-  borderRadius: '4px',
-  cursor: 'pointer'
-});
 
 export default App;

@@ -1,2 +1,13 @@
 node_modules/
 .vercel
+.env
+.env.local
+.env.*.local
+*.bak
+*.m-a
+*.tsx.bak
+attachments/
+node_modules/
+dist/
+.tanstack/
+.DS_Store

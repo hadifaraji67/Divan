@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { OfflineCache } from "@/components/offline-cache";
+// import { OfflineCache } from "@/components/offline-cache";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/lib/theme-context";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "دیوان - سامانه جامع حسابداری";
@@ -48,12 +49,14 @@ export const Route = createRootRoute({
         <HeadContent />
       </head>
       <body>
-        <OfflineCache />
+        <ThemeProvider>
+        {/* <OfflineCache /> */}
         <div className="app-shell">
           <Outlet />
         </div>
         <Toaster position="top-center" dir="rtl" richColors closeButton />
         <Scripts />
+      </ThemeProvider>
       </body>
     </html>
   ),

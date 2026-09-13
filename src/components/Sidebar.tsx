@@ -1,142 +1,190 @@
-import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Home, 
-  Users, 
-  ShoppingCart, 
-  FileText, 
-  Package, 
-  Printer, 
-  Wallet, 
-  BookOpen, 
-  CheckSquare, 
-  BarChart3, 
-  Calendar, 
-  Smartphone, 
-  MessageSquare, 
-  Settings, 
-  ChevronDown, 
-  ChevronLeft 
+import React, { useState, useEffect } from 'react';
+import {
+  LayoutDashboard, Users, ShoppingCart, FileText, Package,
+  Printer, Wallet, BookOpen, CheckSquare, BarChart3, Calendar,
+  Smartphone, MessageSquare, Settings, ChevronDown, X,
+  TrendingUp, CreditCard, Search, Star,
 } from 'lucide-react';
 
-interface MenuItem {
-  title: string;
-  path: string;
-  icon: React.ElementType;
-}
+export type ViewKey =
+  | 'home' | 'contacts'
+  | 'invoice' | 'invoices' | 'inventory' | 'invoice-print'
+  | 'customer-ledger' | 'cheques' | 'journal-entry'
+  | 'financial-reports' | 'fiscal-year-closing'
+  | 'reports' | 'finance' | 'payments'
+  | 'sms-import' | 'settings';
 
-interface MenuGroup {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  items: MenuItem[];
-}
+interface MenuItem { key: ViewKey; title: string; icon: React.ElementType; badge?: string; }
+interface MenuGroup { id: string; title: string; icon: React.ElementType; items: MenuItem[]; }
 
 const menuGroups: MenuGroup[] = [
-  {
-    id: "dashboard",
-    title: "اطلاعات پایه و داشبورد",
-    icon: LayoutDashboard,
-    items: [
-      { title: "صفحه اصلی", path: "/", icon: Home },
-      { title: "مدیریت اشخاص و مشتریان", path: "/contacts", icon: Users },
-    ]
-  },
-  {
-    id: "sales",
-    title: "فروش و انبارداری",
-    icon: ShoppingCart,
-    items: [
-      { title: "صدور و مدیریت فاکتور", path: "/invoices", icon: FileText },
-      { title: "مدیریت انبار", path: "/inventory", icon: Package },
-      { title: "تنظیمات چاپ فاکتور", path: "/invoice-print", icon: Printer },
-    ]
-  },
-  {
-    id: "finance",
-    title: "حسابداری و مالی",
-    icon: Wallet,
-    items: [
-      { title: "دفتر معین مشتریان", path: "/customer-ledger", icon: BookOpen },
-      { title: "مدیریت چک‌ها", path: "/cheques", icon: CheckSquare },
-      { title: "ثبت سند دستی", path: "/journal-entry", icon: FileText },
-      { title: "گزارش‌های جامع مالی", path: "/financial-reports", icon: BarChart3 },
-      { title: "بستن سال مالی", path: "/fiscal-year-closing", icon: Calendar },
-    ]
-  },
-  {
-    id: "tools",
-    title: "ابزارهای هوشمند",
-    icon: Smartphone,
-    items: [
-      { title: "استخراج پیامک بانکی", path: "/sms-import", icon: MessageSquare },
-      { title: "تنظیمات سیستم", path: "/settings", icon: Settings },
-    ]
-  }
+  { id: 'dashboard', title: 'داشبورد', icon: LayoutDashboard, items: [
+    { key: 'home', title: 'صفحه اصلی', icon: LayoutDashboard },
+    { key: 'contacts', title: 'اشخاص و مشتریان', icon: Users },
+  ]},
+  { id: 'sales', title: 'فروش و انبار', icon: ShoppingCart, items: [
+    { key: 'invoices', title: 'مدیریت فاکتورها', icon: FileText },
+    { key: 'invoice', title: 'صدور سریع', icon: FileText },
+    { key: 'inventory', title: 'انبار و کالا', icon: Package },
+    { key: 'invoice-print', title: 'تنظیمات چاپ', icon: Printer },
+    { key: 'payments', title: 'پرداخت‌ها', icon: CreditCard },
+  ]},
+  { id: 'finance', title: 'حسابداری', icon: Wallet, items: [
+    { key: 'journal-entry', title: 'ثبت سند دستی', icon: FileText },
+    { key: 'financial-reports', title: 'گزارش‌های مالی', icon: BarChart3 },
+    { key: 'customer-ledger', title: 'دفتر معین', icon: BookOpen },
+    { key: 'cheques', title: 'چک‌ها', icon: CheckSquare },
+    { key: 'reports', title: 'گزارش‌های جامع', icon: TrendingUp },
+    { key: 'finance', title: 'پنل مالی', icon: Wallet },
+    { key: 'fiscal-year-closing', title: 'بستن سال مالی', icon: Calendar },
+  ]},
+  { id: 'tools', title: 'ابزارها', icon: Smartphone, items: [
+    { key: 'sms-import', title: 'استخراج پیامک بانکی', icon: MessageSquare },
+    { key: 'settings', title: 'تنظیمات سیستم', icon: Settings },
+  ]},
 ];
 
-export const Sidebar: React.FC = () => {
-  const [openGroup, setOpenGroup] = useState<string | null>("sales");
+interface SidebarProps {
+  active: ViewKey;
+  onSelect: (key: ViewKey) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  const toggleGroup = (id: string) => {
-    setOpenGroup(openGroup === id ? null : id);
-  };
+export const Sidebar: React.FC<SidebarProps> = ({ active, onSelect, isOpen, onClose }) => {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    dashboard: true, sales: true, finance: true, tools: false,
+  });
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    const groupOf = menuGroups.find(g => g.items.some(i => i.key === active));
+    if (groupOf) setOpenGroups(p => ({ ...p, [groupOf.id]: true }));
+  }, [active]);
+
+  const toggle = (id: string) => setOpenGroups(p => ({ ...p, [id]: !p[id] }));
+  const select = (k: ViewKey) => { onSelect(k); onClose(); };
+
+  const q = query.trim();
+  const filteredGroups = q
+    ? menuGroups.map(g => ({
+        ...g,
+        items: g.items.filter(i => i.title.includes(q)),
+      })).filter(g => g.items.length > 0)
+    : menuGroups;
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 h-screen p-4 flex flex-col dir-rtl select-none shadow-xl border-l border-slate-800 z-50">
-      <div className="flex items-center justify-center h-14 mb-2 border-b border-slate-800">
-        <h1 className="text-xl font-bold tracking-wide text-indigo-400">نرم‌افزار دیوان</h1>
-      </div>
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-[fadeIn_0.15s_ease-out]"
+          onClick={onClose}
+        />
+      )}
 
-      <nav className="flex-1 overflow-y-auto space-y-2 pr-1 mt-2">
-        {menuGroups.map((group) => {
-          const GroupIcon = group.icon;
-          const isOpen = openGroup === group.id;
-
-          return (
-            <div key={group.id} className="border-b border-slate-800/60 pb-2">
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.id)}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-800 transition-colors text-slate-200 font-medium text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <GroupIcon className="w-5 h-5 text-indigo-400" />
-                  <span>{group.title}</span>
-                </div>
-                {isOpen ? (
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
-                ) : (
-                  <ChevronLeft className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
-
-              {isOpen && (
-                <div className="mr-6 mt-1 space-y-1 border-r-2 border-slate-700/50 pr-2">
-                  {group.items.map((item) => {
-                    const ItemIcon = item.icon;
-                    return (
-                      <a
-                        key={item.path}
-                        href={item.path}
-                        className="flex items-center gap-2.5 p-2 rounded-md text-xs text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
-                      >
-                        <ItemIcon className="w-4 h-4 text-slate-400" />
-                        <span>{item.title}</span>
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
+      <aside
+        className={`w-72 md:w-64 h-screen flex-col shrink-0 z-50
+          border-l transition-transform duration-200
+          ${isOpen ? 'flex fixed right-0 top-0 translate-x-0' : 'hidden'} md:flex md:relative md:translate-x-0
+        `}
+        style={{
+          background: 'var(--sidebar-bg, #0f172a)',
+          color: 'var(--sidebar-fg, #e2e8f0)',
+          borderColor: 'var(--sidebar-border, #1e293b)',
+        }}
+      >
+        {/* لوگو */}
+        <div className="flex items-center justify-between px-4 h-16 shrink-0 border-b" style={{ borderColor: 'inherit' }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Star className="w-5 h-5 text-white" fill="white" />
             </div>
-          );
-        })}
-      </nav>
+            <div className="leading-tight">
+              <div className="text-sm font-bold">دیوان</div>
+              <div className="text-[10px] opacity-60">سامانه جامع</div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="md:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="بستن"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-      <div className="pt-4 border-t border-slate-800 text-center text-xs text-slate-500">
-        نسخه کشویی سایدبار (v3.1.6)
-      </div>
-    </aside>
+        {/* جستجو */}
+        <div className="px-3 py-3 shrink-0">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-50" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="جستجوی منو..."
+              className="w-full pr-9 pl-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 focus:border-indigo-400/50 focus:outline-none transition-colors"
+              style={{ color: 'inherit' }}
+            />
+          </div>
+        </div>
+
+        {/* منو */}
+        <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1.5">
+          {filteredGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isOpenGroup = openGroups[group.id] || !!q;
+            return (
+              <div key={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggle(group.id)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors text-sm font-medium"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GroupIcon className="w-4 h-4 text-indigo-400" />
+                    <span className="opacity-95">{group.title}</span>
+                  </div>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${isOpenGroup ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {isOpenGroup && (
+                  <div className="space-y-0.5 pr-2">
+                    {group.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      const isActive = active === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => select(item.key)}
+                          className={`w-full text-right flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all duration-150 group
+                            ${isActive
+                              ? 'bg-gradient-to-l from-indigo-500/20 to-indigo-500/5 text-white font-bold border-r-2 border-indigo-400'
+                              : 'opacity-70 hover:opacity-100 hover:bg-white/5'
+                            }`}
+                        >
+                          <ItemIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-indigo-400' : 'group-hover:text-indigo-400'} transition-colors`} />
+                          <span className="truncate">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filteredGroups.length === 0 && (
+            <div className="text-center text-xs opacity-50 py-8">چیزی پیدا نشد</div>
+          )}
+        </nav>
+
+        {/* فوتر */}
+        <div className="px-4 py-3 border-t text-[10px] opacity-50 text-center shrink-0" style={{ borderColor: 'inherit' }}>
+          نسخه ۳.۱.۶
+        </div>
+      </aside>
+    </>
   );
 };
 
