@@ -14,6 +14,9 @@ export function InventoryPanel() {
   const movements = useInvoiceStore((s) => s.stockMovements);
   const addStockMovement = useInvoiceStore((s) => s.addStockMovement);
   const removeStockMovement = useInvoiceStore((s) => s.removeStockMovement);
+  const restoreStockMovement = useInvoiceStore((s) => s.restoreStockMovement);
+  const [showArchived, setShowArchived] = useState(false);
+  const visibleMovements = movements.filter((m) => (showArchived ? !!m.void : !m.void));
 
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [direction, setDirection] = useState<StockDirection>("in");
@@ -114,13 +117,20 @@ export function InventoryPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>تاریخچه</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>تاریخچه</CardTitle>
+            <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "فعال‌ها" : "آرشیو"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-2">
-          {movements.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">تراکنش انباری ثبت نشده.</p>
+          {visibleMovements.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {showArchived ? "موردی در آرشیو نیست." : "تراکنش انباری ثبت نشده."}
+            </p>
           ) : (
-            movements.map((m) => {
+            visibleMovements.map((m) => {
               const product = products.find((p) => p.id === m.productId);
               return (
                 <div key={m.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/70 p-3">
@@ -136,9 +146,15 @@ export function InventoryPanel() {
                       {m.direction === "in" ? "+" : "−"}
                       {toFaDigits(m.qty)}
                     </span>
-                    <Button variant="ghost" size="icon" aria-label="حذف" onClick={() => removeStockMovement(m.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {m.void ? (
+                      <Button variant="ghost" size="sm" onClick={() => restoreStockMovement(m.id)}>
+                        بازگردانی
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" aria-label="ابطال" onClick={() => removeStockMovement(m.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

@@ -63,9 +63,14 @@ export type Invoice = {
   convertedToId?: string;
   /** Set on an invoice that was created by converting a quote. */
   convertedFromId?: string;
-  /** VAT rate used for this document (0.09 = 9%) — frozen at save time so
-   * later changing the global rate in settings never alters past totals. */
-  vatRate?: number;
+  /**
+   * Voided instead of deleted — kept for audit trail. Void records are
+   * excluded from balances/reports/stock by default but stay visible in an
+   * archive view and can be restored. Absent/undefined on old records means
+   * not void (backward compatible with data saved before this field existed).
+   */
+  void?: boolean;
+  voidedAt?: string;
 };
 
 export type Draft = {
@@ -76,7 +81,6 @@ export type Draft = {
   customer: Customer;
   items: LineItem[];
   notes: string;
-  vatRate: number;
 };
 
 export type TransactionType = "income" | "expense";
@@ -89,6 +93,9 @@ export type Transaction = {
   date: string;
   description: string;
   createdAt: string;
+  /** Voided instead of deleted — see Invoice.void for the reasoning. */
+  void?: boolean;
+  voidedAt?: string;
 };
 
 /** A cash movement against a party's balance — receipts reduce what they owe us. */
@@ -102,6 +109,9 @@ export type Payment = {
   direction: PaymentDirection;
   note: string;
   createdAt: string;
+  /** Voided instead of deleted — see Invoice.void for the reasoning. */
+  void?: boolean;
+  voidedAt?: string;
 };
 
 /** Manual warehouse movement — separate from invoices. */
@@ -117,6 +127,9 @@ export type StockMovement = {
   createdAt: string;
   /** Set when this movement was auto-generated from an invoice's line items. */
   sourceInvoiceId?: string;
+  /** Voided instead of deleted — see Invoice.void for the reasoning. */
+  void?: boolean;
+  voidedAt?: string;
 };
 
 const emptyCustomer = (): Customer => ({
@@ -154,7 +167,7 @@ const seedCustomers: Customer[] = [];
 export const EXPENSE_CATEGORIES = ["اجاره", "حقوق", "خرید کالا", "قبوض", "حمل و نقل", "سایر"];
 export const INCOME_CATEGORIES = ["فروش نقدی", "دریافتی از مشتری", "سایر درآمد"];
 
-function newDraft(number: number, kind: DocKind, direction: DocDirection, vatRate: number): Draft {
+function newDraft(number: number, kind: DocKind, direction: DocDirection): Draft {
   return {
     kind,
     direction,
@@ -163,7 +176,6 @@ function newDraft(number: number, kind: DocKind, direction: DocDirection, vatRat
     customer: emptyCustomer(),
     items: [],
     notes: "",
-    vatRate,
   };
 }
 
@@ -204,8 +216,6 @@ type State = Counters & {
   setAutoLockMinutes: (minutes: number) => void;
   lowStockThreshold: number;
   setLowStockThreshold: (n: number) => void;
-  vatRate: number;
-  setVatRate: (rate: number) => void;
   addSmsBankSender: (sender: string) => void;
   removeSmsBankSender: (sender: string) => void;
   setSeller: (seller: Seller) => void;
@@ -228,22 +238,26 @@ type State = Counters & {
   loadInvoice: (id: string) => void;
   saveInvoice: () => Invoice | null;
   removeInvoice: (id: string) => void;
+  restoreInvoice: (id: string) => void;
   convertQuoteToInvoice: (id: string) => Invoice | null;
   setViewingId: (id: string | null) => void;
   addTransaction: (t: Omit<Transaction, "id" | "createdAt">) => void;
   removeTransaction: (id: string) => void;
+  restoreTransaction: (id: string) => void;
   addPayment: (p: Omit<Payment, "id" | "createdAt">) => void;
   removePayment: (id: string) => void;
+  restorePayment: (id: string) => void;
   addStockMovement: (m: Omit<StockMovement, "id" | "createdAt">) => void;
   removeStockMovement: (id: string) => void;
+  restoreStockMovement: (id: string) => void;
   exportData: () => string;
   importData: (json: string) => boolean;
 };
 
-export function invoiceSums(items: LineItem[], vatRate?: number) {
+export function invoiceSums(items: LineItem[]) {
   return items.reduce(
     (acc, item) => {
-      const t = lineTotals(item.qty, item.unitPrice, item.discount, vatRate);
+      const t = lineTotals(item.qty, item.unitPrice, item.discount);
       acc.amount += t.amount;
       acc.afterDiscount += t.afterDiscount;
       acc.vat += t.vat;
@@ -263,20 +277,25 @@ export function invoiceSums(items: LineItem[], vatRate?: number) {
  */
 export function partyBalance(invoices: Invoice[], payments: Payment[], partyId: string) {
   const sold = invoices
-    .filter((i) => i.kind === "invoice" && i.direction === "sale" && i.customer.id === partyId)
-    .reduce((sum, i) => sum + invoiceSums(i.items, i.vatRate).payable, 0);
+    .filter(
+      (i) => !i.void && i.kind === "invoice" && i.direction === "sale" && i.customer.id === partyId,
+    )
+    .reduce((sum, i) => sum + invoiceSums(i.items).payable, 0);
   const bought = invoices
-    .filter((i) => i.kind === "invoice" && i.direction === "purchase" && i.customer.id === partyId)
-    .reduce((sum, i) => sum + invoiceSums(i.items, i.vatRate).payable, 0);
+    .filter(
+      (i) =>
+        !i.void && i.kind === "invoice" && i.direction === "purchase" && i.customer.id === partyId,
+    )
+    .reduce((sum, i) => sum + invoiceSums(i.items).payable, 0);
   const net = payments
-    .filter((p) => p.customerId === partyId)
+    .filter((p) => !p.void && p.customerId === partyId)
     .reduce((sum, p) => sum + (p.direction === "receipt" ? p.amount : -p.amount), 0);
   return sold - bought - net;
 }
 
 export function productStock(movements: StockMovement[], productId: string) {
   return movements
-    .filter((m) => m.productId === productId)
+    .filter((m) => !m.void && m.productId === productId)
     .reduce((sum, m) => sum + (m.direction === "in" ? m.qty : -m.qty), 0);
 }
 
@@ -331,13 +350,12 @@ export const useInvoiceStore = create<State>()(
       nextSaleInvoiceNumber: 1,
       nextPurchaseQuoteNumber: 1,
       nextPurchaseInvoiceNumber: 1,
-      draft: newDraft(1, "invoice", "sale", 0.09),
+      draft: newDraft(1, "invoice", "sale"),
       viewingId: null,
       hydrated: false,
       smsBankSenders: [],
       autoLockMinutes: 10,
       lowStockThreshold: 5,
-      vatRate: 0.09,
       addSmsBankSender: (sender) => {
         const s = sender.trim();
         if (!s || get().smsBankSenders.includes(s)) return;
@@ -347,7 +365,6 @@ export const useInvoiceStore = create<State>()(
         set({ smsBankSenders: get().smsBankSenders.filter((s) => s !== sender) }),
       setAutoLockMinutes: (minutes) => set({ autoLockMinutes: minutes }),
       setLowStockThreshold: (n) => set({ lowStockThreshold: n }),
-      setVatRate: (rate) => set({ vatRate: rate }),
       setSeller: (seller) => set({ seller }),
       addProduct: (p) => {
         const id = uid();
@@ -421,7 +438,7 @@ export const useInvoiceStore = create<State>()(
       setDraftDate: (date) => set({ draft: { ...get().draft, date } }),
       startNewDocument: (kind, direction) => {
         const key = counterKey(kind, direction) as keyof Counters;
-        set({ draft: newDraft(get()[key], kind, direction, get().vatRate), viewingId: null });
+        set({ draft: newDraft(get()[key], kind, direction), viewingId: null });
       },
       loadInvoice: (id) => {
         const inv = get().invoices.find((x) => x.id === id);
@@ -436,7 +453,6 @@ export const useInvoiceStore = create<State>()(
             customer: { ...inv.customer },
             items: inv.items.map((i) => ({ ...i })),
             notes: inv.notes,
-            vatRate: inv.vatRate ?? get().vatRate,
           },
         });
       },
@@ -458,7 +474,8 @@ export const useInvoiceStore = create<State>()(
             createdAt: existing?.createdAt ?? now,
             convertedToId: existing?.convertedToId,
             convertedFromId: existing?.convertedFromId,
-            vatRate: draft.vatRate,
+            void: existing?.void,
+            voidedAt: existing?.voidedAt,
           };
           set({ invoices: invoices.map((i) => (i.id === viewingId ? updated : i)) });
           syncStockForInvoice(get, set, updated);
@@ -476,7 +493,6 @@ export const useInvoiceStore = create<State>()(
           items: draft.items.map((i) => ({ ...i })),
           notes: draft.notes,
           createdAt: now,
-          vatRate: draft.vatRate,
         };
         set({
           invoices: [created, ...invoices],
@@ -487,11 +503,30 @@ export const useInvoiceStore = create<State>()(
         syncStockForInvoice(get, set, created);
         return created;
       },
-      removeInvoice: (id) =>
+      // Voided, not deleted — keeps the document for audit history. Balances,
+      // stock, and reports all filter void records out by default (see
+      // partyBalance/productStock and the panels' active-only filters); an
+      // archive view still shows them with a restore option.
+      removeInvoice: (id) => {
+        const now = new Date().toISOString();
         set({
-          invoices: get().invoices.filter((x) => x.id !== id),
+          invoices: get().invoices.map((x) =>
+            x.id === id ? { ...x, void: true, voidedAt: now } : x,
+          ),
           viewingId: get().viewingId === id ? null : get().viewingId,
-          stockMovements: get().stockMovements.filter((m) => m.sourceInvoiceId !== id),
+          stockMovements: get().stockMovements.map((m) =>
+            m.sourceInvoiceId === id ? { ...m, void: true, voidedAt: now } : m,
+          ),
+        });
+      },
+      restoreInvoice: (id) =>
+        set({
+          invoices: get().invoices.map((x) =>
+            x.id === id ? { ...x, void: false, voidedAt: undefined } : x,
+          ),
+          stockMovements: get().stockMovements.map((m) =>
+            m.sourceInvoiceId === id ? { ...m, void: false, voidedAt: undefined } : m,
+          ),
         }),
       convertQuoteToInvoice: (id) => {
         const { invoices } = get();
@@ -511,7 +546,6 @@ export const useInvoiceStore = create<State>()(
           notes: quote.notes,
           createdAt: now,
           convertedFromId: quote.id,
-          vatRate: quote.vatRate ?? get().vatRate,
         };
         set({
           invoices: [
@@ -532,12 +566,33 @@ export const useInvoiceStore = create<State>()(
           ],
         }),
       removeTransaction: (id) =>
-        set({ transactions: get().transactions.filter((x) => x.id !== id) }),
+        set({
+          transactions: get().transactions.map((x) =>
+            x.id === id ? { ...x, void: true, voidedAt: new Date().toISOString() } : x,
+          ),
+        }),
+      restoreTransaction: (id) =>
+        set({
+          transactions: get().transactions.map((x) =>
+            x.id === id ? { ...x, void: false, voidedAt: undefined } : x,
+          ),
+        }),
       addPayment: (p) =>
         set({
           payments: [{ ...p, id: uid(), createdAt: new Date().toISOString() }, ...get().payments],
         }),
-      removePayment: (id) => set({ payments: get().payments.filter((x) => x.id !== id) }),
+      removePayment: (id) =>
+        set({
+          payments: get().payments.map((x) =>
+            x.id === id ? { ...x, void: true, voidedAt: new Date().toISOString() } : x,
+          ),
+        }),
+      restorePayment: (id) =>
+        set({
+          payments: get().payments.map((x) =>
+            x.id === id ? { ...x, void: false, voidedAt: undefined } : x,
+          ),
+        }),
       addStockMovement: (m) =>
         set({
           stockMovements: [
@@ -546,7 +601,17 @@ export const useInvoiceStore = create<State>()(
           ],
         }),
       removeStockMovement: (id) =>
-        set({ stockMovements: get().stockMovements.filter((x) => x.id !== id) }),
+        set({
+          stockMovements: get().stockMovements.map((x) =>
+            x.id === id ? { ...x, void: true, voidedAt: new Date().toISOString() } : x,
+          ),
+        }),
+      restoreStockMovement: (id) =>
+        set({
+          stockMovements: get().stockMovements.map((x) =>
+            x.id === id ? { ...x, void: false, voidedAt: undefined } : x,
+          ),
+        }),
       exportData: () => {
         const s = get();
         const payload = {
@@ -560,9 +625,6 @@ export const useInvoiceStore = create<State>()(
           payments: s.payments,
           stockMovements: s.stockMovements,
           smsBankSenders: s.smsBankSenders,
-          autoLockMinutes: s.autoLockMinutes,
-          lowStockThreshold: s.lowStockThreshold,
-          vatRate: s.vatRate,
           nextSaleQuoteNumber: s.nextSaleQuoteNumber,
           nextSaleInvoiceNumber: s.nextSaleInvoiceNumber,
           nextPurchaseQuoteNumber: s.nextPurchaseQuoteNumber,
@@ -583,9 +645,6 @@ export const useInvoiceStore = create<State>()(
             payments: data.payments ?? [],
             stockMovements: data.stockMovements ?? [],
             smsBankSenders: data.smsBankSenders ?? [],
-            autoLockMinutes: data.autoLockMinutes ?? get().autoLockMinutes,
-            lowStockThreshold: data.lowStockThreshold ?? get().lowStockThreshold,
-            vatRate: data.vatRate ?? get().vatRate,
             nextSaleQuoteNumber: data.nextSaleQuoteNumber ?? 1,
             nextSaleInvoiceNumber: data.nextSaleInvoiceNumber ?? 1,
             nextPurchaseQuoteNumber: data.nextPurchaseQuoteNumber ?? 1,
@@ -619,7 +678,6 @@ export const useInvoiceStore = create<State>()(
         smsBankSenders: s.smsBankSenders,
         autoLockMinutes: s.autoLockMinutes,
         lowStockThreshold: s.lowStockThreshold,
-        vatRate: s.vatRate,
       }),
     },
   ),

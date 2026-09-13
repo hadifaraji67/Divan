@@ -21,6 +21,9 @@ export function PaymentsPanel() {
   const payments = useInvoiceStore((s) => s.payments);
   const addPayment = useInvoiceStore((s) => s.addPayment);
   const removePayment = useInvoiceStore((s) => s.removePayment);
+  const restorePayment = useInvoiceStore((s) => s.restorePayment);
+  const [showArchived, setShowArchived] = useState(false);
+  const visiblePayments = payments.filter((p) => (showArchived ? !!p.void : !p.void));
 
   const [open, setOpen] = useState(false);
   useBackableOpen(open, () => setOpen(false));
@@ -67,14 +70,23 @@ export function PaymentsPanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>دریافت و پرداخت</CardTitle>
-          <CardDescription>همه‌ی تراکنش‌های نقدی با طرف‌حساب‌ها</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>دریافت و پرداخت</CardTitle>
+              <CardDescription>همه‌ی تراکنش‌های نقدی با طرف‌حساب‌ها</CardDescription>
+            </div>
+            <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "فعال‌ها" : "آرشیو"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-2">
-          {payments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">تراکنشی ثبت نشده.</p>
+          {visiblePayments.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {showArchived ? "تراکنش باطل‌شده‌ای وجود ندارد." : "تراکنشی ثبت نشده."}
+            </p>
           ) : (
-            payments.map((p) => {
+            visiblePayments.map((p) => {
               const customer = customers.find((c) => c.id === p.customerId);
               return (
                 <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/70 p-3">
@@ -96,9 +108,15 @@ export function PaymentsPanel() {
                       {p.direction === "receipt" ? "+" : "−"}
                       {formatRial(p.amount)}
                     </span>
-                    <Button variant="ghost" size="icon" aria-label="حذف" onClick={() => removePayment(p.id)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                    {p.void ? (
+                      <Button variant="ghost" size="sm" onClick={() => restorePayment(p.id)}>
+                        بازگردانی
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" aria-label="ابطال" onClick={() => removePayment(p.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

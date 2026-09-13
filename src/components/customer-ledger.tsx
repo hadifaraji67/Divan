@@ -85,14 +85,16 @@ function CustomerLedgerDetail({ customer, onClose }: { customer: Customer; onClo
   const payments = useInvoiceStore((s) => s.payments);
   const addPayment = useInvoiceStore((s) => s.addPayment);
   const removePayment = useInvoiceStore((s) => s.removePayment);
+  const restorePayment = useInvoiceStore((s) => s.restorePayment);
 
   const [direction, setDirection] = useState<PaymentDirection>("receipt");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const balance = partyBalance(invoices, payments, customer.id);
   const customerPayments = payments
-    .filter((p) => p.customerId === customer.id)
+    .filter((p) => p.customerId === customer.id && (showArchived ? !!p.void : !p.void))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
   function save() {
@@ -156,9 +158,16 @@ function CustomerLedgerDetail({ customer, onClose }: { customer: Customer; onClo
       </div>
 
       <div className="grid gap-2">
-        <p className="text-sm font-medium">تاریخچه تراکنش‌ها</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">تاریخچه تراکنش‌ها</p>
+          <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? "فعال‌ها" : "آرشیو"}
+          </Button>
+        </div>
         {customerPayments.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">تراکنشی ثبت نشده.</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            {showArchived ? "تراکنش باطل‌شده‌ای وجود ندارد." : "تراکنشی ثبت نشده."}
+          </p>
         ) : (
           customerPayments.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/70 p-3">
@@ -168,9 +177,15 @@ function CustomerLedgerDetail({ customer, onClose }: { customer: Customer; onClo
               </div>
               <div className="flex items-center gap-2">
                 <span className="tabular-nums text-sm font-medium">{formatRial(p.amount)}</span>
-                <Button variant="ghost" size="icon" aria-label="حذف" onClick={() => removePayment(p.id)}>
-                  <Trash2 className="size-4" />
-                </Button>
+                {p.void ? (
+                  <Button variant="ghost" size="sm" onClick={() => restorePayment(p.id)}>
+                    بازگردانی
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="icon" aria-label="ابطال" onClick={() => removePayment(p.id)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))

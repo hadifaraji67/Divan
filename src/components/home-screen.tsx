@@ -49,14 +49,15 @@ export function HomeScreen({ onNavigate }: { onNavigate: (view: View) => void })
     let sale = 0;
     let purchase = 0;
     for (const inv of invoices) {
-      if (inv.kind !== "invoice") continue;
-      const total = invoiceSums(inv.items, inv.vatRate).payable;
+      if (inv.kind !== "invoice" || inv.void) continue;
+      const total = invoiceSums(inv.items).payable;
       if (inv.direction === "sale") sale += total;
       else purchase += total;
     }
     let receipt = 0;
     let payment = 0;
     for (const p of payments) {
+      if (p.void) continue;
       if (p.direction === "receipt") receipt += p.amount;
       else payment += p.amount;
     }

@@ -34,13 +34,16 @@ export function FinancePanel() {
   const transactions = useInvoiceStore((s) => s.transactions);
   const addTransaction = useInvoiceStore((s) => s.addTransaction);
   const removeTransaction = useInvoiceStore((s) => s.removeTransaction);
+  const restoreTransaction = useInvoiceStore((s) => s.restoreTransaction);
   const [open, setOpen] = useState(false);
   useBackableOpen(open, () => setOpen(false));
   const [form, setForm] = useState(emptyForm("expense"));
+  const [showArchived, setShowArchived] = useState(false);
 
   const totals = useMemo(() => {
     return transactions.reduce(
       (acc, t) => {
+        if (t.void) return acc;
         if (t.type === "income") acc.income += t.amount;
         else acc.expense += t.amount;
         return acc;
@@ -48,6 +51,8 @@ export function FinancePanel() {
       { income: 0, expense: 0 },
     );
   }, [transactions]);
+
+  const visibleTransactions = transactions.filter((t) => (showArchived ? !!t.void : !t.void));
 
   function openNew(type: TransactionType) {
     setForm(emptyForm(type));
@@ -107,14 +112,23 @@ export function FinancePanel() {
 
       <Card>
         <CardHeader>
-          <CardTitle>تراکنش‌ها</CardTitle>
-          <CardDescription>آخرین هزینه‌ها و درآمدهای ثبت‌شده</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>تراکنش‌ها</CardTitle>
+              <CardDescription>آخرین هزینه‌ها و درآمدهای ثبت‌شده</CardDescription>
+            </div>
+            <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "فعال‌ها" : "آرشیو"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="grid gap-2">
-          {transactions.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">تراکنشی ثبت نشده است.</p>
+          {visibleTransactions.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {showArchived ? "تراکنش باطل‌شده‌ای وجود ندارد." : "تراکنشی ثبت نشده است."}
+            </p>
           ) : (
-            transactions.map((t) => (
+            visibleTransactions.map((t) => (
               <div
                 key={t.id}
                 className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
@@ -135,14 +149,20 @@ export function FinancePanel() {
                     {t.type === "income" ? "+" : "−"}
                     {formatRial(t.amount)}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="حذف"
-                    onClick={() => removeTransaction(t.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  {t.void ? (
+                    <Button variant="ghost" size="sm" onClick={() => restoreTransaction(t.id)}>
+                      بازگردانی
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="ابطال"
+                      onClick={() => removeTransaction(t.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))

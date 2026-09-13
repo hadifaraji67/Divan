@@ -1,588 +1,1720 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Users, Edit, X, Package, AlertTriangle, 
-  Printer, Download, FileText, CheckCircle, Search, Trash2, ArrowRightLeft, DollarSign, Calendar
-} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
+import {
+  ArrowRight,
+  BarChart3,
+  BookUser,
+  FileCheck2,
+  Inbox,
+  LogOut,
+  Menu,
+  MoreVertical,
+  Package,
+  PackageSearch,
+  Pencil,
+  Plus,
+  Printer,
+  Save,
+  Settings as SettingsIcon,
+  Trash2,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Field } from "@/components/field";
+import { LocationFields } from "@/components/location-fields";
+import { InvoicePrint } from "@/components/invoice-print";
+import { HomeScreen } from "@/components/home-screen";
+import { FinancePanel } from "@/components/finance-panel";
+import { CustomerLedger } from "@/components/customer-ledger";
+import { ReportsPanel } from "@/components/reports-panel";
+import { InventoryPanel } from "@/components/inventory-panel";
+import { PaymentsPanel } from "@/components/payments-panel";
+import { SettingsHub, type SettingsView } from "@/components/settings-hub";
+import { SmsImportPanel } from "@/components/sms-import-panel";
+import { LoginScreen } from "@/components/login-screen";
+import { BootScreen } from "@/components/boot-screen";
+import { APP_VERSION } from "@/lib/version";
+import { useSession, signOut } from "@/lib/auth-client";
+import { startServerSync, stopServerSync } from "@/lib/app-state-client-sync";
+import { SyncStatusBadge } from "@/components/sync-status";
+import { listTeamUsers, addTeamUser, removeTeamUser } from "@/lib/team";
+import { useBackableOpen } from "@/lib/use-backable-open";
+import { navDepth, pushNav } from "@/lib/nav-history";
+import { backupToDrive, GOOGLE_CLIENT_ID } from "@/lib/google-drive";
+import NativePrint from "@/lib/native-print";
+import { formatJalali, formatRial, lineTotals, parseAmount, toFaDigits } from "@/lib/format";
+import {
+  invoiceSums,
+  useInvoiceStore,
+  type Customer,
+  type DocDirection,
+  type DocKind,
+  type Invoice,
+  type Product,
+} from "@/lib/store";
 
-// === Interfaces ===
-export interface AdvancedProduct {
-  id: string;
-  sku: string;
-  barcode?: string;
-  taxId?: string;
-  name: string;
-  brand?: string;
-  category: string;
-  mainUnit: string;
-  warehouseName: string;
-  location: string;
-  stock: number;
-  reservedStock: number;
-  minStock: number;
-  lastBuyPrice: number;
-  avgBuyPrice: number;
-  sellPrice: number;
-  taxPercent: number;
-  productType: 'کالای خریدی' | 'کالای ساختنی' | 'خدمات';
-  isActive: boolean;
+export type View =
+  | "home"
+  | "sale-quote"
+  | "sale-invoice"
+  | "purchase-quote"
+  | "purchase-invoice"
+  | "products"
+  | "parties"
+  | "history"
+  | "finance"
+  | "ledger"
+  | "payments"
+  | "inventory"
+  | "reports"
+  | "sms-import"
+  | "import"
+  | "settings"
+  | "settings-business"
+  | "settings-invoice"
+  | "settings-software";
+
+const DOC_VIEWS: Record<string, { kind: DocKind; direction: DocDirection }> = {
+  "sale-quote": { kind: "quote", direction: "sale" },
+  "sale-invoice": { kind: "invoice", direction: "sale" },
+  "purchase-quote": { kind: "quote", direction: "purchase" },
+  "purchase-invoice": { kind: "invoice", direction: "purchase" },
+};
+
+function docView(kind: DocKind, direction: DocDirection): View {
+  return `${direction}-${kind}` as View;
 }
 
-export interface AdvancedContact {
-  id: string;
-  code: string;
-  personType: 'حقیقی' | 'حقوقی';
-  roles: ('مشتری' | 'تامین‌کننده' | 'همکار' | 'پرسنل')[];
-  name: string;
-  lastName?: string;
-  companyName?: string;
-  nationalId: string;
-  economicCode?: string;
-  mobile: string;
-  phone?: string;
-  address?: string;
-  creditLimit: number;
-  isActive: boolean;
-}
+const VIEW_TITLES: Record<Exclude<View, "home">, string> = {
+  "sale-quote": "پیش‌فاکتور فروش",
+  "sale-invoice": "فاکتور فروش",
+  "purchase-quote": "پیش‌فاکتور خرید",
+  "purchase-invoice": "فاکتور خرید",
+  products: "کالا و خدمات",
+  parties: "طرف حساب‌ها",
+  history: "سوابق اسناد",
+  finance: "هزینه‌ها و درآمدها",
+  ledger: "بدهی و بستانکاری",
+  payments: "دریافت و پرداخت",
+  inventory: "ورود و خروج کالا",
+  reports: "گزارش‌ها",
+  "sms-import": "وارد کردن از پیامک بانکی",
+  settings: "تنظیمات",
+  "settings-business": "نام کسب‌وکار",
+  "settings-invoice": "تنظیمات فاکتور",
+  "settings-software": "تنظیمات نرم‌افزار",
+};
 
-export interface InvoiceItem {
-  productId: string;
-  sku: string;
-  taxId?: string;
-  productName: string;
-  unit: string;
-  quantity: number;
-  unitPrice: number;
-  buyPrice: number;
-  discountPercent: number;
-  discountAmount: number;
-  taxPercent: number;
-  taxAmount: number;
-  totalPrice: number;
-}
+const SIDEBAR_ITEMS: { view: View; title: string; icon: typeof Users }[] = [
+  { view: "parties", title: "طرف حساب‌ها", icon: BookUser },
+  { view: "products", title: "کالا و خدمات", icon: Package },
+  { view: "inventory", title: "ورود و خروج کالا", icon: PackageSearch },
+  { view: "payments", title: "دریافت و پرداخت", icon: Wallet },
+  { view: "ledger", title: "بدهی و بستانکاری", icon: BookUser },
+  { view: "finance", title: "هزینه‌ها و درآمدها", icon: Wallet },
+  { view: "reports", title: "گزارش‌ها", icon: BarChart3 },
+  { view: "sms-import", title: "وارد کردن از پیامک بانکی", icon: Inbox },
+  { view: "history", title: "سوابق اسناد", icon: Printer },
+  { view: "settings", title: "تنظیمات", icon: SettingsIcon },
+];
 
-export interface PaymentDetail {
-  type: 'cash' | 'pos' | 'cheque';
-  amount: number;
-  refCode?: string;
-  bankName?: string;
-  chequeNumber?: string;
-  dueDate?: string;
-}
+const emptyProduct = (): Omit<Product, "id"> => ({
+  code: "",
+  name: "",
+  unit: "عدد",
+  unitPrice: 0,
+});
 
-export interface AdvancedInvoice {
-  id: string;
-  invoiceNumber: string;
-  taxInvoiceId?: string;
-  type: 'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید' | 'برگشت از فروش';
-  contactId: string;
-  contactName: string;
-  contactNationalId: string;
-  contactMobile: string;
-  contactAddress?: string;
-  date: string;
-  dueDate?: string;
-  items: InvoiceItem[];
-  subtotal: number;
-  totalDiscount: number;
-  totalTax: number;
-  shippingCost: number;
-  grandTotal: number;
-  payments: PaymentDetail[];
-  paidAmount: number;
-  remainingAmount: number;
-  status: 'پرداخت شده' | 'پیشنویس' | 'بدهکار';
-  notes?: string;
-}
+const emptyCustomer = (): Omit<Customer, "id"> => ({
+  name: "",
+  nationalId: "",
+  economicCode: "",
+  registrationNo: "",
+  postalCode: "",
+  phone: "",
+  province: "",
+  county: "",
+  city: "",
+  address: "",
+});
 
-export const InvoiceApp: React.FC = () => {
-  const [theme] = useState<'dark' | 'light'>('dark');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'inventory' | 'contacts'>('invoices');
+export function InvoiceApp() {
+  const { data: session, isPending: sessionPending } = useSession();
+  const isAuthenticated = !!session;
+  const hydrated = useInvoiceStore((s) => s.hydrated);
+  const autoLockMinutes = useInvoiceStore((s) => s.autoLockMinutes);
 
-  // App Data State
-  const [products, setProducts] = useState<AdvancedProduct[]>(() => JSON.parse(localStorage.getItem('divan_products_v2') || '[]'));
-  const [contacts, setContacts] = useState<AdvancedContact[]>(() => JSON.parse(localStorage.getItem('divan_contacts_v2') || '[]'));
-  const [invoices, setInvoices] = useState<AdvancedInvoice[]>(() => JSON.parse(localStorage.getItem('divan_invoices_v2') || '[]'));
-
-  useEffect(() => { localStorage.setItem('divan_invoices_v2', JSON.stringify(invoices)); }, [invoices]);
-
-  // Invoice Modal / Form State
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
-
-  // Form Header State
-  const [invType, setInvType] = useState<'فاکتور فروش' | 'پیش‌فاکتور' | 'فاکتور خرید' | 'برگشت از فروش'>('فاکتور فروش');
-  const [invNumber, setInvNumber] = useState('');
-  const [invTaxId, setInvTaxId] = useState('');
-  const [invDate, setInvDate] = useState('1405/06/23');
-  const [invDueDate, setInvDueDate] = useState('');
-  const [selectedContactId, setSelectedContactId] = useState('');
-  const [invNotes, setInvNotes] = useState('');
-  const [shippingCost, setShippingCost] = useState<number>(0);
-
-  // Items State
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-
-  // Item Addition Form State
-  const [selectedProdId, setSelectedProdId] = useState('');
-  const [itemQty, setItemQty] = useState<number>(1);
-  const [itemPrice, setItemPrice] = useState<number>(0);
-  const [itemDiscount, setItemDiscount] = useState<number>(0);
-
-  // Payments State
-  const [payments, setPayments] = useState<PaymentDetail[]>([]);
-  const [payType, setPayType] = useState<'cash' | 'pos' | 'cheque'>('cash');
-  const [payAmount, setPayAmount] = useState<number>(0);
-  const [payRef, setPayRef] = useState('');
-  const [payBank, setPayBank] = useState('');
-
-  // Print Preview Modal State
-  const [previewInvoice, setPreviewInvoice] = useState<AdvancedInvoice | null>(null);
-
-  const handleOpenInvoiceModal = (inv?: AdvancedInvoice) => {
-    if (inv) {
-      setEditingInvoiceId(inv.id);
-      setInvType(inv.type);
-      setInvNumber(inv.invoiceNumber);
-      setInvTaxId(inv.taxInvoiceId || '');
-      setInvDate(inv.date);
-      setInvDueDate(inv.dueDate || '');
-      setSelectedContactId(inv.contactId);
-      setInvoiceItems(inv.items);
-      setShippingCost(inv.shippingCost || 0);
-      setPayments(inv.payments || []);
-      setInvNotes(inv.notes || '');
+  useEffect(() => {
+    if (isAuthenticated) {
+      void startServerSync();
     } else {
-      setEditingInvoiceId(null);
-      setInvType('فاکتور فروش');
-      setInvNumber(`INV-${1000 + invoices.length + 1}`);
-      setInvTaxId('');
-      setInvDate(new Date().toLocaleDateString('fa-IR'));
-      setInvDueDate('');
-      setSelectedContactId(contacts[0]?.id || '');
-      setInvoiceItems([]);
-      setShippingCost(0);
-      setPayments([]);
-      setInvNotes('');
+      stopServerSync();
     }
-    setShowInvoiceModal(true);
-  };
+  }, [isAuthenticated]);
 
-  const handleAddItem = () => {
-    const prod = products.find(p => p.id === selectedProdId);
-    if (!prod || itemQty <= 0) return;
+  const [view, setView] = useState<View>("home");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useBackableOpen(sidebarOpen, () => setSidebarOpen(false));
+  useBackableOpen(menuOpen, () => setMenuOpen(false));
+  const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null);
+  const [printFormat, setPrintFormat] = useState<"A4" | "A5">("A4");
+  const [pendingPrint, setPendingPrint] = useState<Invoice | null>(null);
+  useBackableOpen(!!pendingPrint, () => setPendingPrint(null));
+  const [shouldPrint, setShouldPrint] = useState(false);
+  const seller = useInvoiceStore((s) => s.seller);
+  const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
 
-    const discountAmount = (itemPrice * itemQty * itemDiscount) / 100;
-    const priceAfterDiscount = (itemPrice * itemQty) - discountAmount;
-    const taxAmount = (priceAfterDiscount * prod.taxPercent) / 100;
-    const totalPrice = priceAfterDiscount + taxAmount;
+  useEffect(() => {
+    void useInvoiceStore.persist.rehydrate();
+  }, []);
 
-    const newItem: InvoiceItem = {
-      productId: prod.id,
-      sku: prod.sku,
-      taxId: prod.taxId,
-      productName: prod.name,
-      unit: prod.mainUnit,
-      quantity: itemQty,
-      unitPrice: itemPrice,
-      buyPrice: prod.lastBuyPrice,
-      discountPercent: itemDiscount,
-      discountAmount,
-      taxPercent: prod.taxPercent,
-      taxAmount,
-      totalPrice
+  useEffect(() => {
+    if (!shouldPrint || !printInvoice) return;
+    const id = window.setTimeout(() => {
+      if (Capacitor.isNativePlatform()) {
+        void NativePrint.printPage();
+      } else {
+        window.print();
+      }
+      setShouldPrint(false);
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [shouldPrint, printInvoice]);
+
+  // Make the phone's back button/gesture navigate inside the app instead of
+  // closing it: every screen change pushes a history entry, and going back
+  // just pops to the previous one.
+  const pendingNavRef = useRef<View | null>(null);
+  useEffect(() => {
+    window.history.replaceState({ view: "home" }, "");
+    function onPopState(e: PopStateEvent) {
+      setSidebarOpen(false);
+      setMenuOpen(false);
+      if (pendingNavRef.current) {
+        const next = pendingNavRef.current;
+        pendingNavRef.current = null;
+        goTo(next);
+        return;
+      }
+      setView((e.state?.view as View | undefined) ?? "home");
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // The native WebView's own canGoBack()/goBack() doesn't reliably track
+  // client-side pushState() navigations, which was letting the hardware
+  // back button fall through and close the app from inside a menu/dialog.
+  // Take the hardware back button over explicitly and drive it from our
+  // own history depth counter instead.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = App.addListener("backButton", () => {
+      if (navDepth() > 0) {
+        window.history.back();
+      } else {
+        void App.exitApp();
+      }
+    });
+    return () => {
+      void handle.then((h) => h.remove());
     };
+  }, []);
 
-    setInvoiceItems([...invoiceItems, newItem]);
-    setSelectedProdId('');
-    setItemQty(1);
-    setItemPrice(0);
-    setItemDiscount(0);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setInvoiceItems(invoiceItems.filter((_, i) => i !== index));
-  };
-
-  const handleAddPayment = () => {
-    if (payAmount <= 0) return;
-    setPayments([...payments, { type: payType, amount: payAmount, refCode: payRef, bankName: payBank }]);
-    setPayAmount(0);
-    setPayRef('');
-    setPayBank('');
-  };
-
-  // Calculations
-  const subtotal = invoiceItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  const totalDiscount = invoiceItems.reduce((acc, item) => acc + item.discountAmount, 0);
-  const totalTax = invoiceItems.reduce((acc, item) => acc + item.taxAmount, 0);
-  const grandTotal = subtotal - totalDiscount + totalTax + Number(shippingCost || 0);
-  const paidAmount = payments.reduce((acc, p) => acc + p.amount, 0);
-  const remainingAmount = grandTotal - paidAmount;
-
-  const handleSaveInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    const contact = contacts.find(c => c.id === selectedContactId);
-    if (!contact || invoiceItems.length === 0) return;
-
-    const newInvoice: AdvancedInvoice = {
-      id: editingInvoiceId || Date.now().toString(),
-      invoiceNumber: invNumber,
-      taxInvoiceId: invTaxId,
-      type: invType,
-      contactId: contact.id,
-      contactName: `${contact.name} ${contact.lastName || ''}`,
-      contactNationalId: contact.nationalId,
-      contactMobile: contact.mobile,
-      contactAddress: contact.address,
-      date: invDate,
-      dueDate: invDueDate,
-      items: invoiceItems,
-      subtotal,
-      totalDiscount,
-      totalTax,
-      shippingCost,
-      grandTotal,
-      payments,
-      paidAmount,
-      remainingAmount,
-      status: remainingAmount <= 0 ? 'پرداخت شده' : 'بدهکار',
-      notes: invNotes
+  // Auto-lock: log out after N minutes with no touch/click/key activity,
+  // so a phone left unattended doesn't stay open on real invoice data.
+  useEffect(() => {
+    if (!isAuthenticated || autoLockMinutes <= 0) return;
+    let timer: number;
+    function reset() {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void signOut(), autoLockMinutes * 60 * 1000);
+    }
+    const events = ["click", "touchstart", "keydown"] as const;
+    events.forEach((ev) => window.addEventListener(ev, reset));
+    reset();
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((ev) => window.removeEventListener(ev, reset));
     };
+  }, [isAuthenticated, autoLockMinutes]);
 
-    if (editingInvoiceId) {
-      setInvoices(invoices.map(i => i.id === editingInvoiceId ? newInvoice : i));
+  function goTo(next: View) {
+    pushNav({ view: next });
+    setView(next);
+  }
+
+  function goBack() {
+    window.history.back();
+  }
+
+  function requestPrint(invoice: Invoice) {
+    setPendingPrint(invoice);
+  }
+
+  function runPrint(format: "A4" | "A5") {
+    if (!pendingPrint) return;
+    setPrintFormat(format);
+    setPrintInvoice(pendingPrint);
+    setPendingPrint(null);
+    setShouldPrint(true);
+  }
+
+  function navigate(next: View) {
+    const doc = DOC_VIEWS[next];
+    if (doc) startNewDocument(doc.kind, doc.direction);
+    if (sidebarOpen) {
+      pendingNavRef.current = next;
+      setSidebarOpen(false);
     } else {
-      setInvoices([newInvoice, ...invoices]);
+      goTo(next);
     }
+  }
 
-    setShowInvoiceModal(false);
-  };
+  if (!hydrated || sessionPending) return <BootScreen />;
+  if (!isAuthenticated) return <LoginScreen />;
 
-  const convertPreInvoiceToSale = (inv: AdvancedInvoice) => {
-    const updated = { ...inv, type: 'فاکتور فروش' as const, invoiceNumber: `INV-${1000 + invoices.length + 1}` };
-    setInvoices(invoices.map(i => i.id === inv.id ? updated : i));
-  };
-
-  const isDark = theme === 'dark';
-  const bgMain = isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800';
-  const bgCard = isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm';
-  const bgInput = isDark ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-900';
+  const doc = DOC_VIEWS[view];
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden dir-rtl font-sans ${bgMain}`}>
-      {/* Sidebar */}
-      <aside className={`w-64 border-l p-4 flex flex-col ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="text-xl font-bold text-center py-3 border-b border-slate-800/40 text-indigo-500">نرم‌افزار دیوان</div>
-        <nav className="flex-1 space-y-1 mt-4 text-sm">
-          <button onClick={() => setActiveTab('invoices')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'invoices' ? 'bg-indigo-600 text-white font-bold' : ''}`}>مدیریت فاکتورها</button>
-          <button onClick={() => setActiveTab('inventory')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'inventory' ? 'bg-indigo-600 text-white font-bold' : ''}`}>انبارداری و کالاها</button>
-          <button onClick={() => setActiveTab('contacts')} className={`w-full text-right p-2.5 rounded-lg ${activeTab === 'contacts' ? 'bg-indigo-600 text-white font-bold' : ''}`}>طرف حساب‌ها (اشخاص)</button>
-        </nav>
-      </aside>
+    <div className="min-h-dvh bg-background text-foreground">
+      <header className="no-print border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="منو" onClick={() => setSidebarOpen(true)}>
+              <Menu className="size-5" />
+            </Button>
+          </div>
+          {view === "home" ? (
+            <div className="text-center">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground">سامانه جامع حسابداری</p>
+              <h1 className="text-xl font-semibold text-balance">دیوان</h1>
+            </div>
+          ) : (
+            <h1 className="text-base font-semibold text-balance">{VIEW_TITLES[view]}</h1>
+          )}
+          <div className="relative flex items-center gap-1">
+            {view === "home" ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="گزینه‌های بیشتر"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                <MoreVertical className="size-5" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="icon" aria-label="بازگشت" onClick={goBack}>
+                <ArrowRight className="size-5" />
+              </Button>
+            )}
+            {menuOpen ? (
+              <>
+                <button
+                  aria-label="بستن"
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="absolute left-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void signOut();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-rose-600 hover:bg-muted"
+                  >
+                    <LogOut className="size-4" />
+                    خروج
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </header>
+      <SyncStatusBadge />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6 space-y-6">
-        <header className="flex justify-between items-center border-b pb-4">
-          <h1 className="text-xl font-bold text-indigo-500">سیستم صدور و مدیریت جامع فاکتورها</h1>
-          <button onClick={() => handleOpenInvoiceModal()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2">
-            <Plus className="w-4 h-4" /> صدور فاکتور جدید
-          </button>
-        </header>
+      {sidebarOpen ? (
+        <div className="no-print fixed inset-0 z-50">
+          <button
+            aria-label="بستن منو"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside className="absolute inset-y-0 right-0 flex h-full w-72 max-w-[80vw] flex-col bg-card px-3 py-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between px-2">
+              <span className="font-semibold">منوی دیوان</span>
+              <Button variant="ghost" size="icon" aria-label="بستن" onClick={() => setSidebarOpen(false)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+            <nav className="grid gap-1">
+              <button
+                onClick={() => {
+                  pendingNavRef.current = "home";
+                  setSidebarOpen(false);
+                }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"
+              >
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Menu className="size-4" />
+                </span>
+                صفحه اصلی
+              </button>
+              {SIDEBAR_ITEMS.map((it) => (
+                <button
+                  key={it.view}
+                  onClick={() => navigate(it.view)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted"
+                >
+                  <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <it.icon className="size-4" />
+                  </span>
+                  {it.title}
+                </button>
+              ))}
+            </nav>
+            <p className="mt-auto pt-4 text-center text-xs text-muted-foreground">نسخه {APP_VERSION}</p>
+          </aside>
+        </div>
+      ) : null}
 
-        {/* Invoices List */}
-        {activeTab === 'invoices' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">تعداد کل فاکتورها</p>
-                <p className="text-lg font-bold text-indigo-400 mt-1">{invoices.length} فاکتور</p>
-              </div>
-              <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مجموع فروش کل</p>
-                <p className="text-lg font-bold text-emerald-400 mt-1">
-                  {invoices.filter(i => i.type === 'فاکتور فروش').reduce((acc, i) => acc + i.grandTotal, 0).toLocaleString()} ریال
+      <main className="no-print mx-auto max-w-6xl px-4 py-5 pb-24">
+        {view === "home" ? <HomeScreen onNavigate={navigate} /> : null}
+        {doc ? (
+          <Composer
+            kind={doc.kind}
+            direction={doc.direction}
+            onPrint={requestPrint}
+            onDone={() => goTo("home")}
+          />
+        ) : null}
+        {view === "products" ? <ProductManager /> : null}
+        {view === "parties" ? <CustomerManager /> : null}
+        {view === "history" ? (
+          <HistoryPanel onOpen={(kind, direction) => goTo(docView(kind, direction))} onPrint={requestPrint} />
+        ) : null}
+        {view === "finance" ? <FinancePanel /> : null}
+        {view === "ledger" ? <CustomerLedger /> : null}
+        {view === "payments" ? <PaymentsPanel /> : null}
+        {view === "inventory" ? <InventoryPanel /> : null}
+        {view === "reports" ? <ReportsPanel /> : null}
+        {view === "sms-import" ? <SmsImportPanel /> : null}
+        {view === "settings" ? (
+          <SettingsHub onOpen={(v: SettingsView) => goTo(`settings-${v}` as View)} />
+        ) : null}
+
+        {view === "settings-business" ? <BusinessSettingsPanel /> : null}
+        {view === "settings-invoice" ? <InvoiceSettingsPanel /> : null}
+        {view === "settings-software" ? <SoftwareSettingsPanel /> : null}
+      </main>
+
+      {printInvoice ? (
+        <div className={`print-only ${printFormat === "A5" ? "format-a5" : ""}`}>
+          <InvoicePrint invoice={printInvoice} seller={seller} format={printFormat} />
+        </div>
+      ) : null}
+
+      <Dialog open={!!pendingPrint} onOpenChange={(v) => !v && setPendingPrint(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>قالب چاپ</DialogTitle>
+            <DialogDescription>اندازه‌ی کاغذ را برای چاپ یا خروجی PDF انتخاب کنید</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => runPrint("A4")}
+              className="rounded-xl border border-border p-4 text-center hover:bg-muted"
+            >
+              <p className="font-semibold">A4</p>
+              <p className="text-xs text-muted-foreground">استاندارد</p>
+            </button>
+            <button
+              onClick={() => runPrint("A5")}
+              className="rounded-xl border border-border p-4 text-center hover:bg-muted"
+            >
+              <p className="font-semibold">A5</p>
+              <p className="text-xs text-muted-foreground">کوچک</p>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Composer({
+  kind,
+  direction,
+  onPrint,
+  onDone,
+}: {
+  kind: DocKind;
+  direction: DocDirection;
+  onPrint: (invoice: Invoice) => void;
+  onDone: () => void;
+}) {
+  const draft = useInvoiceStore((s) => s.draft);
+  const products = useInvoiceStore((s) => s.products);
+  const customers = useInvoiceStore((s) => s.customers);
+  const viewingId = useInvoiceStore((s) => s.viewingId);
+  const setDraftCustomer = useInvoiceStore((s) => s.setDraftCustomer);
+  const applyCustomer = useInvoiceStore((s) => s.applyCustomer);
+  const addDraftItem = useInvoiceStore((s) => s.addDraftItem);
+  const updateDraftItem = useInvoiceStore((s) => s.updateDraftItem);
+  const removeDraftItem = useInvoiceStore((s) => s.removeDraftItem);
+  const setDraftNotes = useInvoiceStore((s) => s.setDraftNotes);
+  const saveInvoice = useInvoiceStore((s) => s.saveInvoice);
+  const startNewDocument = useInvoiceStore((s) => s.startNewDocument);
+  const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
+  const addCustomer = useInvoiceStore((s) => s.addCustomer);
+  const addProduct = useInvoiceStore((s) => s.addProduct);
+  const docLabel = (kind === "quote" ? "پیش‌فاکتور" : "فاکتور") + " " + (direction === "sale" ? "فروش" : "خرید");
+
+  const [itemOpen, setItemOpen] = useState(false);
+  useBackableOpen(itemOpen, () => setItemOpen(false));
+  const [itemForm, setItemForm] = useState({
+    productId: "",
+    code: "",
+    name: "",
+    unit: "عدد",
+    qty: "1",
+    unitPrice: "",
+    discount: "0",
+    saveToCatalog: true,
+  });
+
+  const sums = useMemo(() => invoiceSums(draft.items), [draft.items]);
+
+  function pickProduct(id: string) {
+    const p = products.find((x) => x.id === id);
+    if (!p) {
+      setItemForm((f) => ({ ...f, productId: "", name: "", code: "", unitPrice: "" }));
+      return;
+    }
+    setItemForm((f) => ({
+      ...f,
+      productId: p.id,
+      code: p.code,
+      name: p.name,
+      unit: p.unit,
+      unitPrice: String(p.unitPrice),
+    }));
+  }
+
+  function submitItem() {
+    const name = itemForm.name.trim();
+    const qty = parseAmount(itemForm.qty);
+    const unitPrice = parseAmount(itemForm.unitPrice);
+    if (!name || qty <= 0) {
+      toast.error("نام کالا و تعداد را وارد کنید");
+      return;
+    }
+    let productId = itemForm.productId || undefined;
+    if (itemForm.saveToCatalog && !productId) {
+      productId = addProduct({
+        code: itemForm.code.trim(),
+        name,
+        unit: itemForm.unit.trim() || "عدد",
+        unitPrice,
+      });
+    }
+    addDraftItem({
+      productId,
+      code: itemForm.code.trim(),
+      name,
+      unit: itemForm.unit.trim() || "عدد",
+      qty,
+      unitPrice,
+      discount: parseAmount(itemForm.discount),
+    });
+    setItemForm({
+      productId: "",
+      code: "",
+      name: "",
+      unit: "عدد",
+      qty: "1",
+      unitPrice: "",
+      discount: "0",
+      saveToCatalog: true,
+    });
+    setItemOpen(false);
+    toast.success("کالا به فاکتور اضافه شد");
+  }
+
+  function persist() {
+    const inv = saveInvoice();
+    if (!inv) {
+      toast.error("نام طرف‌حساب و حداقل یک کالا لازم است");
+      return null;
+    }
+    toast.success(`${docLabel} ${toFaDigits(inv.number)} ذخیره شد`);
+    return inv;
+  }
+
+  function convertToInvoice() {
+    if (!viewingId) return;
+    const saved = saveInvoice();
+    const id = saved?.id ?? viewingId;
+    const invoice = convertQuoteToInvoice(id);
+    if (!invoice) {
+      toast.error("این پیش‌فاکتور قبلاً به فاکتور تبدیل شده است");
+      return;
+    }
+    toast.success(`فاکتور ${toFaDigits(invoice.number)} ساخته شد`);
+    onDone();
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>
+                {viewingId ? `ویرایش ${docLabel}` : `صدور ${docLabel}`}{" "}
+                <span className="tabular-nums">{toFaDigits(draft.number)}</span>
+              </CardTitle>
+              <CardDescription>تاریخ {formatJalali(draft.date)}</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => startNewDocument(kind, direction)}>
+                {docLabel} تازه
+              </Button>
+              <Button variant="secondary" onClick={() => void persist()}>
+                <Save className="size-4" />
+                ذخیره
+              </Button>
+              {kind === "quote" ? (
+                <Button variant="secondary" onClick={convertToInvoice}>
+                  <FileCheck2 className="size-4" />
+                  تبدیل به فاکتور
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => {
+                  const inv = persist();
+                  if (inv) onPrint(inv);
+                }}
+              >
+                <Printer className="size-4" />
+                چاپ / PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-3">
+            <Field label="انتخاب طرف‌حساب ذخیره‌شده">
+              <select
+                className="flex h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
+                value={draft.customer.id}
+                onChange={(e) => {
+                  if (e.target.value) applyCustomer(e.target.value);
+                }}
+              >
+                <option value="">انتخاب کنید یا نام را بنویسید</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="نام طرف‌حساب">
+              <Input
+                value={draft.customer.name}
+                onChange={(e) => setDraftCustomer({ ...draft.customer, name: e.target.value })}
+                placeholder="نام طرف‌حساب را وارد کنید"
+              />
+            </Field>
+            <Field label="شناسه ملی">
+              <Input
+                value={draft.customer.nationalId}
+                onChange={(e) =>
+                  setDraftCustomer({ ...draft.customer, nationalId: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="شماره اقتصادی">
+              <Input
+                value={draft.customer.economicCode}
+                onChange={(e) =>
+                  setDraftCustomer({ ...draft.customer, economicCode: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="تلفن">
+              <Input
+                value={draft.customer.phone}
+                onChange={(e) => setDraftCustomer({ ...draft.customer, phone: e.target.value })}
+              />
+            </Field>
+            <LocationFields
+              value={draft.customer}
+              onChange={(loc) => setDraftCustomer({ ...draft.customer, ...loc })}
+            />
+            <Field label="نشانی کامل" >
+              <Input
+                value={draft.customer.address}
+                onChange={(e) => setDraftCustomer({ ...draft.customer, address: e.target.value })}
+              />
+            </Field>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                if (!draft.customer.name.trim()) {
+                  toast.error("ابتدا نام طرف‌حساب را بنویسید");
+                  return;
+                }
+                const id = addCustomer({ ...draft.customer });
+                setDraftCustomer({ ...draft.customer, id });
+                toast.success("طرف‌حساب در دفتر ذخیره شد");
+              }}
+            >
+              <Users className="size-4" />
+              ذخیره این طرف‌حساب
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>کالاها و خدمات</CardTitle>
+              <CardDescription>از فهرست انتخاب کنید یا کالای جدید بسازید</CardDescription>
+            </div>
+            <Button onClick={() => setItemOpen(true)}>
+              <Plus className="size-4" />
+              افزودن کالا
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {draft.items.length === 0 ? (
+            <p className="rounded-xl bg-muted px-4 py-8 text-center text-sm text-muted-foreground">
+              هنوز کالایی اضافه نشده. دکمه «افزودن کالا» را بزنید.
+            </p>
+          ) : (
+            <ul className="grid gap-2">
+              {draft.items.map((item, i) => {
+                const t = lineTotals(item.qty, item.unitPrice, item.discount);
+                return (
+                  <li
+                    key={item.id}
+                    className="grid gap-2 rounded-xl bg-muted/70 p-3"
+                  >
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {toFaDigits(i + 1)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        کد {toFaDigits(item.code || "—")} · {toFaDigits(item.qty)} {item.unit} ·{" "}
+                        {formatRial(item.unitPrice)} ریال
+                      </p>
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        <Input
+                          inputMode="numeric"
+                          aria-label="تعداد"
+                          value={item.qty}
+                          onChange={(e) =>
+                            updateDraftItem(item.id, { qty: parseAmount(e.target.value) })
+                          }
+                        />
+                        <Input
+                          inputMode="numeric"
+                          aria-label="قیمت واحد"
+                          value={item.unitPrice}
+                          onChange={(e) =>
+                            updateDraftItem(item.id, { unitPrice: parseAmount(e.target.value) })
+                          }
+                        />
+                        <Input
+                          inputMode="numeric"
+                          aria-label="تخفیف"
+                          value={item.discount}
+                          onChange={(e) =>
+                            updateDraftItem(item.id, { discount: parseAmount(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <p className="mt-1 text-sm tabular-nums">
+                        قابل پرداخت: {formatRial(t.payable)} ریال
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="حذف کالا"
+                      onClick={() => removeDraftItem(item.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="grid gap-1 rounded-xl bg-primary px-4 py-3 text-primary-foreground">
+            <div className="flex justify-between text-sm">
+              <span>جمع پس از تخفیف</span>
+              <span className="tabular-nums">{formatRial(sums.afterDiscount)} ریال</span>
+            </div>
+            <div className="flex justify-between text-sm opacity-80">
+              <span>مالیات ارزش افزوده ۹٪</span>
+              <span className="tabular-nums">{formatRial(sums.vat)} ریال</span>
+            </div>
+            <div className="mt-1 flex justify-between text-base font-semibold">
+              <span>جمع قابل پرداخت</span>
+              <span className="tabular-nums">{formatRial(sums.payable)} ریال</span>
+            </div>
+          </div>
+
+          <Field label="توضیحات فاکتور">
+            <Textarea
+              value={draft.notes}
+              onChange={(e) => setDraftNotes(e.target.value)}
+              placeholder="شرایط و نحوه فروش"
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Dialog open={itemOpen} onOpenChange={setItemOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>افزودن کالا به فاکتور</DialogTitle>
+            <DialogDescription>
+              از کالاهای ذخیره‌شده انتخاب کنید یا نام کالای جدید را بنویسید.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Field label="از فهرست کالاها">
+              <select
+                className="flex h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
+                value={itemForm.productId}
+                onChange={(e) => pickProduct(e.target.value)}
+              >
+                <option value="">کالای جدید</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="نام کالا">
+              <Input
+                value={itemForm.name}
+                onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="نام کالا یا خدمت"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="کد کالا">
+                <Input
+                  value={itemForm.code}
+                  onChange={(e) => setItemForm((f) => ({ ...f, code: e.target.value }))}
+                />
+              </Field>
+              <Field label="واحد">
+                <Input
+                  value={itemForm.unit}
+                  onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))}
+                />
+              </Field>
+              <Field label="تعداد">
+                <Input
+                  inputMode="numeric"
+                  value={itemForm.qty}
+                  onChange={(e) => setItemForm((f) => ({ ...f, qty: e.target.value }))}
+                />
+              </Field>
+              <Field label="قیمت واحد (ریال)">
+                <Input
+                  inputMode="numeric"
+                  value={itemForm.unitPrice}
+                  onChange={(e) => setItemForm((f) => ({ ...f, unitPrice: e.target.value }))}
+                />
+              </Field>
+              <Field label="تخفیف (ریال)" className="col-span-2">
+                <Input
+                  inputMode="numeric"
+                  value={itemForm.discount}
+                  onChange={(e) => setItemForm((f) => ({ ...f, discount: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={itemForm.saveToCatalog}
+                onChange={(e) =>
+                  setItemForm((f) => ({ ...f, saveToCatalog: e.target.checked }))
+                }
+              />
+              ذخیره در فهرست کالاها
+            </label>
+            <Button onClick={submitItem}>افزودن به فاکتور</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ProductManager() {
+  const products = useInvoiceStore((s) => s.products);
+  const addProduct = useInvoiceStore((s) => s.addProduct);
+  const updateProduct = useInvoiceStore((s) => s.updateProduct);
+  const removeProduct = useInvoiceStore((s) => s.removeProduct);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyProduct());
+  useBackableOpen(open, () => setOpen(false));
+
+  function openNew() {
+    setEditing(null);
+    setForm(emptyProduct());
+    setOpen(true);
+  }
+  function openEdit(p: Product) {
+    setEditing(p.id);
+    setForm({ code: p.code, name: p.name, unit: p.unit, unitPrice: p.unitPrice });
+    setOpen(true);
+  }
+  function save() {
+    if (!form.name.trim()) {
+      toast.error("نام کالا لازم است");
+      return;
+    }
+    if (editing) {
+      updateProduct(editing, form);
+      toast.success("کالا به‌روز شد");
+    } else {
+      addProduct(form);
+      toast.success("کالا اضافه شد");
+    }
+    setOpen(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>فهرست کالاها</CardTitle>
+            <CardDescription>کالاهای پرکاربرد را یک‌بار تعریف کنید</CardDescription>
+          </div>
+          <Button onClick={openNew}>
+            <Plus className="size-4" />
+            کالای جدید
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {products.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">کالایی ثبت نشده است.</p>
+        ) : (
+          products.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
+            >
+              <div className="min-w-0">
+                <p className="font-medium">{p.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  کد {toFaDigits(p.code || "—")} · {formatRial(p.unitPrice)} ریال / {p.unit}
                 </p>
               </div>
-              <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">مطالبات (بدهکاران)</p>
-                <p className="text-lg font-bold text-rose-400 mt-1">
-                  {invoices.reduce((acc, i) => acc + i.remainingAmount, 0).toLocaleString()} ریال
-                </p>
-              </div>
-              <div className={`p-4 border rounded-xl ${bgCard}`}>
-                <p className="text-xs text-slate-400">پیش‌فاکتورها</p>
-                <p className="text-lg font-bold text-amber-400 mt-1">
-                  {invoices.filter(i => i.type === 'پیش‌فاکتور').length} عدد
-                </p>
+              <div className="flex">
+                <Button variant="ghost" size="icon" aria-label="ویرایش" onClick={() => openEdit(p)}>
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="حذف"
+                  onClick={() => removeProduct(p.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
             </div>
+          ))
+        )}
+      </CardContent>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "ویرایش کالا" : "کالای جدید"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Field label="نام کالا">
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="کد">
+                <Input
+                  value={form.code}
+                  onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                />
+              </Field>
+              <Field label="واحد">
+                <Input
+                  value={form.unit}
+                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <Field label="قیمت واحد (ریال)">
+              <Input
+                inputMode="numeric"
+                value={form.unitPrice || ""}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, unitPrice: parseAmount(e.target.value) }))
+                }
+              />
+            </Field>
+            <Button onClick={save}>ذخیره کالا</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {invoices.map((inv) => (
-                <div key={inv.id} className={`p-4 border rounded-xl flex flex-col justify-between space-y-3 ${bgCard}`}>
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">{inv.invoiceNumber}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded ${
-                        inv.type === 'فاکتور فروش' ? 'bg-emerald-500/10 text-emerald-400' :
-                        inv.type === 'پیش‌فاکتور' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
-                      }`}>{inv.type}</span>
-                    </div>
-                    <h3 className="font-bold text-sm mt-2 text-indigo-300">{inv.contactName}</h3>
-                    <p className="text-xs text-slate-400 mt-1">تاریخ: {inv.date} | اقلام: {inv.items.length} کالا</p>
-                    <div className="flex justify-between items-center text-xs mt-2 p-2 bg-slate-950/40 rounded border border-slate-800">
-                      <span>مبلغ کل: <strong className="text-indigo-400">{inv.grandTotal.toLocaleString()} ریال</strong></span>
-                      <span>مانده: <strong className={inv.remainingAmount > 0 ? "text-rose-400" : "text-emerald-400"}>{inv.remainingAmount.toLocaleString()}</strong></span>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                    <button onClick={() => setPreviewInvoice(inv)} className="p-1.5 text-indigo-400 hover:bg-indigo-500/10 rounded-lg flex items-center gap-1">
-                      <Printer className="w-3.5 h-3.5" /> مشاهده / چاپ
-                    </button>
-                    {inv.type === 'پیش‌فاکتور' && (
-                      <button onClick={() => convertPreInvoiceToSale(inv)} className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg flex items-center gap-1">
-                        <ArrowRightLeft className="w-3.5 h-3.5" /> تبدیل به فروش
-                      </button>
-                    )}
-                    <button onClick={() => handleOpenInvoiceModal(inv)} className="p-1.5 text-slate-400 hover:bg-slate-500/10 rounded-lg flex items-center gap-1">
-                      <Edit className="w-3.5 h-3.5" /> ویرایش
-                    </button>
-                  </div>
+function CustomerManager() {
+  const customers = useInvoiceStore((s) => s.customers);
+  const addCustomer = useInvoiceStore((s) => s.addCustomer);
+  const updateCustomer = useInvoiceStore((s) => s.updateCustomer);
+  const removeCustomer = useInvoiceStore((s) => s.removeCustomer);
+  const applyCustomer = useInvoiceStore((s) => s.applyCustomer);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyCustomer());
+  const [query, setQuery] = useState("");
+  useBackableOpen(open, () => setOpen(false));
+
+  function openNew() {
+    setEditing(null);
+    setForm(emptyCustomer());
+    setOpen(true);
+  }
+  function openEdit(c: Customer) {
+    setEditing(c.id);
+    const { id: _id, ...rest } = c;
+    setForm(rest);
+    setOpen(true);
+  }
+  function save() {
+    if (!form.name.trim()) {
+      toast.error("نام طرف‌حساب لازم است");
+      return;
+    }
+    if (editing) {
+      updateCustomer(editing, form);
+      toast.success("طرف‌حساب به‌روز شد");
+    } else {
+      addCustomer(form);
+      toast.success("طرف‌حساب اضافه شد");
+    }
+    setOpen(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <CardTitle>دفتر طرف‌حساب‌ها</CardTitle>
+            <CardDescription>نام و مشخصات طرف‌حساب را نگه دارید</CardDescription>
+          </div>
+          <Button onClick={openNew}>
+            <Plus className="size-4" />
+            طرف‌حساب جدید
+          </Button>
+        </div>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="جست‌وجو بر اساس نام یا تلفن"
+          className="mt-2"
+        />
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {customers
+          .filter((c) => {
+            if (!query.trim()) return true;
+            const q = query.trim().toLowerCase();
+            return c.name.toLowerCase().includes(q) || c.phone.includes(q);
+          })
+          .map((c) => (
+          <div
+            key={c.id}
+            className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
+          >
+            <div className="min-w-0">
+              <p className="font-medium">{c.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {c.city || "—"} · {toFaDigits(c.phone || "—")}
+              </p>
+            </div>
+            <div className="flex">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  applyCustomer(c.id);
+                  toast.success("روی فاکتور جاری قرار گرفت");
+                }}
+              >
+                انتخاب
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="ویرایش" onClick={() => openEdit(c)}>
+                <Pencil className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="حذف"
+                onClick={() => removeCustomer(c.id)}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "ویرایش طرف‌حساب" : "طرف‌حساب جدید"}</DialogTitle>
+          </DialogHeader>
+          <CustomerFields form={form} setForm={setForm} />
+          <Button onClick={save}>ذخیره طرف‌حساب</Button>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+function CustomerFields({
+  form,
+  setForm,
+}: {
+  form: Omit<Customer, "id">;
+  setForm: (fn: (f: Omit<Customer, "id">) => Omit<Customer, "id">) => void;
+}) {
+  return (
+    <div className="grid gap-3">
+      <Field label="نام طرف‌حساب">
+        <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+      </Field>
+      <Field label="کد (اختیاری)">
+        <Input value={form.code ?? ""} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="شناسه ملی">
+          <Input
+            value={form.nationalId}
+            onChange={(e) => setForm((f) => ({ ...f, nationalId: e.target.value }))}
+          />
+        </Field>
+        <Field label="شماره اقتصادی">
+          <Input
+            value={form.economicCode}
+            onChange={(e) => setForm((f) => ({ ...f, economicCode: e.target.value }))}
+          />
+        </Field>
+        <Field label="تلفن">
+          <Input
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          />
+        </Field>
+      </div>
+      <LocationFields value={form} onChange={(loc) => setForm((f) => ({ ...f, ...loc }))} />
+      <Field label="نشانی">
+        <Input
+          value={form.address}
+          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function HistoryPanel({
+  onOpen,
+  onPrint,
+}: {
+  onOpen: (kind: DocKind, direction: DocDirection) => void;
+  onPrint: (invoice: Invoice) => void;
+}) {
+  const invoices = useInvoiceStore((s) => s.invoices);
+  const loadInvoice = useInvoiceStore((s) => s.loadInvoice);
+  const removeInvoice = useInvoiceStore((s) => s.removeInvoice);
+  const restoreInvoice = useInvoiceStore((s) => s.restoreInvoice);
+  const convertQuoteToInvoice = useInvoiceStore((s) => s.convertQuoteToInvoice);
+  const [kindFilter, setKindFilter] = useState<"all" | DocKind>("all");
+  const [dirFilter, setDirFilter] = useState<"all" | DocDirection>("all");
+  const [query, setQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const rows = invoices.filter((i) => {
+    if (showArchived ? !i.void : !!i.void) return false;
+    if (kindFilter !== "all" && i.kind !== kindFilter) return false;
+    if (dirFilter !== "all" && i.direction !== dirFilter) return false;
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      const hay = `${i.customer.name} ${toFaDigits(i.number)} ${i.number}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>سوابق اسناد</CardTitle>
+        <CardDescription>برای چاپ یا ویرایش، سند را باز کنید</CardDescription>
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="جست‌وجو بر اساس نام طرف‌حساب یا شماره سند"
+          className="mt-2"
+        />
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} onClick={() => setKindFilter("all")}>
+            همه
+          </Button>
+          <Button size="sm" variant={kindFilter === "quote" ? "default" : "outline"} onClick={() => setKindFilter("quote")}>
+            پیش‌فاکتورها
+          </Button>
+          <Button size="sm" variant={kindFilter === "invoice" ? "default" : "outline"} onClick={() => setKindFilter("invoice")}>
+            فاکتورها
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={dirFilter === "all" ? "default" : "outline"} onClick={() => setDirFilter("all")}>
+            فروش و خرید
+          </Button>
+          <Button size="sm" variant={dirFilter === "sale" ? "default" : "outline"} onClick={() => setDirFilter("sale")}>
+            فروش
+          </Button>
+          <Button size="sm" variant={dirFilter === "purchase" ? "default" : "outline"} onClick={() => setDirFilter("purchase")}>
+            خرید
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant={showArchived ? "default" : "outline"}
+            onClick={() => setShowArchived((v) => !v)}
+          >
+            {showArchived ? "بازگشت به سوابق فعال" : "آرشیو (باطل‌شده‌ها)"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {showArchived ? "سند باطل‌شده‌ای وجود ندارد." : "هنوز سندی ذخیره نشده."}
+          </p>
+        ) : (
+          rows.map((inv) => (
+            <div
+              key={inv.id}
+              className="flex items-start justify-between gap-3 rounded-xl bg-muted/70 p-3"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant={inv.kind === "invoice" ? "default" : "secondary"}>
+                    {inv.kind === "invoice" ? "فاکتور" : "پیش‌فاکتور"} {inv.direction === "sale" ? "فروش" : "خرید"}
+                  </Badge>
+                  {inv.convertedToId ? <Badge variant="outline">تبدیل شده</Badge> : null}
+                  {inv.void ? <Badge variant="outline">باطل‌شده</Badge> : null}
+                </div>
+                <p className="mt-1 font-medium">
+                  {toFaDigits(inv.number)} — {inv.customer.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatJalali(inv.date)} · {formatRial(invoiceSums(inv.items).payable)} ریال
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-end">
+                {inv.void ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      restoreInvoice(inv.id);
+                      toast.success("سند بازگردانی شد");
+                    }}
+                  >
+                    بازگردانی
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        loadInvoice(inv.id);
+                        onOpen(inv.kind, inv.direction);
+                      }}
+                    >
+                      ویرایش
+                    </Button>
+                    {inv.kind === "quote" && !inv.convertedToId ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="تبدیل به فاکتور"
+                        onClick={() => {
+                          const created = convertQuoteToInvoice(inv.id);
+                          if (created) toast.success(`فاکتور ${toFaDigits(created.number)} ساخته شد`);
+                        }}
+                      >
+                        <FileCheck2 className="size-4" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="چاپ"
+                      onClick={() => onPrint(inv)}
+                    >
+                      <Printer className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="ابطال"
+                      onClick={() => removeInvoice(inv.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BusinessSettingsPanel() {
+  const seller = useInvoiceStore((s) => s.seller);
+  const setSeller = useInvoiceStore((s) => s.setSeller);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSeller({ ...seller, logo: String(reader.result ?? "") });
+      toast.success("آیکن ذخیره شد");
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>نام کسب‌وکار</CardTitle>
+        <CardDescription>این اطلاعات روی همه اسناد چاپ می‌شود</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <Field label="آیکن کسب‌وکار">
+          <div className="flex items-center gap-3">
+            {seller.logo ? (
+              <img src={seller.logo} alt="آیکن کسب‌وکار" className="size-14 rounded-xl object-cover" />
+            ) : (
+              <div className="grid size-14 place-items-center rounded-xl bg-muted text-xs text-muted-foreground">
+                بدون آیکن
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => logoInputRef.current?.click()}>
+                {seller.logo ? "تغییر آیکن" : "افزودن آیکن"}
+              </Button>
+              {seller.logo ? (
+                <Button type="button" variant="ghost" onClick={() => setSeller({ ...seller, logo: undefined })}>
+                  حذف
+                </Button>
+              ) : null}
+            </div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoChange}
+            />
+          </div>
+        </Field>
+        <Field label="نام کسب‌وکار">
+          <Input value={seller.name} onChange={(e) => setSeller({ ...seller, name: e.target.value })} />
+        </Field>
+        <Field label="تلفن">
+          <Input value={seller.phone} onChange={(e) => setSeller({ ...seller, phone: e.target.value })} />
+        </Field>
+        <LocationFields value={seller} onChange={(loc) => setSeller({ ...seller, ...loc })} />
+        <Field label="کدپستی">
+          <Input
+            value={seller.postalCode}
+            onChange={(e) => setSeller({ ...seller, postalCode: e.target.value })}
+          />
+        </Field>
+        <Field label="نشانی">
+          <Input value={seller.address} onChange={(e) => setSeller({ ...seller, address: e.target.value })} />
+        </Field>
+        <div>
+          <Button
+            onClick={() => {
+              setSeller({ ...seller });
+              toast.success("مشخصات کسب‌وکار ذخیره شد");
+            }}
+          >
+            ذخیره
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InvoiceSettingsPanel() {
+  const seller = useInvoiceStore((s) => s.seller);
+  const setSeller = useInvoiceStore((s) => s.setSeller);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>تنظیمات فاکتور</CardTitle>
+        <CardDescription>کدهای رسمی که در سربرگ فاکتور چاپ می‌شود</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <Field label="شناسه ملی">
+          <Input
+            value={seller.nationalId}
+            onChange={(e) => setSeller({ ...seller, nationalId: e.target.value })}
+          />
+        </Field>
+        <Field label="شماره اقتصادی">
+          <Input
+            value={seller.economicCode}
+            onChange={(e) => setSeller({ ...seller, economicCode: e.target.value })}
+          />
+        </Field>
+        <Field label="شماره ثبت">
+          <Input
+            value={seller.registrationNo}
+            onChange={(e) => setSeller({ ...seller, registrationNo: e.target.value })}
+          />
+        </Field>
+        <Field label="کد رهگیری">
+          <Input
+            value={seller.trackingCode}
+            onChange={(e) => setSeller({ ...seller, trackingCode: e.target.value })}
+          />
+        </Field>
+        <div>
+          <Button
+            onClick={() => {
+              setSeller({ ...seller });
+              toast.success("تنظیمات فاکتور ذخیره شد");
+            }}
+          >
+            ذخیره
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SoftwareSettingsPanel() {
+  const { data: session } = useSession();
+  const [users, setUsers] = useState<{ id: string; email: string; name: string }[]>([]);
+  const exportData = useInvoiceStore((s) => s.exportData);
+  const importData = useInvoiceStore((s) => s.importData);
+  const smsBankSenders = useInvoiceStore((s) => s.smsBankSenders);
+  const addSmsBankSender = useInvoiceStore((s) => s.addSmsBankSender);
+  const removeSmsBankSender = useInvoiceStore((s) => s.removeSmsBankSender);
+  const autoLockMinutes = useInvoiceStore((s) => s.autoLockMinutes);
+  const setAutoLockMinutes = useInvoiceStore((s) => s.setAutoLockMinutes);
+  const [smsSender, setSmsSender] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function refreshUsers() {
+    listTeamUsers()
+      .then(setUsers)
+      .catch(() => toast.error("خواندن فهرست کاربران ناموفق بود"));
+  }
+
+  useEffect(() => {
+    refreshUsers();
+  }, []);
+
+  function saveSmsSender() {
+    if (!smsSender.trim()) {
+      toast.error("شماره یا نام فرستنده را وارد کنید");
+      return;
+    }
+    addSmsBankSender(smsSender.trim());
+    setSmsSender("");
+    toast.success("افزوده شد");
+  }
+
+  async function save() {
+    if (!name.trim() || !email.trim() || !password) {
+      toast.error("نام، ایمیل و رمز عبور را وارد کنید");
+      return;
+    }
+    try {
+      await addTeamUser({ data: { email: email.trim(), password, name: name.trim() } });
+      toast.success("کاربر اضافه شد");
+      setName("");
+      setEmail("");
+      setPassword("");
+      refreshUsers();
+    } catch {
+      toast.error("افزودن کاربر ناموفق بود (شاید این ایمیل قبلاً ثبت شده)");
+    }
+  }
+
+  async function remove(id: string, userName: string) {
+    if (session?.user.id === id) {
+      toast.error("نمی‌توانید حساب خودتان را حذف کنید");
+      return;
+    }
+    try {
+      await removeTeamUser({ data: id });
+      toast.success(`${userName} حذف شد`);
+      refreshUsers();
+    } catch {
+      toast.error("حذف کاربر ناموفق بود");
+    }
+  }
+
+  const [driveBusy, setDriveBusy] = useState(false);
+
+  async function handleDriveBackup() {
+    if (GOOGLE_CLIENT_ID.startsWith("REPLACE_WITH")) {
+      toast.error("هنوز اتصال Google Drive راه‌اندازی نشده است");
+      return;
+    }
+    setDriveBusy(true);
+    try {
+      const json = exportData();
+      const filename = `divan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      await backupToDrive(json, filename);
+      toast.success("پشتیبان در Google Drive ذخیره شد");
+    } catch {
+      toast.error("ارسال به Google Drive ناموفق بود");
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
+  async function handleExport() {
+    const json = exportData();
+    const filename = `divan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const file = new File([json], filename, { type: "application/json" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      }
+    } catch {
+      // fall through to download
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("فایل پشتیبان دانلود شد");
+  }
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const ok = importData(String(reader.result ?? ""));
+      if (ok) toast.success("اطلاعات بازگردانی شد");
+      else toast.error("فایل معتبر نیست");
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>قفل خودکار</CardTitle>
+          <CardDescription>بعد از این مدت بی‌کاری، خودکار خارج می‌شوید</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center gap-2">
+          <Input
+            inputMode="numeric"
+            value={String(autoLockMinutes)}
+            onChange={(e) => setAutoLockMinutes(Number(e.target.value) || 0)}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">دقیقه (صفر یعنی غیرفعال)</span>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>پشتیبان‌گیری</CardTitle>
+          <CardDescription>خروجی از همه‌ی اطلاعات، یا بازگردانی از فایل قبلی</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          <Button onClick={handleExport}>خروجی گرفتن (JSON)</Button>
+          <Button variant="outline" onClick={handleImportClick}>
+            بازگردانی از فایل
+          </Button>
+          <Button variant="secondary" onClick={handleDriveBackup} disabled={driveBusy}>
+            {driveBusy ? "در حال ارسال..." : "پشتیبان‌گیری خودکار در Google Drive"}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <p className="text-xs text-muted-foreground">
+            بعد از خروجی گرفتن، از منوی اشتراک‌گذاری گوشی می‌توانید فایل را در Google Drive یا هر جای دیگر ذخیره کنید.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>شماره‌های پیامک بانکی</CardTitle>
+          <CardDescription>فقط پیامک‌های این فرستنده‌ها برای «وارد کردن از پیامک بانکی» خوانده می‌شود</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {smsBankSenders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">هنوز شماره‌ای ثبت نشده.</p>
+          ) : (
+            <div className="grid gap-2">
+              {smsBankSenders.map((s) => (
+                <div key={s} className="flex items-center justify-between rounded-xl bg-muted/70 p-3">
+                  <span className="font-medium" dir="ltr">
+                    {s}
+                  </span>
+                  <Button variant="ghost" size="icon" aria-label="حذف" onClick={() => removeSmsBankSender(s)}>
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
               ))}
             </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={smsSender}
+              onChange={(e) => setSmsSender(e.target.value)}
+              placeholder="مثلاً 30007256 یا Bank Melli"
+              dir="ltr"
+            />
+            <Button onClick={saveSmsSender}>
+              <Plus className="size-4" />
+              افزودن
+            </Button>
           </div>
-        )}
+        </CardContent>
+      </Card>
 
-        {/* Invoice Creation / Edition Modal */}
-        {showInvoiceModal && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className={`w-full max-w-5xl border rounded-2xl p-6 space-y-6 my-8 ${bgCard}`}>
-              <div className="flex justify-between items-center border-b pb-3">
-                <h3 className="font-bold text-lg text-indigo-400">{editingInvoiceId ? 'ویرایش فاکتور' : 'صدور فاکتور جدید (کامل)'}</h3>
-                <button onClick={() => setShowInvoiceModal(false)}><X className="w-5 h-5" /></button>
+      <Card>
+        <CardHeader>
+          <CardTitle>کاربران</CardTitle>
+          <CardDescription>افرادی که می‌توانند وارد برنامه شوند</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center justify-between rounded-xl bg-muted/70 p-3">
+              <div className="min-w-0">
+                <p className="font-medium">{u.name}</p>
+                <p className="text-xs text-muted-foreground" dir="ltr">
+                  {u.email}
+                </p>
               </div>
-
-              <form onSubmit={handleSaveInvoice} className="space-y-6">
-                {/* 1. سربرگ فاکتور */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">نوع فاکتور</label>
-                    <select value={invType} onChange={(e: any) => setInvType(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`}>
-                      <option value="فاکتور فروش">فاکتور فروش</option>
-                      <option value="پیش‌فاکتور">پیش‌فاکتور</option>
-                      <option value="فاکتور خرید">فاکتور خرید</option>
-                      <option value="برگشت از فروش">برگشت از فروش</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">شماره فاکتور</label>
-                    <input type="text" value={invNumber} onChange={e => setInvNumber(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">تاریخ صدور</label>
-                    <input type="text" value={invDate} onChange={e => setInvDate(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">انتخاب طرف حساب (مشتری)</label>
-                    <select value={selectedContactId} onChange={e => setSelectedContactId(e.target.value)} className={`w-full p-2.5 border rounded-lg text-xs ${bgInput}`} required>
-                      <option value="">-- انتخاب کنید --</option>
-                      {contacts.map(c => (
-                        <option key={c.id} value={c.id}>{c.name} {c.lastName} ({c.mobile})</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* 2. افزودن اقلام به فاکتور */}
-                <div className="space-y-3 p-3 bg-slate-950/40 rounded-xl border border-slate-800">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">افزودن کالا / خدمت به فاکتور</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                    <select value={selectedProdId} onChange={e => {
-                      setSelectedProdId(e.target.value);
-                      const p = products.find(prod => prod.id === e.target.value);
-                      if (p) setItemPrice(p.sellPrice);
-                    }} className={`p-2 border rounded-lg text-xs ${bgInput}`}>
-                      <option value="">-- انتخاب کالا --</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} (موجودی: {p.stock})</option>
-                      ))}
-                    </select>
-                    <input type="number" value={itemQty || ''} onChange={e => setItemQty(Number(e.target.value))} placeholder="تعداد / مقدار" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={itemPrice || ''} onChange={e => setItemPrice(Number(e.target.value))} placeholder="قیمت واحد (فی)" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="number" value={itemDiscount || ''} onChange={e => setItemDiscount(Number(e.target.value))} placeholder="درصد تخفیف" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
-                    <button type="button" onClick={handleAddItem} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1">
-                      <Plus className="w-4 h-4" /> افزودن سطر
-                    </button>
-                  </div>
-
-                  {/* جدول اقلام ثبت شده */}
-                  {invoiceItems.length > 0 && (
-                    <div className="overflow-x-auto mt-3">
-                      <table className="w-full text-xs text-right border-collapse">
-                        <thead>
-                          <tr className="bg-slate-900 text-slate-400 border-b border-slate-800">
-                            <th className="p-2">کالا</th>
-                            <th className="p-2">تعداد</th>
-                            <th className="p-2">قیمت واحد</th>
-                            <th className="p-2">تخفیف</th>
-                            <th className="p-2">مالیات</th>
-                            <th className="p-2">جمع نهایی</th>
-                            <th className="p-2 text-center">حذف</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoiceItems.map((item, index) => (
-                            <tr key={index} className="border-b border-slate-800/60">
-                              <td className="p-2 font-bold text-indigo-300">{item.productName}</td>
-                              <td className="p-2">{item.quantity} {item.unit}</td>
-                              <td className="p-2">{item.unitPrice.toLocaleString()}</td>
-                              <td className="p-2">{item.discountAmount.toLocaleString()} ({item.discountPercent}%)</td>
-                              <td className="p-2">{item.taxAmount.toLocaleString()}</td>
-                              <td className="p-2 font-bold text-emerald-400">{item.totalPrice.toLocaleString()}</td>
-                              <td className="p-2 text-center">
-                                <button type="button" onClick={() => handleRemoveItem(index)} className="text-rose-400 hover:text-rose-300"><Trash2 className="w-4 h-4" /></button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. نحوه تسویه و پرداخت‌ها */}
-                <div className="space-y-3 p-3 bg-slate-950/40 rounded-xl border border-slate-800">
-                  <h4 className="text-xs font-bold text-slate-400 border-r-2 border-indigo-500 pr-2">ثبت دریافتی / پرداخت</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <select value={payType} onChange={(e: any) => setPayType(e.target.value)} className={`p-2 border rounded-lg text-xs ${bgInput}`}>
-                      <option value="cash">نقدی</option>
-                      <option value="pos">کارتخوان / واریز به حساب</option>
-                      <option value="cheque">چک</option>
-                    </select>
-                    <input type="number" value={payAmount || ''} onChange={e => setPayAmount(Number(e.target.value))} placeholder="مبلغ دریافتی" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
-                    <input type="text" value={payRef} onChange={e => setPayRef(e.target.value)} placeholder="شماره پیگیری / صیادی" className={`p-2 border rounded-lg text-xs ${bgInput}`} />
-                    <button type="button" onClick={handleAddPayment} className="p-2 bg-slate-800 text-indigo-400 border border-indigo-500/20 rounded-lg text-xs font-bold">افزودن پرداخت</button>
-                  </div>
-                  {payments.length > 0 && (
-                    <div className="space-y-1">
-                      {payments.map((p, i) => (
-                        <p key={i} className="text-[11px] text-slate-400 bg-slate-900 p-1.5 rounded border border-slate-800 flex justify-between">
-                          <span>روش: {p.type === 'cash' ? 'نقدی' : p.type === 'pos' ? 'کارتخوان' : 'چک'} - کد پیگیری: {p.refCode || '-'}</span>
-                          <strong className="text-emerald-400">{p.amount.toLocaleString()} ریال</strong>
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 4. خلاصه محاسبات مالی فاکتور */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs">
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-slate-400 block mb-1">هزینه حمل و نقل (ریال)</label>
-                      <input type="number" value={shippingCost || ''} onChange={e => setShippingCost(Number(e.target.value))} className={`w-full p-2 border rounded-lg ${bgInput}`} />
-                    </div>
-                    <div>
-                      <label className="text-slate-400 block mb-1">توضیحات و یادداشت فاکتور</label>
-                      <input type="text" value={invNotes} onChange={e => setInvNotes(e.target.value)} placeholder="شرایط تسویه، نحوه ارسال و..." className={`w-full p-2 border rounded-lg ${bgInput}`} />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5 text-left flex flex-col justify-center">
-                    <p className="flex justify-between text-slate-400"><span>جمع اولیه اقلام:</span> <span>{subtotal.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between text-rose-400"><span>مجموع تخفیفات:</span> <span>({totalDiscount.toLocaleString()}) ریال</span></p>
-                    <p className="flex justify-between text-slate-400"><span>مجموع مالیات ارزش افزوده:</span> <span>{totalTax.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between text-indigo-400 font-bold text-sm border-t border-slate-800 pt-1"><span>مبلغ نهایی فاکتور:</span> <span>{grandTotal.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between text-emerald-400"><span>مجموع دریافتی:</span> <span>{paidAmount.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between text-rose-400 font-bold"><span>مانده بدهکاری:</span> <span>{remainingAmount.toLocaleString()} ریال</span></p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                  <button type="button" onClick={() => setShowInvoiceModal(false)} className="px-5 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold">انصراف</button>
-                  <button type="submit" className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">ذخیره و ثبت نهایی فاکتور</button>
-                </div>
-              </form>
+              <Button variant="ghost" size="icon" aria-label="حذف کاربر" onClick={() => remove(u.id, u.name)}>
+                <Trash2 className="size-4" />
+              </Button>
             </div>
-          </div>
-        )}
+          ))}
+        </CardContent>
+      </Card>
 
-        {/* Invoice Printable View Modal */}
-        {previewInvoice && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white text-slate-900 w-full max-w-3xl rounded-2xl p-8 space-y-6 my-8 font-sans">
-              <div className="flex justify-between items-center border-b pb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">{previewInvoice.type}</h2>
-                  <p className="text-xs text-slate-500 mt-1">شماره: {previewInvoice.invoiceNumber} | تاریخ: {previewInvoice.date}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => window.print()} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg flex items-center gap-1"><Printer className="w-4 h-4" /> چاپ فاکتور</button>
-                  <button onClick={() => setPreviewInvoice(null)} className="px-3 py-1.5 bg-slate-200 text-slate-800 text-xs font-bold rounded-lg"><X className="w-4 h-4" /></button>
-                </div>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>افزودن کاربر</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <Field label="نام">
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Field label="ایمیل">
+            <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+          <Field label="رمز عبور">
+            <Input type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          <Button onClick={save}>
+            <Plus className="size-4" />
+            افزودن کاربر
+          </Button>
+        </CardContent>
+      </Card>
 
-              {/* Printable Content */}
-              <div className="space-y-4 text-xs">
-                <div className="border p-3 rounded-lg flex justify-between bg-slate-50">
-                  <div>
-                    <p className="font-bold">خریدار / طرف حساب:</p>
-                    <p className="text-sm font-bold text-indigo-900 mt-1">{previewInvoice.contactName}</p>
-                    <p className="text-slate-600 mt-1">کد/شناسه ملی: {previewInvoice.contactNationalId}</p>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-slate-600">شماره همراه: {previewInvoice.contactMobile}</p>
-                    <p className="text-slate-600 mt-1">آدرس: {previewInvoice.contactAddress || '-'}</p>
-                  </div>
-                </div>
-
-                <table className="w-full border-collapse border text-right">
-                  <thead>
-                    <tr className="bg-slate-100 border-b">
-                      <th className="p-2 border">ردیف</th>
-                      <th className="p-2 border">شرح کالا / خدمت</th>
-                      <th className="p-2 border">تعداد</th>
-                      <th className="p-2 border">قیمت واحد</th>
-                      <th className="p-2 border">تخفیف</th>
-                      <th className="p-2 border">مالیات</th>
-                      <th className="p-2 border">مبلغ کل</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewInvoice.items.map((item, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="p-2 border text-center">{idx + 1}</td>
-                        <td className="p-2 border font-bold">{item.productName}</td>
-                        <td className="p-2 border">{item.quantity} {item.unit}</td>
-                        <td className="p-2 border">{item.unitPrice.toLocaleString()}</td>
-                        <td className="p-2 border">{item.discountAmount.toLocaleString()}</td>
-                        <td className="p-2 border">{item.taxAmount.toLocaleString()}</td>
-                        <td className="p-2 border font-bold">{item.totalPrice.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div className="flex justify-between items-start border-t pt-4">
-                  <div className="w-1/2 space-y-1">
-                    <p className="font-bold">توضیحات فاکتور:</p>
-                    <p className="text-slate-600">{previewInvoice.notes || 'فاقد توضیحات تکمیلی.'}</p>
-                  </div>
-                  <div className="w-1/2 space-y-1 text-left">
-                    <p className="flex justify-between"><span>جمع کل اقلام:</span> <span>{previewInvoice.subtotal.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between text-rose-600"><span>تخفیف:</span> <span>({previewInvoice.totalDiscount.toLocaleString()}) ریال</span></p>
-                    <p className="flex justify-between"><span>مالیات ارزش افزوده:</span> <span>{previewInvoice.totalTax.toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between"><span>هزینه حمل:</span> <span>{(previewInvoice.shippingCost || 0).toLocaleString()} ریال</span></p>
-                    <p className="flex justify-between font-bold text-sm border-t pt-1 text-indigo-900"><span>مبلغ قابل پرداخت:</span> <span>{previewInvoice.grandTotal.toLocaleString()} ریال</span></p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+      <p className="text-center text-xs text-muted-foreground">نسخه‌ی برنامه: {APP_VERSION}</p>
     </div>
   );
-};
-
-export default InvoiceApp;
+}
