@@ -1,3 +1,7 @@
+#!/bin/bash
+
+# بازنویسی کامپوننت اصلی فرانت‌اند برای اتصال تمام 8 فاز به ظاهر برنامه
+cat << 'ES1' > src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { InvoiceModule } from './components/InvoiceModule';
 import { Dashboard } from './components/Dashboard';
@@ -138,3 +142,11 @@ const tabStyle = (active: boolean) => ({
 });
 
 export default App;
+ES1
+
+# ثبت تغییرات اصلی UI در Git و Push
+git add .
+git commit -m "Feat: Connect all 8 phases logic to App UI components"
+git push origin main
+
+echo "✅ تمام ۸ فاز به ظاهر برنامه متصل شدند و نسخه جدید روی گیت‌هاب آپلود شد."
