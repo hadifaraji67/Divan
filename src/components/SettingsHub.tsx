@@ -8,12 +8,12 @@ import { BackupRestore } from './BackupRestore';
 
 type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup';
 
-const TABS: { id: Tab; title: string; desc: string; icon: React.ElementType; color: string }[] = [
-  { id: 'general', title: 'عمومی', desc: 'تم، فونت، اعداد', icon: Palette, color: 'indigo' },
-  { id: 'store', title: 'اطلاعات فروشگاه', desc: 'نام، آدرس، مالیات', icon: Store, color: 'emerald' },
-  { id: 'print', title: 'تنظیمات چاپ', desc: 'A4/A5، رسمی، لوگو', icon: Printer, color: 'sky' },
-  { id: 'fiscal', title: 'سال مالی', desc: 'شروع، پایان', icon: Calendar, color: 'violet' },
-  { id: 'backup', title: 'پشتیبان‌گیری', desc: 'ذخیره، بازیابی', icon: Database, color: 'rose' },
+const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
+  { id: 'general', title: 'عمومی', icon: Palette },
+  { id: 'store', title: 'اطلاعات فروشگاه', icon: Store },
+  { id: 'print', title: 'تنظیمات چاپ', icon: Printer },
+  { id: 'fiscal', title: 'سال مالی', icon: Calendar },
+  { id: 'backup', title: 'پشتیبان‌گیری', icon: Database },
 ];
 
 export const SettingsHub: React.FC = () => {
