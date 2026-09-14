@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Trash2, X, ArrowDownLeft, ArrowUpRight, CreditCard } from 'lucide-react';
 import type { Payment } from '../types/models';
 import { loadData, saveData, genId } from '../lib/storage';
+import { notify } from '../lib/toast';
 
 const empty = (): Payment => ({
   id: '', invoiceId: '', contactId: '', contactName: '', type: 'نقد',
@@ -35,8 +36,8 @@ export const PaymentsModule: React.FC = () => {
     setEditing(p); setShowForm(true);
   };
   const save = () => {
-    if (!editing.contactName.trim()) { alert('نام طرف حساب الزامی است'); return; }
-    if (editing.amount <= 0) { alert('مبلغ الزامی است'); return; }
+    if (!editing.contactName.trim()) { notify.warning('نام طرف حساب الزامی است'); return; }
+    if (editing.amount <= 0) { notify.warning('مبلغ الزامی است'); return; }
     setItems(prev => [...prev, editing]);
     setShowForm(false);
   };

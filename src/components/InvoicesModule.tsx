@@ -49,8 +49,8 @@ export const InvoicesModule: React.FC = () => {
   };
 
   const save = () => {
-    if (!editing.contactId) { alert('مشتری را انتخاب کن'); return; }
-    if (editing.items.length === 0) { alert('حداقل یک قلم اضافه کن'); return; }
+    if (!editing.contactId) { notify.warning('مشتری را انتخاب کن'); return; }
+    if (editing.items.length === 0) { notify.warning('حداقل یک قلم اضافه کن'); return; }
     const c = contacts.find(x => x.id === editing.contactId);
     const inv = { ...editing, contactName: c ? (c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`) : '' };
     setInvoices(prev => prev.find(i => i.id === inv.id)

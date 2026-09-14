@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import Sidebar, { type ViewKey } from './components/Sidebar';
 import Header from './components/Header';
+import BottomNav from './components/BottomNav';
 import { UpdateBanner } from './components/UpdateBanner';
+import { notify } from './lib/toast';
+import { useEdgeSwipe } from './lib/use-swipe';
 
 // ماژول‌ها
 import { ContactsModule } from './components/ContactsModule';
@@ -47,6 +50,12 @@ export const App: React.FC = () => {
   const [accounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
 
+  useEdgeSwipe({
+    onOpenRight: () => setSidebarOpen(true),
+    onClose: () => setSidebarOpen(false),
+    isOpen: sidebarOpen,
+  });
+
   const handleSelect = (key: ViewKey) => {
     setActive(key);
     setSidebarOpen(false);
@@ -82,7 +91,7 @@ export const App: React.FC = () => {
         <FiscalYearClosing
           accounts={accounts}
           entries={entries}
-          onCloseFiscalYear={() => { if (confirm('بستن سال مالی؟')) { setEntries([]); alert('سال مالی بسته شد'); } }}
+          onCloseFiscalYear={() => { if (confirm('بستن سال مالی؟')) { setEntries([]); notify.success('سال مالی بسته شد'); } }}
         />
       );
       case 'reports': return <ReportsModule />;
@@ -117,6 +126,11 @@ export const App: React.FC = () => {
           {renderView()}
         </div>
 
+        <BottomNav
+          active={active}
+          onSelect={handleSelect}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
         <UpdateBanner />
       </main>
     </div>

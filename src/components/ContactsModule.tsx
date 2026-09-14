@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'lucide-react';
 import type { Contact } from '../types/models';
 import { loadData, saveData, genId } from '../lib/storage';
+import { notify } from '../lib/toast';
 
 const emptyContact = (): Contact => ({
   id: '', code: '', type: 'حقیقی', name: '', lastName: '', companyName: '',
@@ -47,8 +48,8 @@ export const ContactsModule: React.FC = () => {
   };
 
   const handleSave = () => {
-    if (!editing.name.trim()) { alert('نام الزامی است'); return; }
-    if (!editing.mobile.trim()) { alert('موبایل الزامی است'); return; }
+    if (!editing.name.trim()) { notify.warning('نام الزامی است'); return; }
+    if (!editing.mobile.trim()) { notify.warning('موبایل الزامی است'); return; }
     setContacts(prev => {
       const exists = prev.find(c => c.id === editing.id);
       return exists

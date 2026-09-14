@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Edit, Trash2, X, Package, AlertTriangle } from 'lucide-react';
 import type { Product } from '../types/models';
 import { loadData, saveData, genId } from '../lib/storage';
+import { notify } from '../lib/toast';
 
 const empty = (): Product => ({
   id: '', sku: '', name: '', category: '', unit: 'عدد',
@@ -33,7 +34,7 @@ export const ProductsModule: React.FC = () => {
   };
   const openEdit = (p: Product) => { setEditing({ ...p }); setShowForm(true); };
   const save = () => {
-    if (!editing.name.trim()) { alert('نام کالا الزامی است'); return; }
+    if (!editing.name.trim()) { notify.warning('نام کالا الزامی است'); return; }
     setItems(prev => prev.find(p => p.id === editing.id)
       ? prev.map(p => p.id === editing.id ? editing : p)
       : [...prev, editing]);

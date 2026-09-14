@@ -100,3 +100,123 @@ html.theme-dark .rounded-xl.bg-white {
 html[data-compact="1"] .p-6 { padding: 1rem !important; }
 html[data-compact="1"] .p-4 { padding: 0.75rem !important; }
 html[data-compact="1"] .gap-4 { gap: 0.75rem !important; }
+
+/* ========== انیمیشن‌های بیشتر ========== */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.view-enter { animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-enter { animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* کارت‌ها با انیمیشن hover نرم */
+.card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+/* دکمه‌ها */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* ردیف جدول */
+.row-hover {
+  transition: background-color 0.15s ease;
+}
+
+/* اسکلتون بارگذاری */
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(0,0,0,0.05) 25%,
+    rgba(0,0,0,0.08) 50%,
+    rgba(0,0,0,0.05) 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 8px;
+}
+html.theme-dark .skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%);
+  background-size: 1000px 100%;
+}
+
+/* بهبود input ها */
+input, select, textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* بهبود دکمه‌های primary */
+button[class*="bg-indigo-600"]:hover,
+button[class*="bg-indigo-700"]:hover {
+  box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.35);
+}
+
+/* انیمیشن برچسب */
+.badge-pop {
+  animation: scaleIn 0.15s ease-out;
+}
+
+/* رفع مشکل hover در موبایل */
+@media (hover: none) {
+  .card-hover:hover { transform: none; box-shadow: none; }
+}
+
+/* بهبود اعلان sonner */
+[data-sonner-toaster] [data-sonner-toast] {
+  font-family: "Vazirmatn", sans-serif !important;
+  border-radius: 12px !important;
+}
+
+/* ========== رفع تأخیر لمس ========== */
+button, [role="button"], a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active, [role="button"]:active {
+  transform: scale(0.97);
+  transition: transform 0.06s ease-out;
+}
+
+/* انیمیشن سریع‌تر سایدبار */
+aside {
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* فضای نوار پایین برای موبایل */
+@media (max-width: 768px) {
+  main {
+    padding-bottom: 70px !important;
+  }
+}
+
+/* نوار پایین */
+.bottom-nav-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

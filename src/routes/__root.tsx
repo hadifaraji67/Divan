@@ -54,7 +54,20 @@ export const Route = createRootRoute({
         <div className="app-shell">
           <Outlet />
         </div>
-        <Toaster position="top-center" dir="rtl" richColors closeButton />
+        <Toaster
+          position="top-center"
+          dir="rtl"
+          richColors
+          closeButton
+          expand
+          visibleToasts={3}
+          toastOptions={{
+            style: {
+              fontFamily: 'Vazirmatn, sans-serif',
+              borderRadius: '12px',
+            },
+          }}
+        />
         <Scripts />
       </ThemeProvider>
       </body>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Trash2, X, CheckSquare, Calendar } from 'lucide-react';
 import type { Cheque } from '../types/models';
 import { loadData, saveData, genId } from '../lib/storage';
+import { notify } from '../lib/toast';
 
 const empty = (): Cheque => ({
   id: '', contactId: '', contactName: '', bankName: '', chequeNumber: '',
@@ -38,8 +39,8 @@ export const ChequesModule: React.FC = () => {
 
   const openNew = () => { const c = empty(); c.id = genId(); c.createdAt = new Date().toISOString(); setEditing(c); setShowForm(true); };
   const save = () => {
-    if (!editing.contactName.trim()) { alert('نام طرف حساب الزامی است'); return; }
-    if (editing.amount <= 0) { alert('مبلغ الزامی است'); return; }
+    if (!editing.contactName.trim()) { notify.warning('نام طرف حساب الزامی است'); return; }
+    if (editing.amount <= 0) { notify.warning('مبلغ الزامی است'); return; }
     setItems(prev => prev.find(c => c.id === editing.id)
       ? prev.map(c => c.id === editing.id ? editing : c)
       : [...prev, editing]);

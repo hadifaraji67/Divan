@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Account, JournalLine } from '../types/accounting';
 import { isJournalEntryBalanced } from '../lib/accounting';
+import { notify } from '../lib/toast';
 
 interface Props {
   accounts: Account[];
@@ -28,7 +29,7 @@ export const JournalEntryForm: React.FC<Props> = ({ accounts, onSave }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isBalanced) return alert('سند تراز نیست! مجموع بدهکار و بستانکار باید برابر باشد.');
+    if (!isBalanced) return notify.warning('سند تراز نیست! مجموع بدهکار و بستانکار باید برابر باشد.');
     onSave(description, lines);
   };
 
