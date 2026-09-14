@@ -12,7 +12,6 @@ import { ProductsModule } from './components/ProductsModule';
 import { InvoicesModule } from './components/InvoicesModule';
 import { PaymentsModule } from './components/PaymentsModule';
 import { ChequesModule } from './components/ChequesModule';
-import { SettingsModule } from './components/SettingsModule';
 import { PrintSettings } from './components/PrintSettings';
 import { RegionalReport } from './components/RegionalReport';
 import { BackupRestore } from './components/BackupRestore';
@@ -119,7 +118,7 @@ export const App: React.FC = () => {
       case 'balance-sheet': return <BalanceSheetReport />;
       case 'finance': return <FinancePanel />;
       case 'sms-import': return <SmsImportPanel />;
-      case 'settings': return <SettingsModule />;
+      case 'settings': return <SettingsHub />;
       default: return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
     }
   };
