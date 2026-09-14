@@ -22,26 +22,42 @@ import { ReportsModule } from './components/ReportsModule';
 import { ReportsHub } from './components/ReportsHub';
 import { FiscalYearClosing } from './components/FiscalYearClosing';
 import { SettingsHub } from './components/SettingsHub';
+import { ComingSoon } from './components/ComingSoon';
+import { Users, FileText, Wallet, Package, Calendar, Settings } from 'lucide-react';
 import type { Account, JournalEntry, JournalLine } from './types/accounting';
 import { DEFAULT_ACCOUNTS } from './lib/accounting';
 
 const VIEW_TITLES: Record<ViewKey, string> = {
-  home: 'صفحه اصلی',
+  home: 'داشبورد',
+  // فروش
   contacts: 'اشخاص و مشتریان',
-  invoice: 'صدور سریع فاکتور',
   invoices: 'مدیریت فاکتورها',
-  'invoice-print': 'تنظیمات چاپ',
-  'reports-hub': 'گزارش‌ها و تحلیل',
-  inventory: 'انبار و کالا',
-  'print-settings': 'تنظیمات چاپ',
-  'customer-club': 'باشگاه مشتریان',
-  installments: 'اقساط و تسویه',
-  'cash-box': 'صندوق و کیف پول',
   payments: 'پرداخت‌ها',
   cheques: 'مدیریت چک‌ها',
+  installments: 'اقساط و تسویه',
+  'customer-club': 'باشگاه مشتریان',
+  // خرید
+  suppliers: 'تامین‌کنندگان',
+  'purchase-invoices': 'فاکتور خرید',
+  'supplier-payments': 'پرداخت به تامین‌کننده',
+  // انبار
+  inventory: 'انبار و کالا',
+  'stock-movements': 'نقل و انتقال انبار',
+  'stock-take': 'انبارگردانی',
+  // مالی
   'journal-entry': 'ثبت سند دستی',
+  'cash-box': 'صندوق و بانک',
   'fiscal-year-closing': 'بستن سال مالی',
-  reports: 'گزارش‌های جامع',
+  // گزارش‌ها
+  'reports-hub': 'گزارش‌ها و تحلیل',
+  // منابع انسانی
+  employees: 'پرسنل',
+  payroll: 'حقوق و دستمزد',
+  attendance: 'حضور و غیاب',
+  // پروژه‌ها
+  projects: 'پروژه‌ها',
+  production: 'تولید',
+  // سیستم
   settings: 'تنظیمات سیستم',
 };
 
@@ -81,7 +97,6 @@ export const App: React.FC = () => {
       case 'contacts': return <ContactsModule />;
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
-      case 'print-settings': return <PrintSettings />;
       case 'customer-club': return <CustomerClub />;
       case 'installments': return <InstallmentsModule />;
       case 'cash-box': return <CashBox />;
@@ -95,8 +110,19 @@ export const App: React.FC = () => {
           onCloseFiscalYear={() => { if (confirm('بستن سال مالی؟')) { setEntries([]); notify.success('سال مالی بسته شد'); } }}
         />
       );
-      case 'reports': return <ReportsHub accounts={accounts} entries={entries} />;
       case 'settings': return <SettingsHub />;
+
+      // Coming Soon
+      case 'suppliers': return <ComingSoon title="تامین‌کنندگان" description="مدیریت کامل تامین‌کنندگان با تاریخچه خرید، ارزیابی و مانده حساب" icon={Users} />;
+      case 'purchase-invoices': return <ComingSoon title="فاکتور خرید" description="ثبت و مدیریت فاکتورهای خرید از تامین‌کنندگان" icon={FileText} />;
+      case 'supplier-payments': return <ComingSoon title="پرداخت به تامین‌کننده" description="مدیریت پرداخت‌ها و تسویه حساب با تامین‌کنندگان" icon={Wallet} />;
+      case 'stock-movements': return <ComingSoon title="نقل و انتقال انبار" description="ثبت جابجایی کالا بین انبارها و شعب" icon={Package} />;
+      case 'stock-take': return <ComingSoon title="انبارگردانی" description="شمارش موجودی و تطبیق با سیستم" icon={Package} />;
+      case 'employees': return <ComingSoon title="پرسنل" description="مدیریت اطلاعات کارکنان و قراردادها" icon={Users} />;
+      case 'payroll': return <ComingSoon title="حقوق و دستمزد" description="محاسبه و پرداخت حقوق ماهانه پرسنل" icon={Wallet} />;
+      case 'attendance': return <ComingSoon title="حضور و غیاب" description="ثبت ورود و خروج و محاسبه کارکرد" icon={Calendar} />;
+      case 'projects': return <ComingSoon title="پروژه‌ها" description="مدیریت پروژه‌ها، وظایف و منابع" icon={Settings} />;
+      case 'production': return <ComingSoon title="تولید" description="برنامه‌ریزی و مدیریت خط تولید" icon={Package} />;
       default: return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
     }
   };
