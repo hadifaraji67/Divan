@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   Printer, Wallet, BookOpen, CheckSquare, BarChart3, Calendar,
   Smartphone, MessageSquare, Settings, ChevronDown, X,
-  TrendingUp, CreditCard, Search, Star,
+  TrendingUp, CreditCard, Search, Star, Scale,
 } from 'lucide-react';
 import { APP_VERSION } from '../lib/update-service';
 
@@ -11,7 +11,7 @@ export type ViewKey =
   | 'home' | 'contacts'
   | 'invoice' | 'invoices' | 'inventory' | 'invoice-print'
   | 'customer-ledger' | 'cheques' | 'journal-entry'
-  | 'financial-reports' | 'fiscal-year-closing'
+  | 'financial-reports' | 'fiscal-year-closing' | 'profit-loss' | 'balance-sheet'
   | 'reports' | 'finance' | 'payments'
   | 'sms-import' | 'settings';
 
@@ -45,7 +45,9 @@ const menuGroups: MenuGroup[] = [
     icon: Wallet,
     items: [
       { key: 'journal-entry', title: 'اسناد حسابداری', icon: FileText },
-      { key: 'financial-reports', title: 'گزارش‌های مالی', icon: BarChart3 },
+      { key: 'financial-reports', title: 'تراز آزمایشی', icon: BarChart3 },
+      { key: 'profit-loss', title: 'سود و زیان', icon: TrendingUp },
+      { key: 'balance-sheet', title: 'ترازنامه', icon: Scale },
       { key: 'customer-ledger', title: 'دفتر معین', icon: BookOpen },
       { key: 'reports', title: 'گزارش‌های جامع', icon: TrendingUp },
       { key: 'finance', title: 'پنل مالی', icon: Wallet },

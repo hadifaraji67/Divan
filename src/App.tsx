@@ -21,6 +21,8 @@ import { CustomerLedger } from './components/customer-ledger';
 import { JournalEntryForm } from './components/JournalEntryForm';
 import { FinancialReports } from './components/FinancialReports';
 import { ReportsModule } from './components/ReportsModule';
+import { ProfitLossReport } from './components/ProfitLossReport';
+import { BalanceSheetReport } from './components/BalanceSheetReport';
 import { FiscalYearClosing } from './components/FiscalYearClosing';
 import type { Account, JournalEntry, JournalLine } from './types/accounting';
 import { DEFAULT_ACCOUNTS } from './lib/accounting';
@@ -39,6 +41,8 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   'financial-reports': 'گزارش‌های مالی',
   'fiscal-year-closing': 'بستن سال مالی',
   reports: 'گزارش‌های جامع',
+  'profit-loss': 'صورت سود و زیان',
+  'balance-sheet': 'ترازنامه',
   finance: 'پنل مالی',
   'sms-import': 'استخراج پیامک بانکی',
   settings: 'تنظیمات سیستم',
@@ -95,6 +99,8 @@ export const App: React.FC = () => {
         />
       );
       case 'reports': return <ReportsModule />;
+      case 'profit-loss': return <ProfitLossReport />;
+      case 'balance-sheet': return <BalanceSheetReport />;
       case 'finance': return <FinancePanel />;
       case 'sms-import': return <SmsImportPanel />;
       case 'settings': return <SettingsModule />;
