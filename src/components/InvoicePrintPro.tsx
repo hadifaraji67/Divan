@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Image as ImageIcon, Share2 } from 'lucide-react';
 import type { Invoice, Contact, Product } from '../types/models';
 import { invoiceTotal } from '../types/models';
 import { useSettings, formatNum } from '../lib/theme-context';
+import { notify } from '../lib/toast';
 
 interface Props {
   invoice: Invoice;
@@ -14,6 +15,186 @@ interface Props {
 export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = [], onClose }) => {
   const { settings } = useSettings();
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
+  const [saving, setSaving] = React.useState(false);
+
+  const saveAsImage = async () => {
+    setSaving(true);
+    const loadingToast = notify.loading('در حال ساخت تصویر...');
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const element = document.querySelector('.print-area') as HTMLElement;
+      if (!element) {
+        notify.dismiss(loadingToast);
+        notify.error('عنصر فاکتور پیدا نشد');
+        setSaving(false);
+        return;
+      }
+
+      // به‌طور موقت مخفی کردن عناصر no-print
+      const noPrintEls = document.querySelectorAll('.no-print') as NodeListOf<HTMLElement>;
+      const originalDisplays: string[] = [];
+      noPrintEls.forEach((el, i) => {
+        originalDisplays[i] = el.style.display;
+        el.style.display = 'none';
+      });
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      // برگرداندن نمایش
+      noPrintEls.forEach((el, i) => {
+        el.style.display = originalDisplays[i] || '';
+      });
+
+      // تبدیل به blob
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png', 0.95)
+      );
+
+      if (!blob) {
+        notify.dismiss(loadingToast);
+        notify.error('خطا در ساخت تصویر');
+        setSaving(false);
+        return;
+      }
+
+      // بررسی پشتیبانی از Web Share API
+      const file = new File([blob], `invoice-${invoice.number}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // در موبایل: به اشتراک گذاری (ذخیره، ارسال به تلگرام، واتساپ و...)
+        notify.dismiss(loadingToast);
+        try {
+          await navigator.share({
+            files: [file],
+            title: `فاکتور ${invoice.number}`,
+            text: `فاکتور ${invoice.type} شماره ${invoice.number}`,
+          });
+        } catch (err: any) {
+          if (err?.name !== 'AbortError') {
+            // اگر اشتراک‌گذاری لغو شد، دانلود کن
+            downloadBlob(blob, invoice.number);
+          }
+        }
+      } else {
+        // در دسکتاپ یا مرورگر بدون پشتیبانی: دانلود
+        notify.dismiss(loadingToast);
+        downloadBlob(blob, invoice.number);
+        notify.success('تصویر فاکتور ذخیره شد');
+      }
+    } catch (err) {
+      console.error('[saveAsImage]', err);
+      notify.dismiss(loadingToast);
+      notify.error('خطا در ساخت تصویر');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const downloadBlob = (blob: Blob, invoiceNumber: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${invoiceNumber}-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const [saving, setSaving] = React.useState(false);
+
+  const saveAsImage = async () => {
+    setSaving(true);
+    const loadingToast = notify.loading('در حال ساخت تصویر...');
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const element = document.querySelector('.print-area') as HTMLElement;
+      if (!element) {
+        notify.dismiss(loadingToast);
+        notify.error('عنصر فاکتور پیدا نشد');
+        setSaving(false);
+        return;
+      }
+
+      // به‌طور موقت مخفی کردن عناصر no-print
+      const noPrintEls = document.querySelectorAll('.no-print') as NodeListOf<HTMLElement>;
+      const originalDisplays: string[] = [];
+      noPrintEls.forEach((el, i) => {
+        originalDisplays[i] = el.style.display;
+        el.style.display = 'none';
+      });
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      // برگرداندن نمایش
+      noPrintEls.forEach((el, i) => {
+        el.style.display = originalDisplays[i] || '';
+      });
+
+      // تبدیل به blob
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), 'image/png', 0.95)
+      );
+
+      if (!blob) {
+        notify.dismiss(loadingToast);
+        notify.error('خطا در ساخت تصویر');
+        setSaving(false);
+        return;
+      }
+
+      // بررسی پشتیبانی از Web Share API
+      const file = new File([blob], `invoice-${invoice.number}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // در موبایل: به اشتراک گذاری (ذخیره، ارسال به تلگرام، واتساپ و...)
+        notify.dismiss(loadingToast);
+        try {
+          await navigator.share({
+            files: [file],
+            title: `فاکتور ${invoice.number}`,
+            text: `فاکتور ${invoice.type} شماره ${invoice.number}`,
+          });
+        } catch (err: any) {
+          if (err?.name !== 'AbortError') {
+            // اگر اشتراک‌گذاری لغو شد، دانلود کن
+            downloadBlob(blob, invoice.number);
+          }
+        }
+      } else {
+        // در دسکتاپ یا مرورگر بدون پشتیبانی: دانلود
+        notify.dismiss(loadingToast);
+        downloadBlob(blob, invoice.number);
+        notify.success('تصویر فاکتور ذخیره شد');
+      }
+    } catch (err) {
+      console.error('[saveAsImage]', err);
+      notify.dismiss(loadingToast);
+      notify.error('خطا در ساخت تصویر');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const downloadBlob = (blob: Blob, invoiceNumber: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${invoiceNumber}-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -35,18 +216,36 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
             پیش‌نمایش فاکتور — {settings.printPaper} {isFormal ? 'رسمی' : 'غیررسمی'}
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 md:gap-2">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
+            className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
           >
-            <Printer className="w-3.5 h-3.5" /> چاپ
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">چاپ</span>
+          </button>
+          <button
+            onClick={saveAsImage}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg"
+          >
+            {saving ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="hidden md:inline">در حال ساخت...</span>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">ذخیره عکس</span>
+              </>
+            )}
           </button>
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg"
+            className="flex items-center gap-1.5 px-2.5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg"
           >
-            <X className="w-3.5 h-3.5" /> بستن
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
