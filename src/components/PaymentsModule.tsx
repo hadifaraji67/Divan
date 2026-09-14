@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Trash2, X, ArrowDownLeft, ArrowUpRight, CreditCard } from 'lucide-react';
-import type { Payment } from '../types/models';
+import type { Payment, Invoice } from '../types/models';
+import { invoiceTotal } from '../types/models';
+import { getInvoicePaymentInfo } from '../lib/invoice-payment';
 import { loadData, saveData, genId } from '../lib/storage';
 import { notify } from '../lib/toast';
 
@@ -15,9 +17,23 @@ export const PaymentsModule: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Payment>(empty());
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [allContacts, setAllContacts] = useState<any[]>([]);
 
-  useEffect(() => { setItems(loadData<Payment[]>('payments', [])); }, []);
+  useEffect(() => {
+    setItems(loadData<Payment[]>('payments', []));
+    setAllInvoices(loadData<Invoice[]>('invoices', []));
+    setAllContacts(loadData<any[]>('contacts', []));
+  }, []);
   useEffect(() => { saveData('payments', items); }, [items]);
+
+  const invoiceOptions = useMemo(() => {
+    const direction = editing.direction;
+    const types = direction === 'دریافت'
+      ? ['فروش']
+      : ['خرید'];
+    return allInvoices.filter(i => types.includes(i.type) && i.contactId === editing.contactId);
+  }, [allInvoices, editing.direction, editing.contactId]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -114,10 +130,51 @@ export const PaymentsModule: React.FC = () => {
             </div>
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
               <label className="block md:col-span-2">
-                <span className="text-xs text-slate-600 block mb-1">طرف حساب *</span>
-                <input value={editing.contactName} onChange={(e) => setEditing({ ...editing, contactName: e.target.value })}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" />
+                <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">طرف حساب *</span>
+                <select
+                  value={editing.contactId}
+                  onChange={(e) => {
+                    const c = allContacts.find(x => x.id === e.target.value);
+                    if (c) setEditing({ ...editing, contactId: c.id, contactName: c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`, invoiceId: '' });
+                  }}
+                  className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900"
+                >
+                  <option value="">— انتخاب —</option>
+                  {allContacts.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`} — {c.mobile}
+                    </option>
+                  ))}
+                </select>
+                {allContacts.length === 0 && (
+                  <div className="text-[10px] text-amber-600 mt-1">⚠️ ابتدا از منوی مشتریان، شخص اضافه کن</div>
+                )}
               </label>
+
+              {editing.contactId && (
+                <label className="block md:col-span-2">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">فاکتور مرتبط (اختیاری)</span>
+                  <select
+                    value={editing.invoiceId || ''}
+                    onChange={(e) => {
+                      const inv = allInvoices.find(i => i.id === e.target.value);
+                      setEditing({ ...editing, invoiceId: e.target.value, amount: inv ? invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost) : editing.amount });
+                    }}
+                    className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900"
+                  >
+                    <option value="">— بدون فاکتور —</option>
+                    {invoiceOptions.map(inv => {
+                      const info = getInvoicePaymentInfo(inv, items);
+                      if (info.status === 'paid') return null;
+                      return (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.number} — {inv.date} — مانده: {info.remaining.toLocaleString()} ریال
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
               <label className="block">
                 <span className="text-xs text-slate-600 block mb-1">نوع</span>
                 <select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value as any })}
