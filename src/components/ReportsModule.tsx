@@ -10,9 +10,9 @@ import { useSettings, formatNum } from '../lib/theme-context';
 
 type Tab = 'sales' | 'products' | 'customers' | 'profit' | 'inventory';
 
-export const ReportsModule: React.FC = () => {
+export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'customers' | 'profit' | 'inventory' }> = ({ defaultTab }) => {
   const { settings } = useSettings();
-  const [tab, setTab] = useState<Tab>('sales');
+  const [tab, setTab] = useState<Tab>(defaultTab || 'sales');
   const [range, setRange] = useState<'all' | 'month' | 'quarter' | 'year'>('all');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
