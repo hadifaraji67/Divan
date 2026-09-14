@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import {
   BarChart3, TrendingUp, Package, Users, Wallet, MapPin,
-  FileText, Scale, PieChart, Activity,
+  FileText, Scale, PieChart, Activity, DollarSign,
 } from 'lucide-react';
 import { ReportsModule } from './ReportsModule';
 import { FinancialReports } from './FinancialReports';
 import { ProfitLossReport } from './ProfitLossReport';
 import { BalanceSheetReport } from './BalanceSheetReport';
 import { RegionalReport } from './RegionalReport';
+import { PurchaseSalesReport } from './PurchaseSalesReport';
+import { SuppliersDebt } from './SuppliersDebt';
+import { FinancePanel } from './finance-panel';
 import { CustomerLedger } from './customer-ledger';
 import type { Account, JournalEntry } from '../types/accounting';
 
-type Tab = 'overview' | 'sales' | 'products' | 'customers' | 'profit-loss' | 'balance-sheet' | 'trial' | 'regional' | 'ledger';
+type Tab = 'overview' | 'sales' | 'products' | 'customers' | 'profit-loss' | 'balance-sheet' | 'trial' | 'regional' | 'ledger' | 'purchase-sales' | 'suppliers-debt' | 'finance-panel';
 
 const TABS: { id: Tab; title: string; desc: string; icon: React.ElementType; color: string }[] = [
   { id: 'overview', title: 'نمای کلی', desc: 'خلاصه فروش و سود', icon: PieChart, color: 'indigo' },
@@ -23,6 +26,9 @@ const TABS: { id: Tab; title: string; desc: string; icon: React.ElementType; col
   { id: 'trial', title: 'تراز آزمایشی', desc: 'دفتر کل', icon: FileText, color: 'amber' },
   { id: 'regional', title: 'منطقه‌ای', desc: 'فروش به تفکیک استان', icon: MapPin, color: 'sky' },
   { id: 'ledger', title: 'دفتر معین', desc: 'گردش حساب', icon: Activity, color: 'indigo' },
+  { id: 'purchase-sales', title: 'خرید و فروش', desc: 'مقایسه ماهانه', icon: TrendingUp, color: 'emerald' },
+  { id: 'suppliers-debt', title: 'بدهی تامین‌کنندگان', desc: 'مانده حساب', icon: Users, color: 'rose' },
+  { id: 'finance-panel', title: 'پنل مالی', desc: 'جریان نقدی', icon: Wallet, color: 'indigo' },
 ];
 
 interface Props {
@@ -68,6 +74,9 @@ export const ReportsHub: React.FC<Props> = ({ accounts, entries }) => {
         {active === 'trial' && <FinancialReports accounts={accounts} entries={entries} />}
         {active === 'regional' && <RegionalReport />}
         {active === 'ledger' && <CustomerLedger />}
+        {active === 'purchase-sales' && <PurchaseSalesReport />}
+        {active === 'suppliers-debt' && <SuppliersDebt />}
+        {active === 'finance-panel' && <FinancePanel />}
       </div>
     </div>
   );

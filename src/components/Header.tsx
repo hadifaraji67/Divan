@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, Moon, Sun, Monitor, Bell, User, Search } from 'lucide-react';
 import { useSettings, type Theme } from '../lib/theme-context';
+import { NotificationsPanel } from './NotificationsPanel';
 
 interface HeaderProps {
   title: string;
@@ -44,12 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
         <ThemeIcon className="w-4 h-4" />
       </button>
 
-      <button
-        className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors relative"
-        title="اعلان‌ها"
-      >
-        <Bell className="w-4 h-4" />
-      </button>
+      <NotificationsPanel onNavigate={(v) => { /* App-level navigation */ }} />
 
       <button
         className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
