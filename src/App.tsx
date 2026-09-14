@@ -13,21 +13,15 @@ import { InvoicesModule } from './components/InvoicesModule';
 import { PaymentsModule } from './components/PaymentsModule';
 import { ChequesModule } from './components/ChequesModule';
 import { PrintSettings } from './components/PrintSettings';
-import { RegionalReport } from './components/RegionalReport';
-import { BackupRestore } from './components/BackupRestore';
 import { CustomerClub } from './components/CustomerClub';
 import { InstallmentsModule } from './components/InstallmentsModule';
 import { CashBox } from './components/CashBox';
 import { DashboardModule } from './components/DashboardModule';
-import { SmsImportPanel } from './components/sms-import-panel';
-import { FinancePanel } from './components/finance-panel';
-import { CustomerLedger } from './components/customer-ledger';
 import { JournalEntryForm } from './components/JournalEntryForm';
-import { FinancialReports } from './components/FinancialReports';
 import { ReportsModule } from './components/ReportsModule';
-import { ProfitLossReport } from './components/ProfitLossReport';
-import { BalanceSheetReport } from './components/BalanceSheetReport';
+import { ReportsHub } from './components/ReportsHub';
 import { FiscalYearClosing } from './components/FiscalYearClosing';
+import { SettingsHub } from './components/SettingsHub';
 import type { Account, JournalEntry, JournalLine } from './types/accounting';
 import { DEFAULT_ACCOUNTS } from './lib/accounting';
 
@@ -40,22 +34,14 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   'reports-hub': 'گزارش‌ها و تحلیل',
   inventory: 'انبار و کالا',
   'print-settings': 'تنظیمات چاپ',
-  'regional-report': 'گزارش منطقه‌ای',
-  backup: 'پشتیبان‌گیری و بازیابی',
   'customer-club': 'باشگاه مشتریان',
   installments: 'اقساط و تسویه',
   'cash-box': 'صندوق و کیف پول',
   payments: 'پرداخت‌ها',
-  'customer-ledger': 'دفتر معین مشتریان',
   cheques: 'مدیریت چک‌ها',
   'journal-entry': 'ثبت سند دستی',
-  'financial-reports': 'گزارش‌های مالی',
   'fiscal-year-closing': 'بستن سال مالی',
   reports: 'گزارش‌های جامع',
-  'profit-loss': 'صورت سود و زیان',
-  'balance-sheet': 'ترازنامه',
-  finance: 'پنل مالی',
-  'sms-import': 'استخراج پیامک بانکی',
   settings: 'تنظیمات سیستم',
 };
 
@@ -96,16 +82,12 @@ export const App: React.FC = () => {
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
       case 'print-settings': return <PrintSettings />;
-      case 'regional-report': return <RegionalReport />;
-      case 'backup': return <BackupRestore />;
       case 'customer-club': return <CustomerClub />;
       case 'installments': return <InstallmentsModule />;
       case 'cash-box': return <CashBox />;
       case 'payments': return <PaymentsModule />;
-      case 'customer-ledger': return <CustomerLedger />;
       case 'cheques': return <ChequesModule />;
       case 'journal-entry': return <JournalEntryForm accounts={accounts} onSave={handleSaveJournal} />;
-      case 'financial-reports': return <FinancialReports accounts={accounts} entries={entries} />;
       case 'fiscal-year-closing': return (
         <FiscalYearClosing
           accounts={accounts}
@@ -113,11 +95,7 @@ export const App: React.FC = () => {
           onCloseFiscalYear={() => { if (confirm('بستن سال مالی؟')) { setEntries([]); notify.success('سال مالی بسته شد'); } }}
         />
       );
-      case 'reports': return <ReportsModule />;
-      case 'profit-loss': return <ProfitLossReport />;
-      case 'balance-sheet': return <BalanceSheetReport />;
-      case 'finance': return <FinancePanel />;
-      case 'sms-import': return <SmsImportPanel />;
+      case 'reports': return <ReportsHub accounts={accounts} entries={entries} />;
       case 'settings': return <SettingsHub />;
       default: return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
     }

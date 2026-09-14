@@ -10,11 +10,10 @@ import { APP_VERSION } from '../lib/update-service';
 export type ViewKey =
   | 'home' | 'contacts'
   | 'invoice' | 'invoices' | 'inventory' | 'invoice-print' | 'print-settings'
-  | 'customer-ledger' | 'cheques' | 'journal-entry'
-  | 'financial-reports' | 'fiscal-year-closing' | 'profit-loss' | 'balance-sheet'
-  | 'reports' | 'reports-hub' | 'finance' | 'payments'
-  | 'regional-report' | 'backup' | 'customer-club' | 'installments' | 'cash-box'
-  | 'sms-import' | 'settings';
+  | 'cheques' | 'journal-entry' | 'fiscal-year-closing'
+  | 'reports' | 'reports-hub' | 'payments'
+  | 'customer-club' | 'installments' | 'cash-box'
+  | 'settings';
 
 interface MenuItem { key: ViewKey; title: string; icon: React.ElementType; }
 interface MenuGroup { id: string; title: string; icon: React.ElementType; items: MenuItem[]; }
@@ -46,11 +45,7 @@ const menuGroups: MenuGroup[] = [
     icon: Wallet,
     items: [
       { key: 'journal-entry', title: 'اسناد حسابداری', icon: FileText },
-      { key: 'financial-reports', title: 'تراز آزمایشی', icon: BarChart3 },
-      { key: 'profit-loss', title: 'سود و زیان', icon: TrendingUp },
-      { key: 'balance-sheet', title: 'ترازنامه', icon: Scale },
       { key: 'reports', title: 'گزارش‌های جامع', icon: TrendingUp },
-      { key: 'regional-report', title: 'گزارش منطقه‌ای', icon: MapPin },
       { key: 'customer-club', title: 'باشگاه مشتریان', icon: Star },
       { key: 'cash-box', title: 'صندوق و کیف پول', icon: Wallet },
       { key: 'fiscal-year-closing', title: 'بستن سال مالی', icon: Calendar },
@@ -61,9 +56,7 @@ const menuGroups: MenuGroup[] = [
     title: 'سیستم',
     icon: Settings,
     items: [
-      { key: 'sms-import', title: 'استخراج پیامک', icon: MessageSquare },
       { key: 'settings', title: 'تنظیمات', icon: Settings },
-      { key: 'backup', title: 'پشتیبان‌گیری', icon: Download },
     ],
   },
 ];
