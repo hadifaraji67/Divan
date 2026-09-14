@@ -3,10 +3,13 @@ import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'l
 import type { Contact } from '../types/models';
 import { loadData, saveData, genId } from '../lib/storage';
 import { notify } from '../lib/toast';
+import { LocationSelector } from './LocationSelector';
 
 const emptyContact = (): Contact => ({
   id: '', code: '', type: 'حقیقی', name: '', lastName: '', companyName: '',
   nationalId: '', mobile: '', phone: '', email: '', address: '',
+  province: '', county: '', city: '', postalCode: '',
+  economicCode: '', website: '', birthDate: '',
   roles: ['مشتری'], creditLimit: 0, notes: '', createdAt: '',
 });
 
@@ -108,7 +111,7 @@ export const ContactsModule: React.FC = () => {
                     <div className="text-xs text-slate-500 flex flex-wrap gap-3 mt-1">
                       <span className="font-mono">{c.code}</span>
                       <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.mobile}</span>
-                      {c.address && <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3" />{c.address.slice(0, 20)}</span>}
+                      {(c.city || c.province) && <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3" />{[c.province, c.county, c.city].filter(Boolean).join(' / ')}</span>}
                     </div>
                     <div className="flex gap-1 mt-1.5">
                       {c.roles.map(r => (
@@ -202,10 +205,51 @@ export const ContactsModule: React.FC = () => {
                   className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
               </label>
 
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">ایمیل</span>
+                <input type="email" value={editing.email || ''} onChange={(e) => setEditing({ ...editing, email: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">کد اقتصادی</span>
+                <input value={editing.economicCode || ''} onChange={(e) => setEditing({ ...editing, economicCode: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">وب‌سایت</span>
+                <input value={editing.website || ''} onChange={(e) => setEditing({ ...editing, website: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" placeholder="https://" />
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">تاریخ تولد / تأسیس</span>
+                <input value={editing.birthDate || ''} onChange={(e) => setEditing({ ...editing, birthDate: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" placeholder="۱۳۷۰/۰۱/۰۱" />
+              </label>
+
+              <div className="md:col-span-2">
+                <LocationSelector
+                  province={editing.province || ''}
+                  county={editing.county || ''}
+                  city={editing.city || ''}
+                  onChange={(v) => setEditing({ ...editing, ...v })}
+                />
+              </div>
+
               <label className="block md:col-span-2">
-                <span className="text-xs text-slate-600 block mb-1">آدرس</span>
+                <span className="text-xs text-slate-600 block mb-1">آدرس کامل</span>
                 <input value={editing.address || ''} onChange={(e) => setEditing({ ...editing, address: e.target.value })}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" />
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"
+                  placeholder="خیابان، کوچه، پلاک..." />
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">کد پستی</span>
+                <input value={editing.postalCode || ''} onChange={(e) => setEditing({ ...editing, postalCode: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr"
+                  placeholder="۱۰ رقم" maxLength={10} />
               </label>
 
               <div className="md:col-span-2">

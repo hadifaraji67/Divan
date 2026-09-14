@@ -5,8 +5,9 @@ import { loadData, saveData, genId } from '../lib/storage';
 import { notify } from '../lib/toast';
 
 const empty = (): Product => ({
-  id: '', sku: '', name: '', category: '', unit: 'عدد',
-  stock: 0, minStock: 0, buyPrice: 0, sellPrice: 0, taxPercent: 9,
+  id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
+  brand: '', unit: 'عدد', stock: 0, minStock: 0, buyPrice: 0, wholesalePrice: 0,
+  sellPrice: 0, taxPercent: 9, taxId: '', warehouseName: '', location: '',
   isActive: true, createdAt: '',
 });
 
@@ -94,7 +95,7 @@ export const ProductsModule: React.FC = () => {
                 {filtered.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td className="p-3 font-mono text-xs">{p.sku}</td>
-                    <td className="p-3 font-bold">{p.name}</td>
+                    <td className="p-3"><div className="font-bold">{p.name}</div>{p.brand && <div className="text-[10px] opacity-60">{p.brand}</div>}{p.barcode && <div className="text-[10px] opacity-40 font-mono">{p.barcode}</div>}</td>
                     <td className="p-3 text-slate-500">{p.category || '—'}</td>
                     <td className={`p-3 font-bold ${p.stock <= p.minStock ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {p.stock} {p.unit}
@@ -164,11 +165,51 @@ export const ProductsModule: React.FC = () => {
                   className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
               </label>
               <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">بارکد</span>
+                <input value={editing.barcode || ''} onChange={(e) => setEditing({ ...editing, barcode: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">قیمت عمده (ریال)</span>
+                <input type="number" value={editing.wholesalePrice || 0} onChange={(e) => setEditing({ ...editing, wholesalePrice: Number(e.target.value) })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">برند</span>
+                <input value={editing.brand || ''} onChange={(e) => setEditing({ ...editing, brand: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">زیرگروه</span>
+                <input value={editing.subCategory || ''} onChange={(e) => setEditing({ ...editing, subCategory: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">انبار</span>
+                <input value={editing.warehouseName || ''} onChange={(e) => setEditing({ ...editing, warehouseName: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" placeholder="انبار مرکزی" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">محل قرارگیری</span>
+                <input value={editing.location || ''} onChange={(e) => setEditing({ ...editing, location: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" placeholder="قفسه A-12" />
+              </label>
+              <label className="block">
+                <span className="text-xs text-slate-600 block mb-1">شناسه مالیاتی</span>
+                <input value={editing.taxId || ''} onChange={(e) => setEditing({ ...editing, taxId: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+              </label>
+              <label className="block">
                 <span className="text-xs text-slate-600 block mb-1">مالیات (%)</span>
                 <input type="number" value={editing.taxPercent} onChange={(e) => setEditing({ ...editing, taxPercent: Number(e.target.value) })}
                   className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
               </label>
-              <label className="flex items-center gap-2 mt-6">
+              <label className="block md:col-span-2">
+                <span className="text-xs text-slate-600 block mb-1">توضیحات</span>
+                <textarea value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" rows={2} />
+              </label>
+              <label className="flex items-center gap-2 mt-6 md:col-span-2">
                 <input type="checkbox" checked={editing.isActive} onChange={(e) => setEditing({ ...editing, isActive: e.target.checked })} />
                 <span className="text-sm">فعال</span>
               </label>

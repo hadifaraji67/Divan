@@ -10,8 +10,15 @@ export interface Contact {
   phone?: string;
   email?: string;
   address?: string;
+  province?: string;
+  county?: string;
+  city?: string;
+  postalCode?: string;
   roles: ('مشتری' | 'تامین‌کننده' | 'همکار' | 'پرسنل')[];
   creditLimit: number;
+  economicCode?: string;
+  website?: string;
+  birthDate?: string;
   notes?: string;
   createdAt: string;
 }
@@ -19,14 +26,22 @@ export interface Contact {
 export interface Product {
   id: string;
   sku: string;
+  barcode?: string;
   name: string;
+  description?: string;
   category: string;
+  subCategory?: string;
+  brand?: string;
   unit: string;
   stock: number;
   minStock: number;
   buyPrice: number;
+  wholesalePrice?: number;
   sellPrice: number;
   taxPercent: number;
+  taxId?: string;
+  warehouseName?: string;
+  location?: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -55,6 +70,9 @@ export interface Invoice {
   discountPercent: number;
   taxPercent: number;
   shippingCost: number;
+  warehouseName?: string;
+  salesPerson?: string;
+  paymentTerms?: string;
   notes?: string;
   createdAt: string;
 }

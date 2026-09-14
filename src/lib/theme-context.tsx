@@ -3,6 +3,9 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 export type Theme = 'light' | 'dark' | 'system';
 export type FontSize = 'sm' | 'md' | 'lg';
 
+export type PrintPaper = 'A4' | 'A5' | 'thermal80' | 'thermal58';
+export type PrintMode = 'formal' | 'informal';
+
 export interface Settings {
   theme: Theme;
   fontSize: FontSize;
@@ -16,6 +19,21 @@ export interface Settings {
   defaultTaxPercent: number;
   animationsEnabled: boolean;
   compactMode: boolean;
+
+  // تنظیمات چاپ
+  printPaper: PrintPaper;
+  printMode: PrintMode;
+  printAccentColor: string;
+  printLogo?: string;
+  printHeaderText: string;
+  printFooterText: string;
+  showStamp: boolean;
+  showQR: boolean;
+  showItemDescription: boolean;
+  showDiscount: boolean;
+  showTax: boolean;
+  showShipping: boolean;
+  thermalWidth: number;
 }
 
 const DEFAULTS: Settings = {
@@ -31,6 +49,20 @@ const DEFAULTS: Settings = {
   defaultTaxPercent: 9,
   animationsEnabled: true,
   compactMode: false,
+
+  printPaper: 'A4',
+  printMode: 'informal',
+  printAccentColor: 'indigo',
+  printLogo: undefined,
+  printHeaderText: '',
+  printFooterText: 'از خرید شما سپاسگزاریم',
+  showStamp: true,
+  showQR: true,
+  showItemDescription: true,
+  showDiscount: true,
+  showTax: true,
+  showShipping: true,
+  thermalWidth: 80,
 };
 
 const STORAGE_KEY = 'divan_settings_v1';
