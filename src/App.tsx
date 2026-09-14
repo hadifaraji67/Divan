@@ -93,7 +93,6 @@ export const App: React.FC = () => {
     switch (active) {
       case 'home': return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
       case 'contacts': return <ContactsModule />;
-      case 'invoice': return <InvoiceModule />;
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
       case 'print-settings': return <PrintSettings />;

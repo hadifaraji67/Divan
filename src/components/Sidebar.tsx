@@ -33,8 +33,7 @@ const menuGroups: MenuGroup[] = [
     title: 'فروش',
     icon: ShoppingCart,
     items: [
-      { key: 'invoice', title: 'صدور سریع', icon: FileText },
-      { key: 'payments', title: 'پرداخت‌ها', icon: CreditCard },
+        { key: 'payments', title: 'پرداخت‌ها', icon: CreditCard },
       { key: 'cheques', title: 'چک‌ها', icon: CheckSquare },
       { key: 'print-settings', title: 'تنظیمات چاپ', icon: Printer },
       { key: 'installments', title: 'اقساط و تسویه', icon: Wallet },
