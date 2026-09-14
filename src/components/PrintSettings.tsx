@@ -240,32 +240,227 @@ export const PrintSettings: React.FC = () => {
 /* ========== پیش‌نمایش ========== */
 const PrintPreview: React.FC = () => {
   const { settings } = useSettings();
+  const isFormal = settings.printMode === 'formal';
+  const isA5 = settings.printPaper === 'A5';
+  const isThermal = settings.printPaper === 'thermal80' || settings.printPaper === 'thermal58';
+
+  if (isFormal && !isThermal) return <FormalPreview isA5={isA5} />;
+  if (isThermal) return <ThermalPreview />;
+  return <SimplePreview />;
+};
+
+/* --- پیش‌نمایش رسمی --- */
+const FormalPreview: React.FC<{ isA5: boolean }> = ({ isA5 }) => {
+  const { settings } = useSettings();
+  const f = (n: number) => formatNum(n, settings.persianNumbers);
+
+  return (
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
+      <div className="bg-slate-100 dark:bg-slate-800 p-2 text-center text-[10px] text-slate-500">
+        پیش‌نمایش رسمی مالیاتی — {settings.printPaper}
+      </div>
+      <div className="p-3 bg-slate-200 dark:bg-slate-900 flex justify-center overflow-auto">
+        <div
+          className="bg-white text-slate-900 shadow-lg"
+          style={{
+            width: isA5 ? '280px' : '380px',
+            padding: '10px',
+            fontSize: '7px',
+            fontFamily: 'Vazirmatn, Tahoma, sans-serif',
+          }}
+        >
+          {/* هدر */}
+          <div className="flex justify-between items-start mb-1">
+            <div className="w-10">
+              {settings.printLogo && <img src={settings.printLogo} alt="" className="max-w-full max-h-8 object-contain" />}
+            </div>
+            <div className="flex-1 text-center font-bold" style={{ fontSize: '9px' }}>
+              فاکتور فروش کالا و خدمات
+            </div>
+            <div className="w-16 text-left" style={{ fontSize: '6px' }}>
+              <div className="flex justify-between"><span>شماره:</span><b>۱۰۰۱</b></div>
+              <div className="flex justify-between"><span>تاریخ:</span><b>۱۴۰۵/۰۶/۲۳</b></div>
+            </div>
+          </div>
+
+          {/* جدول اصلی */}
+          <table className="w-full" style={{ border: '1px solid #000', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td colSpan={4} className="text-center font-bold py-0.5" style={{ border: '1px solid #000', background: '#f5f5f5', fontSize: '6px' }}>
+                  مشخصات فروشنده
+                </td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', width: '15%', fontSize: '6px' }}>نام:</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', width: '35%', fontSize: '6px' }}>
+                  {settings.storeLegalName || settings.storeName || '—'}
+                </td>
+                <td className="p-0.5" style={{ border: '1px solid #000', width: '15%', fontSize: '6px' }}>ش.اقتصادی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', width: '35%', fontSize: '6px' }} dir="ltr">
+                  {settings.storeEconomicCode || '—'}
+                </td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>نشانی:</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>{settings.storeAddress || '—'}</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>کدپستی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">{settings.storePostalCode || '—'}</td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>شناسه ملی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">{settings.storeNationalId || '—'}</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>ش.ثبت:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">{settings.storeRegistrationNumber || '—'}</td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>تلفن/فکس:</td>
+                <td colSpan={3} className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">
+                  {settings.storePhone || '—'} {settings.storeFax && ` / ${settings.storeFax}`}
+                </td>
+              </tr>
+
+              <tr>
+                <td colSpan={4} className="text-center font-bold py-0.5" style={{ border: '1px solid #000', background: '#f5f5f5', fontSize: '6px' }}>
+                  مشخصات خریدار
+                </td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>نام:</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>علی محمدی</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>ش.اقتصادی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">—</td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>نشانی:</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>تهران - تهران</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>کدپستی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">—</td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>شناسه ملی:</td>
+                <td className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">۰۰۱۲۳۴۵۶۷۸</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>ش.ثبت:</td>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>—</td>
+              </tr>
+              <tr>
+                <td className="p-0.5" style={{ border: '1px solid #000', fontSize: '6px' }}>تلفن/فکس:</td>
+                <td colSpan={3} className="p-0.5 font-mono" style={{ border: '1px solid #000', fontSize: '6px' }} dir="ltr">۰۹۱۲۳۴۵۶۷۸۹</td>
+              </tr>
+
+              <tr>
+                <td colSpan={11} className="text-center font-bold py-0.5" style={{ border: '1px solid #000', background: '#f5f5f5', fontSize: '6px' }}>
+                  مشخصات کالا یا خدمات
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* جدول اقلام */}
+          <table className="w-full" style={{ border: '1px solid #000', borderTop: 'none', borderCollapse: 'collapse', fontSize: '5.5px' }}>
+            <thead>
+              <tr style={{ background: '#f5f5f5' }}>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>ردیف</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>کد</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>شرح</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>تعداد</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>واحد</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>مبلغ واحد</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>مبلغ کل</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>تخفیف</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>پس از تخفیف</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>مالیات</th>
+                <th className="p-0.5" style={{ border: '1px solid #000' }}>جمع کل</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="p-0.5 text-center" style={{ border: '1px solid #000' }}>۱</td>
+                <td className="p-0.5 text-center font-mono" style={{ border: '1px solid #000' }}>۱۰۱</td>
+                <td className="p-0.5" style={{ border: '1px solid #000' }}>
+                  کالای نمونه
+                  {settings.showItemDescription && <div style={{ fontSize: '5px', color: '#666' }}>توضیحات</div>}
+                </td>
+                <td className="p-0.5 text-center" style={{ border: '1px solid #000' }}>۲</td>
+                <td className="p-0.5 text-center" style={{ border: '1px solid #000' }}>عدد</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۸۰۰,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۶۰۰,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۶۰۰,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱۴۴,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۷۴۴,۰۰۰</td>
+              </tr>
+              <tr style={{ background: '#f5f5f5', fontWeight: 'bold' }}>
+                <td colSpan={3} className="p-0.5 text-center" style={{ border: '1px solid #000' }}>جمع کل</td>
+                <td className="p-0.5 text-center" style={{ border: '1px solid #000' }}>۲</td>
+                <td className="p-0.5" style={{ border: '1px solid #000' }}></td>
+                <td className="p-0.5" style={{ border: '1px solid #000' }}></td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۶۰۰,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۶۰۰,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱۴۴,۰۰۰</td>
+                <td className="p-0.5 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">۱,۷۴۴,۰۰۰</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* شرایط */}
+          <table className="w-full" style={{ border: '1px solid #000', borderTop: 'none', borderCollapse: 'collapse', fontSize: '5.5px' }}>
+            <tbody>
+              <tr>
+                <td className="p-1 font-bold align-top" style={{ border: '1px solid #000', width: '15%', height: '24px' }}>شرایط فروش:</td>
+                <td className="p-1 align-top" style={{ border: '1px solid #000', width: '35%' }}></td>
+                <td className="p-1 font-bold align-top" style={{ border: '1px solid #000', width: '15%' }}>توضیحات:</td>
+                <td className="p-1 align-top" style={{ border: '1px solid #000', width: '35%' }}></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="text-center font-bold py-0.5" style={{ border: '1px solid #000', borderTop: 'none', background: '#f9f9f9', fontSize: '6px' }}>
+            جمع به حروف: یک میلیون و هفتصد و چهل و چهار هزار ریال
+          </div>
+
+          {settings.showStamp && (
+            <table className="w-full" style={{ border: '1px solid #000', borderTop: 'none', borderCollapse: 'collapse', fontSize: '6px' }}>
+              <tbody>
+                <tr>
+                  <td className="p-1 text-center" style={{ border: '1px solid #000', width: '50%', height: '35px', verticalAlign: 'top' }}>
+                    مهر و امضا فروشنده :
+                  </td>
+                  <td className="p-1 text-center" style={{ border: '1px solid #000', width: '50%', height: '35px', verticalAlign: 'top' }}>
+                    مهر و امضا خریدار :
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- پیش‌نمایش ساده --- */
+const SimplePreview: React.FC = () => {
+  const { settings } = useSettings();
   const accent = ACCENTS.find(a => a.key === settings.printAccentColor)?.color || '#4f46e5';
 
   return (
     <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
       <div className="bg-slate-100 dark:bg-slate-800 p-2 text-center text-[10px] text-slate-500">
-        پیش‌نمایش {settings.printPaper} — {settings.printMode === 'formal' ? 'رسمی' : 'غیررسمی'}
+        پیش‌نمایش غیررسمی — {settings.printPaper}
       </div>
       <div className="p-4 bg-slate-200 dark:bg-slate-900 flex justify-center">
         <div
           className="bg-white text-slate-900 shadow-lg"
-          style={{
-            width: settings.printPaper === 'A5' ? '220px' : settings.printPaper.startsWith('thermal') ? '160px' : '300px',
-            padding: settings.printPaper.startsWith('thermal') ? '12px' : '16px',
-            fontSize: '9px',
-            aspectRatio: settings.printPaper === 'A4' ? '210/297' : settings.printPaper === 'A5' ? '148/210' : undefined,
-          }}
+          style={{ width: '280px', padding: '14px', fontSize: '9px' }}
         >
-          {/* سربرگ */}
           <div className="flex justify-between items-start pb-2 border-b-2 mb-2" style={{ borderColor: accent }}>
             <div className="flex items-center gap-2">
               {settings.printLogo ? (
-                <img src={settings.printLogo} alt="logo" className="w-8 h-8 object-contain" />
+                <img src={settings.printLogo} alt="" className="w-8 h-8 object-contain" />
               ) : (
-                <div className="w-8 h-8 rounded flex items-center justify-center text-white font-bold" style={{ background: accent }}>
-                  د
-                </div>
+                <div className="w-8 h-8 rounded flex items-center justify-center text-white font-bold" style={{ background: accent }}>د</div>
               )}
               <div>
                 <div className="font-bold" style={{ fontSize: '10px' }}>{settings.storeName || 'فروشگاه'}</div>
@@ -273,24 +468,14 @@ const PrintPreview: React.FC = () => {
               </div>
             </div>
             <div className="text-left">
-              <div className="font-bold text-white px-2 py-0.5 rounded text-[8px]" style={{ background: accent }}>
-                فاکتور فروش
-              </div>
+              <div className="font-bold text-white px-2 py-0.5 rounded text-[8px]" style={{ background: accent }}>فاکتور فروش</div>
               <div className="text-[8px] mt-1">شماره: ۱۰۰۱</div>
               <div className="text-[8px]">تاریخ: ۱۴۰۵/۰۶/۲۳</div>
             </div>
           </div>
 
-          {settings.printHeaderText && (
-            <div className="text-center text-[8px] mb-2 text-slate-600">{settings.printHeaderText}</div>
-          )}
+          <div className="text-[8px] mb-2 p-1.5 bg-slate-50 rounded"><b>مشتری:</b> علی محمدی</div>
 
-          {/* مشتری */}
-          <div className="text-[8px] mb-2 p-1.5 bg-slate-50 rounded">
-            <b>مشتری:</b> علی محمدی
-          </div>
-
-          {/* جدول */}
           <table className="w-full text-[8px] mb-2" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: accent, color: 'white' }}>
@@ -313,7 +498,6 @@ const PrintPreview: React.FC = () => {
             </tbody>
           </table>
 
-          {/* جمع‌بندی */}
           <div className="text-[8px] space-y-0.5">
             {settings.showDiscount && <div className="flex justify-between"><span>تخفیف:</span><span>۵٪</span></div>}
             {settings.showTax && <div className="flex justify-between"><span>مالیات:</span><span>۹٪</span></div>}
@@ -324,7 +508,6 @@ const PrintPreview: React.FC = () => {
             </div>
           </div>
 
-          {/* پاصفحه */}
           {settings.showStamp && (
             <div className="mt-3 pt-2 border-t grid grid-cols-2 gap-2 text-[7px] text-center text-slate-400">
               <div>مهر فروشنده</div>
@@ -334,6 +517,51 @@ const PrintPreview: React.FC = () => {
 
           {settings.printFooterText && (
             <div className="text-center text-[7px] text-slate-500 mt-2">{settings.printFooterText}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- پیش‌نمایش حرارتی --- */
+const ThermalPreview: React.FC = () => {
+  const { settings } = useSettings();
+  const width = settings.printPaper === 'thermal58' ? '160px' : '200px';
+  return (
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
+      <div className="bg-slate-100 dark:bg-slate-800 p-2 text-center text-[10px] text-slate-500">
+        پیش‌نمایش رسید حرارتی — {settings.printPaper === 'thermal58' ? '۵۸mm' : '۸۰mm'}
+      </div>
+      <div className="p-4 bg-slate-200 dark:bg-slate-900 flex justify-center">
+        <div className="bg-white text-black p-2 font-mono shadow-lg" style={{ width, fontSize: '9px' }}>
+          <div className="text-center font-bold" style={{ fontSize: '11px' }}>{settings.storeName || 'فروشگاه'}</div>
+          {settings.storePhone && <div className="text-center" style={{ fontSize: '8px' }}>{settings.storePhone}</div>}
+          <div className="border-t border-dashed border-black my-1" />
+          <div className="flex justify-between" style={{ fontSize: '8px' }}>
+            <span>شماره: ۱۰۰۱</span>
+            <span>۱۴۰۵/۰۶/۲۳</span>
+          </div>
+          <div className="border-t border-dashed border-black my-1" />
+          <div>علی محمدی</div>
+          <div className="border-t border-dashed border-black my-1" />
+          <div className="mb-1">
+            <div className="font-bold">کالای نمونه</div>
+            <div className="flex justify-between" style={{ fontSize: '8px' }}>
+              <span>۲ × ۸۰۰,۰۰۰</span>
+              <span className="font-bold">۱,۶۰۰,۰۰۰</span>
+            </div>
+          </div>
+          <div className="border-t border-dashed border-black my-1" />
+          <div className="flex justify-between" style={{ fontSize: '8px' }}><span>جمع:</span><span>۱,۶۰۰,۰۰۰</span></div>
+          <div className="border-t-2 border-black my-1" />
+          <div className="flex justify-between font-bold" style={{ fontSize: '11px' }}>
+            <span>قابل پرداخت:</span>
+            <span>۱,۷۴۴,۰۰۰</span>
+          </div>
+          <div className="border-t border-dashed border-black my-1" />
+          {settings.printFooterText && (
+            <div className="text-center" style={{ fontSize: '8px' }}>{settings.printFooterText}</div>
           )}
         </div>
       </div>
