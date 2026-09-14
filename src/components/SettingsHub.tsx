@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Store, Printer, Calendar, Database, Palette } from 'lucide-react';
+import { Store, Printer, Calendar, Database, Palette, RefreshCw } from 'lucide-react';
 import { GeneralSettings } from './settings/GeneralSettings';
 import { StoreSettings } from './settings/StoreSettings';
 import { FiscalSettings } from './settings/FiscalSettings';
 import { PrintSettings } from './PrintSettings';
 import { BackupRestore } from './BackupRestore';
+import { UpdateSettings } from './settings/UpdateSettings';
 
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup';
+type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update';
 
 const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
@@ -14,6 +15,7 @@ const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'print', title: 'تنظیمات چاپ', icon: Printer },
   { id: 'fiscal', title: 'سال مالی', icon: Calendar },
   { id: 'backup', title: 'پشتیبان‌گیری', icon: Database },
+  { id: 'update', title: 'بروزرسانی', icon: RefreshCw },
 ];
 
 export const SettingsHub: React.FC = () => {
@@ -48,6 +50,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'print' && <PrintSettings />}
         {active === 'fiscal' && <FiscalSettings />}
         {active === 'backup' && <BackupRestore />}
+        {active === 'update' && <UpdateSettings />}
       </div>
     </div>
   );
