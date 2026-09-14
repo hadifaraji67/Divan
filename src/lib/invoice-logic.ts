@@ -1,35 +1,40 @@
 import type { Invoice, Payment, Product, Contact, Cheque } from '../types/models';
-import { invoiceTotal } from '../types/models';
+import { invoiceTotal, invoiceTypeEffect } from '../types/models';
 import { loadData, saveData, genId } from './storage';
 
 /**
  * وقتی فاکتور ذخیره می‌شود:
- * - موجودی کالاها کم/زیاد می‌شود
- * - اگر پرداخت نقدی همراه فاکتور ثبت شده، به payments اضافه می‌شود
- * - اگر چک همراه فاکتور ثبت شده، به cheques اضافه می‌شود
+ * - موجودی کالاها بر اساس نوع فاکتور تغییر می‌کند
+ *   - فروش: کاهش
+ *   - خرید: افزایش
+ *   - برگشت از فروش: افزایش
+ *   - پیش‌فاکتورها: بدون تغییر
  */
 export function applyInvoiceEffects(invoice: Invoice, payments?: Payment[], cheques?: Cheque[]) {
-  // ۱. کسر/افزایش موجودی
-  const products = loadData<Product[]>('products', []);
-  const updated = products.map(p => {
-    const lines = invoice.items.filter(it => it.productId === p.id);
-    if (lines.length === 0) return p;
-    const qtyDelta = lines.reduce((s, l) => s + l.quantity, 0);
-    let newStock = p.stock;
-    if (invoice.type === 'فروش' || invoice.type === 'پیش‌فاکتور') newStock -= qtyDelta;
-    else if (invoice.type === 'خرید') newStock += qtyDelta;
-    else if (invoice.type === 'برگشت از فروش') newStock += qtyDelta;
-    return { ...p, stock: Math.max(0, newStock) };
-  });
-  saveData('products', updated);
+  const effect = invoiceTypeEffect(invoice.type);
 
-  // ۲. اضافه کردن پرداخت‌ها
+  // فقط اگر اثر روی موجودی دارد
+  if (effect !== 'none') {
+    const products = loadData<Product[]>('products', []);
+    const updated = products.map(p => {
+      const lines = invoice.items.filter(it => it.productId === p.id);
+      if (lines.length === 0) return p;
+      const qtyDelta = lines.reduce((s, l) => s + l.quantity, 0);
+      const newStock = effect === 'decrease'
+        ? Math.max(0, p.stock - qtyDelta)
+        : p.stock + qtyDelta;
+      return { ...p, stock: newStock };
+    });
+    saveData('products', updated);
+  }
+
+  // اضافه کردن پرداخت‌ها
   if (payments && payments.length > 0) {
     const all = loadData<Payment[]>('payments', []);
     saveData('payments', [...payments, ...all]);
   }
 
-  // ۳. اضافه کردن چک‌ها
+  // اضافه کردن چک‌ها
   if (cheques && cheques.length > 0) {
     const all = loadData<Cheque[]>('cheques', []);
     saveData('cheques', [...cheques, ...all]);
@@ -37,22 +42,40 @@ export function applyInvoiceEffects(invoice: Invoice, payments?: Payment[], cheq
 }
 
 /**
- * وقتی پرداخت ثبت می‌شود:
- * - مانده فاکتور به‌روزرسانی می‌شود (اگر invoiceId داده شده)
+ * تبدیل پیش‌فاکتور به فاکتور واقعی
+ */
+export function convertToFinalInvoice(invoice: Invoice): Invoice {
+  let newType: Invoice['type'] = invoice.type;
+  let newNumber = invoice.number;
+
+  if (invoice.type === 'پیش‌فاکتور فروش') {
+    newType = 'فروش';
+    newNumber = invoice.number.replace(/^PF-?/i, 'INV-').replace(/^پیش-?/, '');
+  } else if (invoice.type === 'پیش‌فاکتور خرید') {
+    newType = 'خرید';
+    newNumber = invoice.number.replace(/^PF-?/i, 'PUR-').replace(/^پیش-?/, '');
+  }
+
+  return {
+    ...invoice,
+    id: genId(),
+    type: newType,
+    number: newNumber,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * ثبت پرداخت روی فاکتور
  */
 export function attachPaymentToInvoice(payment: Payment) {
   if (!payment.invoiceId) return;
   const invoices = loadData<Invoice[]>('invoices', []);
-  const updated = invoices.map(inv => {
-    if (inv.id !== payment.invoiceId) return inv;
-    return inv;
-  });
-  saveData('invoices', updated);
+  saveData('invoices', invoices);
 }
 
 /**
- * وقتی چک وصول می‌شود:
- * - یک پرداخت خودکار ثبت می‌شود
+ * تبدیل چک به پرداخت (هنگام وصول)
  */
 export function chequeToPayment(cheque: Cheque): Payment {
   return {
@@ -72,9 +95,6 @@ export function chequeToPayment(cheque: Cheque): Payment {
   };
 }
 
-/**
- * ساخت پرداخت از یک فاکتور (برای ثبت سریع)
- */
 export function paymentFromInvoice(invoice: Invoice, amount: number, type: 'نقد' | 'کارت' | 'چک'): Payment {
   return {
     id: genId(),
@@ -84,33 +104,52 @@ export function paymentFromInvoice(invoice: Invoice, amount: number, type: 'نق
     type,
     amount,
     date: new Date().toLocaleDateString('fa-IR'),
-    direction: invoice.type === 'خرید' ? 'پرداخت' : 'دریافت',
-    notes: `بابت فاکتور ${invoice.number}`,
+    direction: invoice.type === 'خرید' || invoice.type === 'پیش‌فاکتور خرید' ? 'پرداخت' : 'دریافت',
+    notes: `بابت ${invoice.type} ${invoice.number}`,
     createdAt: new Date().toISOString(),
   };
 }
 
 /**
- * مانده حساب هر مشتری
+ * مانده حساب مشتری
  */
 export function customerBalance(contactId: string): { total: number; paid: number; balance: number } {
   const invoices = loadData<Invoice[]>('invoices', []).filter(i => i.contactId === contactId);
-  const payments = loadData<Payment[]>('payments', []).filter(p => p.contactId === contactId && p.direction === 'دریافت');
+  const payments = loadData<Payment[]>('payments', []).filter(p => p.contactId === contactId);
 
-  const total = invoices
-    .filter(i => i.type === 'فروش' || i.type === 'پیش‌فاکتور')
+  // فاکتورهای فروش → طلب ما از مشتری
+  const salesTotal = invoices
+    .filter(i => i.type === 'فروش')
     .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
 
-  const paid = payments.reduce((s, p) => s + p.amount, 0);
+  // برگشت از فروش → کاهش طلب
+  const returnsTotal = invoices
+    .filter(i => i.type === 'برگشت از فروش')
+    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
 
-  return { total, paid, balance: total - paid };
+  // پرداخت‌های دریافتی از مشتری
+  const received = payments
+    .filter(p => p.direction === 'دریافت')
+    .reduce((s, p) => s + p.amount, 0);
+
+  const total = salesTotal - returnsTotal;
+  return { total, paid: received, balance: total - received };
 }
 
 /**
- * محاسبه سررسید چک‌های نزدیک (۷ روز آینده)
+ * مانده حساب تامین‌کننده
  */
-export function chequesDueSoon(days = 7): Cheque[] {
-  const cheques = loadData<Cheque[]>('cheques', []).filter(c => c.status === 'در جریان');
-  return cheques;
-}
+export function supplierBalance(contactId: string): { total: number; paid: number; balance: number } {
+  const invoices = loadData<Invoice[]>('invoices', []).filter(i => i.contactId === contactId);
+  const payments = loadData<Payment[]>('payments', []).filter(p => p.contactId === contactId);
 
+  const purchaseTotal = invoices
+    .filter(i => i.type === 'خرید')
+    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+
+  const paid = payments
+    .filter(p => p.direction === 'پرداخت')
+    .reduce((s, p) => s + p.amount, 0);
+
+  return { total: purchaseTotal, paid, balance: purchaseTotal - paid };
+}

@@ -59,7 +59,32 @@ export interface InvoiceLine {
   taxPercent: number;
 }
 
-export type InvoiceType = 'فروش' | 'پیش‌فاکتور' | 'خرید' | 'برگشت از فروش';
+export type InvoiceType =
+  | 'فروش'
+  | 'پیش‌فاکتور فروش'
+  | 'خرید'
+  | 'پیش‌فاکتور خرید'
+  | 'برگشت از فروش';
+
+export const INVOICE_TYPES: { value: InvoiceType; label: string; role: 'مشتری' | 'تامین‌کننده'; effect: 'decrease' | 'increase' | 'none' }[] = [
+  { value: 'فروش', label: 'فاکتور فروش', role: 'مشتری', effect: 'decrease' },
+  { value: 'پیش‌فاکتور فروش', label: 'پیش‌فاکتور فروش', role: 'مشتری', effect: 'none' },
+  { value: 'خرید', label: 'فاکتور خرید', role: 'تامین‌کننده', effect: 'increase' },
+  { value: 'پیش‌فاکتور خرید', label: 'پیش‌فاکتور خرید', role: 'تامین‌کننده', effect: 'none' },
+  { value: 'برگشت از فروش', label: 'برگشت از فروش', role: 'مشتری', effect: 'increase' },
+];
+
+export function invoiceTypeLabel(type: InvoiceType): string {
+  return INVOICE_TYPES.find(t => t.value === type)?.label || type;
+}
+
+export function invoiceTypeEffect(type: InvoiceType): 'decrease' | 'increase' | 'none' {
+  return INVOICE_TYPES.find(t => t.value === type)?.effect || 'none';
+}
+
+export function invoiceTypeRole(type: InvoiceType): 'مشتری' | 'تامین‌کننده' {
+  return INVOICE_TYPES.find(t => t.value === type)?.role || 'مشتری';
+}
 
 export interface Invoice {
   id: string;
