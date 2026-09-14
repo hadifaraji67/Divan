@@ -39,6 +39,11 @@ export interface Settings {
   showTax: boolean;
   showShipping: boolean;
   thermalWidth: number;
+
+  // سال مالی
+  fiscalYearStartMonth: number;  // ۱ تا ۱۲ (فروردین تا اسفند)
+  fiscalYearStartDay: number;    // ۱ تا ۳۱
+  fiscalYearLabel: string;       // مثل "۱۴۰۵" یا "۱۴۰۴-۱۴۰۵"
 }
 
 const DEFAULTS: Settings = {
@@ -73,6 +78,10 @@ const DEFAULTS: Settings = {
   showTax: true,
   showShipping: true,
   thermalWidth: 80,
+
+  fiscalYearStartMonth: 1,
+  fiscalYearStartDay: 1,
+  fiscalYearLabel: String(new Date().getFullYear() - 621),
 };
 
 const STORAGE_KEY = 'divan_settings_v1';

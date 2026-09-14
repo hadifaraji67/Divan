@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Palette, Type, Hash, DollarSign, Store, Save, RotateCcw,
   Sparkles, Layout, Phone, MapPin, Percent, Info, Check,
-} from 'lucide-react';
+, Calendar } from 'lucide-react';
 import { useSettings, type Theme, type FontSize } from '../lib/theme-context';
 import { APP_VERSION } from '../lib/update-service';
 
@@ -124,6 +124,55 @@ export const SettingsModule: React.FC = () => {
             />
             <Percent className="w-4 h-4 opacity-50" />
           </div>
+        </Row>
+      </Section>
+
+      {/* سال مالی */}
+      <Section icon={<Calendar className="w-4 h-4" />} title="سال مالی">
+        <p className="text-xs opacity-60 leading-relaxed">
+          تاریخ شروع سال مالی کسب‌وکار خود را تنظیم کنید. تمام گزارش‌ها و بستن سال بر این اساس محاسبه می‌شوند.
+        </p>
+
+        <Row label="ماه شروع سال مالی">
+          <select
+            value={settings.fiscalYearStartMonth}
+            onChange={(e) => { update({ fiscalYearStartMonth: Number(e.target.value) }); flash(); }}
+            className="w-full min-w-[180px] p-2 border rounded-lg text-sm"
+          >
+            <option value={1}>فروردین (استاندارد ایران)</option>
+            <option value={2}>اردیبهشت</option>
+            <option value={3}>خرداد</option>
+            <option value={4}>تیر</option>
+            <option value={5}>مرداد</option>
+            <option value={6}>شهریور</option>
+            <option value={7}>مهر</option>
+            <option value={8}>آبان</option>
+            <option value={9}>آذر</option>
+            <option value={10}>دی</option>
+            <option value={11}>بهمن</option>
+            <option value={12}>اسفند</option>
+          </select>
+        </Row>
+
+        <Row label="روز شروع سال مالی">
+          <input
+            type="number"
+            min={1}
+            max={31}
+            value={settings.fiscalYearStartDay}
+            onChange={(e) => update({ fiscalYearStartDay: Number(e.target.value) })}
+            onBlur={flash}
+            className="w-20 p-2 border rounded-lg text-sm text-center"
+          />
+        </Row>
+
+        <Row label="عنوان سال مالی">
+          <TextInput
+            value={settings.fiscalYearLabel}
+            onChange={(v) => update({ fiscalYearLabel: v })}
+            onBlur={flash}
+            placeholder="۱۴۰۵"
+          />
         </Row>
       </Section>
 
