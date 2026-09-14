@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   Printer, Wallet, BookOpen, CheckSquare, BarChart3, Calendar,
   Smartphone, MessageSquare, Settings, ChevronDown, X,
-  TrendingUp, CreditCard, Search, Star, Scale,
+  TrendingUp, CreditCard, Search, Star, Scale, MapPin, Download,
 } from 'lucide-react';
 import { APP_VERSION } from '../lib/update-service';
 
@@ -37,6 +37,7 @@ const menuGroups: MenuGroup[] = [
       { key: 'payments', title: 'پرداخت‌ها', icon: CreditCard },
       { key: 'cheques', title: 'چک‌ها', icon: CheckSquare },
       { key: 'print-settings', title: 'تنظیمات چاپ', icon: Printer },
+      { key: 'installments', title: 'اقساط و تسویه', icon: Wallet },
     ],
   },
   {
@@ -50,6 +51,9 @@ const menuGroups: MenuGroup[] = [
       { key: 'balance-sheet', title: 'ترازنامه', icon: Scale },
       { key: 'customer-ledger', title: 'دفتر معین', icon: BookOpen },
       { key: 'reports', title: 'گزارش‌های جامع', icon: TrendingUp },
+      { key: 'regional-report', title: 'گزارش منطقه‌ای', icon: MapPin },
+      { key: 'customer-club', title: 'باشگاه مشتریان', icon: Star },
+      { key: 'cash-box', title: 'صندوق و کیف پول', icon: Wallet },
       { key: 'finance', title: 'پنل مالی', icon: Wallet },
       { key: 'fiscal-year-closing', title: 'بستن سال مالی', icon: Calendar },
     ],
@@ -61,6 +65,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { key: 'sms-import', title: 'استخراج پیامک', icon: MessageSquare },
       { key: 'settings', title: 'تنظیمات', icon: Settings },
+      { key: 'backup', title: 'پشتیبان‌گیری', icon: Download },
     ],
   },
 ];

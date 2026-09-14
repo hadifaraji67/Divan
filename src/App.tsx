@@ -14,6 +14,11 @@ import { PaymentsModule } from './components/PaymentsModule';
 import { ChequesModule } from './components/ChequesModule';
 import { SettingsModule } from './components/SettingsModule';
 import { PrintSettings } from './components/PrintSettings';
+import { RegionalReport } from './components/RegionalReport';
+import { BackupRestore } from './components/BackupRestore';
+import { CustomerClub } from './components/CustomerClub';
+import { InstallmentsModule } from './components/InstallmentsModule';
+import { CashBox } from './components/CashBox';
 import { DashboardModule } from './components/DashboardModule';
 import { InvoiceModule } from './components/InvoiceModule';
 import { SmsImportPanel } from './components/sms-import-panel';
@@ -35,6 +40,11 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   invoices: 'مدیریت فاکتورها',
   inventory: 'انبار و کالا',
   'print-settings': 'تنظیمات چاپ',
+  'regional-report': 'گزارش منطقه‌ای',
+  backup: 'پشتیبان‌گیری و بازیابی',
+  'customer-club': 'باشگاه مشتریان',
+  installments: 'اقساط و تسویه',
+  'cash-box': 'صندوق و کیف پول',
   payments: 'پرداخت‌ها',
   'customer-ledger': 'دفتر معین مشتریان',
   cheques: 'مدیریت چک‌ها',
@@ -87,6 +97,11 @@ export const App: React.FC = () => {
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
       case 'print-settings': return <PrintSettings />;
+      case 'regional-report': return <RegionalReport />;
+      case 'backup': return <BackupRestore />;
+      case 'customer-club': return <CustomerClub />;
+      case 'installments': return <InstallmentsModule />;
+      case 'cash-box': return <CashBox />;
       case 'payments': return <PaymentsModule />;
       case 'customer-ledger': return <CustomerLedger />;
       case 'cheques': return <ChequesModule />;
