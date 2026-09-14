@@ -6,6 +6,7 @@ export interface Contact {
   lastName?: string;
   companyName?: string;
   nationalId: string;
+  registrationNumber?: string;
   mobile: string;
   phone?: string;
   email?: string;
@@ -48,7 +49,9 @@ export interface Product {
 
 export interface InvoiceLine {
   productId: string;
+  productCode?: string;
   productName: string;
+  description?: string;
   unit: string;
   quantity: number;
   unitPrice: number;

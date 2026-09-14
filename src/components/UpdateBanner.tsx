@@ -80,7 +80,7 @@ export const UpdateBanner: React.FC<Props> = ({ forceCheck }) => {
   const platform = detectPlatform();
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 animate-[fadeIn_0.3s_ease-out]" dir="rtl">
+    <div className="fixed left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 bottom-20 md:bottom-4 animate-[fadeIn_0.3s_ease-out]" dir="rtl">
       <div className="relative overflow-hidden rounded-2xl shadow-2xl border"
         style={{
           background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',

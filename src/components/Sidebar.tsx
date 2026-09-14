@@ -9,7 +9,7 @@ import { APP_VERSION } from '../lib/update-service';
 
 export type ViewKey =
   | 'home' | 'contacts'
-  | 'invoice' | 'invoices' | 'inventory' | 'invoice-print'
+  | 'invoice' | 'invoices' | 'inventory' | 'invoice-print' | 'print-settings'
   | 'customer-ledger' | 'cheques' | 'journal-entry'
   | 'financial-reports' | 'fiscal-year-closing' | 'profit-loss' | 'balance-sheet'
   | 'reports' | 'finance' | 'payments'
@@ -36,7 +36,7 @@ const menuGroups: MenuGroup[] = [
       { key: 'invoice', title: 'صدور سریع', icon: FileText },
       { key: 'payments', title: 'پرداخت‌ها', icon: CreditCard },
       { key: 'cheques', title: 'چک‌ها', icon: CheckSquare },
-      { key: 'invoice-print', title: 'تنظیمات چاپ', icon: Printer },
+      { key: 'print-settings', title: 'تنظیمات چاپ', icon: Printer },
     ],
   },
   {

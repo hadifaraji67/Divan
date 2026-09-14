@@ -13,6 +13,7 @@ import { InvoicesModule } from './components/InvoicesModule';
 import { PaymentsModule } from './components/PaymentsModule';
 import { ChequesModule } from './components/ChequesModule';
 import { SettingsModule } from './components/SettingsModule';
+import { PrintSettings } from './components/PrintSettings';
 import { DashboardModule } from './components/DashboardModule';
 import { InvoiceModule } from './components/InvoiceModule';
 import { SmsImportPanel } from './components/sms-import-panel';
@@ -33,7 +34,7 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   invoice: 'صدور سریع فاکتور',
   invoices: 'مدیریت فاکتورها',
   inventory: 'انبار و کالا',
-  'invoice-print': 'تنظیمات چاپ',
+  'print-settings': 'تنظیمات چاپ',
   payments: 'پرداخت‌ها',
   'customer-ledger': 'دفتر معین مشتریان',
   cheques: 'مدیریت چک‌ها',
@@ -85,7 +86,7 @@ export const App: React.FC = () => {
       case 'invoice': return <InvoiceModule />;
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
-      case 'invoice-print': return <SmsImportPanel />;
+      case 'print-settings': return <PrintSettings />;
       case 'payments': return <PaymentsModule />;
       case 'customer-ledger': return <CustomerLedger />;
       case 'cheques': return <ChequesModule />;

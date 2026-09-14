@@ -106,9 +106,9 @@ export const PaymentsModule: React.FC = () => {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-lg my-8" dir="rtl">
-            <div className="flex justify-between items-center p-4 border-b">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-3 md:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg my-3 md:my-8" dir="rtl">
+            <div className="flex justify-between items-center p-4 border-b bg-white dark:bg-slate-900 rounded-t-2xl">
               <h3 className="font-bold">ثبت {editing.direction}</h3>
               <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-slate-100"><X className="w-5 h-5" /></button>
             </div>

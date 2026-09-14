@@ -16,6 +16,11 @@ export interface Settings {
   storePhone: string;
   storeAddress: string;
   storeEconomicCode: string;
+  storeLegalName: string;
+  storeRegistrationNumber: string;
+  storeNationalId: string;
+  storePostalCode: string;
+  storeFax: string;
   defaultTaxPercent: number;
   animationsEnabled: boolean;
   compactMode: boolean;
@@ -46,6 +51,11 @@ const DEFAULTS: Settings = {
   storePhone: '',
   storeAddress: '',
   storeEconomicCode: '',
+  storeLegalName: '',
+  storeRegistrationNumber: '',
+  storeNationalId: '',
+  storePostalCode: '',
+  storeFax: '',
   defaultTaxPercent: 9,
   animationsEnabled: true,
   compactMode: false,
