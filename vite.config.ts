@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
@@ -143,7 +143,15 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
+
+const pkgVersion = JSON.parse(
+  readFileSync(join(process.cwd(), "package.json"), "utf8"),
+).version as string;
+
 export default defineConfig(({ command, isPreview }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkgVersion),
+  },
   server: {
     host: "0.0.0.0",
     port: 8080,

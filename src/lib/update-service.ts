@@ -4,7 +4,8 @@
  * - APK: از GitHub Releases چک می‌کند و لینک دانلود می‌دهد
  */
 
-export const APP_VERSION = '3.2.0';
+declare const __APP_VERSION__: string;
+export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
 const GITHUB_OWNER = 'hadifaraji67';
 const GITHUB_REPO = 'Divan';
 const CHECK_INTERVAL_MS = 1000 * 60 * 60; // هر ۱ ساعت

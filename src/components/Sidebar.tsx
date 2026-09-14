@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { APP_VERSION } from '../lib/update-service';
 import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   Printer, Wallet, BookOpen, CheckSquare, BarChart3, Calendar,
@@ -181,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ active, onSelect, isOpen, onCl
 
         {/* فوتر */}
         <div className="px-4 py-3 border-t text-[10px] opacity-50 text-center shrink-0" style={{ borderColor: 'inherit' }}>
-          نسخه ۳.۱.۶
+          نسخه {APP_VERSION}
         </div>
       </aside>
     </>

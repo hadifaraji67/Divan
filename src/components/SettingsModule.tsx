@@ -4,6 +4,7 @@ import {
   Sparkles, Layout, Phone, MapPin, Percent, Info, Check,
 } from 'lucide-react';
 import { useSettings, type Theme, type FontSize } from '../lib/theme-context';
+import { APP_VERSION } from '../lib/update-service';
 
 const ACCENTS = [
   { key: 'indigo', color: '#6366f1', label: 'بنفش' },
@@ -172,7 +173,7 @@ export const SettingsModule: React.FC = () => {
       <Section icon={<Info className="w-4 h-4" />} title="درباره">
         <div className="text-xs space-y-1.5 leading-relaxed">
           <div className="flex justify-between"><span className="opacity-60">نام نرم‌افزار</span><b>دیوان</b></div>
-          <div className="flex justify-between"><span className="opacity-60">نسخه</span><b>۳.۱.۶</b></div>
+          <div className="flex justify-between"><span className="opacity-60">نسخه</span><b>{APP_VERSION}</b></div>
           <div className="flex justify-between"><span className="opacity-60">سامانه</span><b>حسابداری و مدیریت کسب‌وکار</b></div>
         </div>
       </Section>
