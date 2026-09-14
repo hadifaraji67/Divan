@@ -257,16 +257,17 @@ type State = Counters & {
 export function invoiceSums(items: LineItem[]) {
   return items.reduce(
     (acc, item) => {
-      const t = lineTotals(item.qty, item.unitPrice, item.discount);
-      acc.amount += t.amount;
-      acc.afterDiscount += t.afterDiscount;
-      acc.vat += t.vat;
-      acc.payable += t.payable;
-      acc.discount += item.discount;
-      acc.qty += item.qty;
+      const qty = Number(item.qty || 0);
+      const unitPrice = Number(item.unitPrice || 0);
+      const discount = Number(item.discount || 0);
+      const amount = qty * unitPrice;
+      const afterDiscount = amount - (amount * discount) / 100;
+      acc.amount += amount;
+      acc.afterDiscount += afterDiscount;
+      acc.discount += discount;
       return acc;
     },
-    { amount: 0, afterDiscount: 0, vat: 0, payable: 0, discount: 0, qty: 0 },
+    { amount: 0, afterDiscount: 0, vat: 0, payable: 0, discount: 0 }
   );
 }
 
@@ -772,7 +773,7 @@ function migrateLegacyData() {
 
 if (typeof window !== "undefined") {
   migrateLegacyData();
-  void useInvoiceStore.persist.rehydrate().then(() => {
+  Promise.resolve(useInvoiceStore.persist.rehydrate()).then(() => {
     useInvoiceStore.setState({ hydrated: true });
   });
 }

@@ -20,7 +20,6 @@ import { CustomerClub } from './components/CustomerClub';
 import { InstallmentsModule } from './components/InstallmentsModule';
 import { CashBox } from './components/CashBox';
 import { DashboardModule } from './components/DashboardModule';
-import { InvoiceModule } from './components/InvoiceModule';
 import { SmsImportPanel } from './components/sms-import-panel';
 import { FinancePanel } from './components/finance-panel';
 import { CustomerLedger } from './components/customer-ledger';
@@ -38,6 +37,8 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   contacts: 'اشخاص و مشتریان',
   invoice: 'صدور سریع فاکتور',
   invoices: 'مدیریت فاکتورها',
+  'invoice-print': 'تنظیمات چاپ',
+  'reports-hub': 'گزارش‌ها و تحلیل',
   inventory: 'انبار و کالا',
   'print-settings': 'تنظیمات چاپ',
   'regional-report': 'گزارش منطقه‌ای',

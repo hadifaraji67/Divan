@@ -105,96 +105,6 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-  const [saving, setSaving] = React.useState(false);
-
-  const saveAsImage = async () => {
-    setSaving(true);
-    const loadingToast = notify.loading('در حال ساخت تصویر...');
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const element = document.querySelector('.print-area') as HTMLElement;
-      if (!element) {
-        notify.dismiss(loadingToast);
-        notify.error('عنصر فاکتور پیدا نشد');
-        setSaving(false);
-        return;
-      }
-
-      // به‌طور موقت مخفی کردن عناصر no-print
-      const noPrintEls = document.querySelectorAll('.no-print') as NodeListOf<HTMLElement>;
-      const originalDisplays: string[] = [];
-      noPrintEls.forEach((el, i) => {
-        originalDisplays[i] = el.style.display;
-        el.style.display = 'none';
-      });
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
-
-      // برگرداندن نمایش
-      noPrintEls.forEach((el, i) => {
-        el.style.display = originalDisplays[i] || '';
-      });
-
-      // تبدیل به blob
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/png', 0.95)
-      );
-
-      if (!blob) {
-        notify.dismiss(loadingToast);
-        notify.error('خطا در ساخت تصویر');
-        setSaving(false);
-        return;
-      }
-
-      // بررسی پشتیبانی از Web Share API
-      const file = new File([blob], `invoice-${invoice.number}.png`, { type: 'image/png' });
-
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        // در موبایل: به اشتراک گذاری (ذخیره، ارسال به تلگرام، واتساپ و...)
-        notify.dismiss(loadingToast);
-        try {
-          await navigator.share({
-            files: [file],
-            title: `فاکتور ${invoice.number}`,
-            text: `فاکتور ${invoice.type} شماره ${invoice.number}`,
-          });
-        } catch (err: any) {
-          if (err?.name !== 'AbortError') {
-            // اگر اشتراک‌گذاری لغو شد، دانلود کن
-            downloadBlob(blob, invoice.number);
-          }
-        }
-      } else {
-        // در دسکتاپ یا مرورگر بدون پشتیبانی: دانلود
-        notify.dismiss(loadingToast);
-        downloadBlob(blob, invoice.number);
-        notify.success('تصویر فاکتور ذخیره شد');
-      }
-    } catch (err) {
-      console.error('[saveAsImage]', err);
-      notify.dismiss(loadingToast);
-      notify.error('خطا در ساخت تصویر');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const downloadBlob = (blob: Blob, invoiceNumber: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-${invoiceNumber}-${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -283,7 +193,7 @@ const FormalInvoice: React.FC<{ invoice: Invoice; contact?: Contact; products: P
 
   const docTitle = invoice.type === 'خرید' ? 'فاکتور خرید کالا و خدمات' :
                    invoice.type === 'برگشت از فروش' ? 'برگشت از فروش کالا و خدمات' :
-                   invoice.type === 'پیش‌فاکتور' ? 'پیش‌فاکتور فروش کالا و خدمات' :
+                   invoice.type === 'پیش‌فاکتور فروش' ? 'پیش‌فاکتور فروش کالا و خدمات' :
                    'فاکتور فروش کالا و خدمات';
 
   // محاسبات
@@ -641,7 +551,7 @@ const SimpleInvoice: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ invo
   const tax = ((subtotal - discount) * invoice.taxPercent) / 100;
   const total = subtotal - discount + tax + invoice.shippingCost;
 
-  const docLabel = invoice.type === 'پیش‌فاکتور' ? 'پیش‌فاکتور' : invoice.type === 'خرید' ? 'فاکتور خرید' : invoice.type === 'برگشت از فروش' ? 'برگشت از فروش' : 'فاکتور فروش';
+  const docLabel = invoice.type === 'پیش‌فاکتور فروش' ? 'پیش‌فاکتور' : invoice.type === 'خرید' ? 'فاکتور خرید' : invoice.type === 'برگشت از فروش' ? 'برگشت از فروش' : 'فاکتور فروش';
   const accent = '#4f46e5';
 
   return (

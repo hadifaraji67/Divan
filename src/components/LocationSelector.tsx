@@ -63,14 +63,14 @@ const Combobox: React.FC<{
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const onClickOutside = (e: MouseEvent) => {
+    const onClickOutside = (e: MouseEvent | TouchEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', onClickOutside);
-    document.addEventListener('touchstart', onClickOutside);
+    document.addEventListener('mousedown', onClickOutside as EventListener);
+    document.addEventListener('touchstart', onClickOutside as EventListener);
     return () => {
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('touchstart', onClickOutside);
+      document.removeEventListener('mousedown', onClickOutside as EventListener);
+      document.removeEventListener('touchstart', onClickOutside as EventListener);
     };
   }, []);
 

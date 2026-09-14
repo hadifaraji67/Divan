@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Palette, Type, Hash, DollarSign, Store, Save, RotateCcw,
   Sparkles, Layout, Phone, MapPin, Percent, Info, Check,
-, Calendar } from 'lucide-react';
+  Calendar, } from 'lucide-react';
 import { useSettings, type Theme, type FontSize } from '../lib/theme-context';
 import { APP_VERSION } from '../lib/update-service';
 

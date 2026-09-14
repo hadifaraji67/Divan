@@ -34,7 +34,7 @@ export const BalanceSheetReport: React.FC = () => {
 
     // حساب‌های دریافتنی (مانده بدهی مشتریان)
     const receivable = contacts.reduce((sum, c) => {
-      const sales = invoices.filter(i => i.contactId === c.id && (i.type === 'فروش' || i.type === 'پیش‌فاکتور'));
+      const sales = invoices.filter(i => i.contactId === c.id && (i.type === 'فروش' || i.type === 'پیش‌فاکتور فروش'));
       const total = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
       const paid = payments
         .filter(p => p.contactId === c.id && p.direction === 'دریافت')

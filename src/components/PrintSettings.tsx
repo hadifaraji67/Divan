@@ -4,7 +4,7 @@ import {
   Eye, Save, RotateCcw, Upload, X, Check,
   Layers, Type, AlignRight, ListChecks,
 } from 'lucide-react';
-import { useSettings, type PrintPaper, type PrintMode } from '../lib/theme-context';
+import { useSettings, type PrintPaper, type PrintMode , formatNum } from '../lib/theme-context';
 import { notify } from '../lib/toast';
 
 const ACCENTS = [

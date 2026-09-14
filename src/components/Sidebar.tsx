@@ -12,7 +12,8 @@ export type ViewKey =
   | 'invoice' | 'invoices' | 'inventory' | 'invoice-print' | 'print-settings'
   | 'customer-ledger' | 'cheques' | 'journal-entry'
   | 'financial-reports' | 'fiscal-year-closing' | 'profit-loss' | 'balance-sheet'
-  | 'reports' | 'finance' | 'payments'
+  | 'reports' | 'reports-hub' | 'finance' | 'payments'
+  | 'regional-report' | 'backup' | 'customer-club' | 'installments' | 'cash-box'
   | 'sms-import' | 'settings';
 
 interface MenuItem { key: ViewKey; title: string; icon: React.ElementType; }
