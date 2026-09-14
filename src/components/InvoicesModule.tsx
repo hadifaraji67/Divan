@@ -6,7 +6,9 @@ import { loadData, saveData, genId } from '../lib/storage';
 import { notify } from '../lib/toast';
 import { JalaliDatePicker } from './JalaliDatePicker';
 import { InvoicePrintPro } from './InvoicePrintPro';
-import { applyInvoiceEffects, convertToFinalInvoice } from '../lib/invoice-logic';
+import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '../lib/invoice-logic';
+import { getInvoicePaymentInfo, payStatusLabel, payStatusColor, payStatusEmoji } from '../lib/invoice-payment';
+import type { Payment } from '../types/models';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -39,12 +41,22 @@ export const InvoicesModule: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Invoice>(empty());
   const [preview, setPreview] = useState<Invoice | null>(null);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
+  const [withPayment, setWithPayment] = useState(false);
+  const [payType, setPayType] = useState<'نقد' | 'کارت' | 'چک'>('نقد');
+  const [payAmount, setPayAmount] = useState(0);
 
   useEffect(() => {
     setInvoices(loadData<Invoice[]>('invoices', []));
     setContacts(loadData<Contact[]>('contacts', []));
     setProducts(loadData<Product[]>('products', []));
+    setAllPayments(loadData<Payment[]>('payments', []));
   }, []);
+
+  // رفرش پرداخت‌ها هر بار که فاکتورها تغییر کنند
+  useEffect(() => {
+    setAllPayments(loadData<Payment[]>('payments', []));
+  }, [invoices]);
   useEffect(() => { saveData('invoices', invoices); }, [invoices]);
 
   const filtered = useMemo(() => {
@@ -83,6 +95,8 @@ export const InvoicesModule: React.FC = () => {
     inv.createdAt = new Date().toISOString();
     inv.contactId = contacts.find(c => c.roles.includes(invoiceTypeRole(inv.type) as any))?.id || '';
     setEditing(inv);
+    setWithPayment(false);
+    setPayAmount(0);
     setShowForm(true);
   };
 
@@ -103,11 +117,45 @@ export const InvoicesModule: React.FC = () => {
     setInvoices(prev => isNew ? [...prev, inv] : prev.map(i => i.id === inv.id ? inv : i));
 
     if (isNew) {
-      applyInvoiceEffects(inv);
+      // اضافه کردن پرداخت اگر لازم است
+      let payments: Payment[] | undefined;
+      let cheques: any[] | undefined;
+      if (withPayment && payAmount > 0) {
+        const newPayment = paymentFromInvoice(inv, payAmount, payType);
+        payments = [newPayment];
+
+        // اگر چک بود، به cheques هم اضافه کن
+        if (payType === 'چک') {
+          cheques = [{
+            id: newPayment.id + '-chq',
+            contactId: inv.contactId,
+            contactName: inv.contactName,
+            bankName: '',
+            chequeNumber: newPayment.refCode || '',
+            amount: payAmount,
+            dueDate: inv.dueDate || inv.date,
+            direction: inv.type === 'خرید' || inv.type === 'پیش‌فاکتور خرید' ? 'پرداختی' : 'دریافتی',
+            status: 'در جریان',
+            notes: `بابت فاکتور ${inv.number}`,
+            createdAt: new Date().toISOString(),
+          }];
+        }
+      }
+
+      applyInvoiceEffects(inv, payments, cheques);
       const effect = INVOICE_TYPES.find(t => t.value === inv.type)?.effect;
-      if (effect === 'decrease') notify.success('فاکتور ثبت شد و موجودی انبار کسر شد');
-      else if (effect === 'increase') notify.success('فاکتور ثبت شد و موجودی انبار افزایش یافت');
-      else notify.success('پیش‌فاکتور ذخیره شد');
+      if (withPayment && payAmount > 0) {
+        notify.success(`فاکتور ثبت شد + پرداخت ${payAmount.toLocaleString()} ریال ثبت گردید`);
+      } else if (effect === 'decrease') {
+        notify.success('فاکتور ثبت شد و موجودی انبار کسر شد');
+      } else if (effect === 'increase') {
+        notify.success('فاکتور ثبت شد و موجودی انبار افزایش یافت');
+      } else {
+        notify.success('پیش‌فاکتور ذخیره شد');
+      }
+
+      // رفرش لیست پرداخت‌ها
+      setAllPayments(loadData<Payment[]>('payments', []));
     } else {
       notify.success('فاکتور به‌روزرسانی شد');
     }
@@ -138,6 +186,13 @@ export const InvoicesModule: React.FC = () => {
   const updateLine = (i: number, patch: Partial<InvoiceLine>) => {
     setEditing({ ...editing, items: editing.items.map((it, idx) => idx === i ? { ...it, ...patch } : it) });
   };
+
+  useEffect(() => {
+    if (withPayment && payAmount === 0) {
+      const t = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
+      setPayAmount(t);
+    }
+  }, [withPayment, editing.items.length]);
 
   const subtotal = invoiceSubtotal(editing.items);
   const discount = invoiceDiscount(editing.items, editing.discountPercent);
@@ -198,12 +253,32 @@ export const InvoicesModule: React.FC = () => {
                       <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${TYPE_COLORS[inv.type] || 'bg-slate-100'}`}>
                         {invoiceTypeLabel(inv.type)}
                       </span>
+                      {(() => {
+                        const info = getInvoicePaymentInfo(inv, allPayments);
+                        const isPre = inv.type === 'پیش‌فاکتور فروش' || inv.type === 'پیش‌فاکتور خرید';
+                        if (isPre) return null;
+                        return (
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${payStatusColor(info.status)}`}>
+                            {payStatusEmoji(info.status)} {payStatusLabel(info.status)}
+                          </span>
+                        );
+                      })()}
                       <span className="text-xs text-slate-500">{inv.date}</span>
                     </div>
                     <div className="font-bold text-sm mt-1">{inv.contactName || '—'}</div>
                     <div className="text-xs text-slate-500 mt-1">
                       اقلام: {inv.items.length} — مبلغ: <b className="text-indigo-600 dark:text-indigo-400">{t.toLocaleString()} ریال</b>
                     </div>
+                    {(() => {
+                      const info = getInvoicePaymentInfo(inv, allPayments);
+                      const isPre = inv.type === 'پیش‌فاکتور فروش' || inv.type === 'پیش‌فاکتور خرید';
+                      if (isPre || info.status === 'paid') return null;
+                      return (
+                        <div className="text-xs mt-1 text-rose-600 dark:text-rose-400 font-bold">
+                          مانده: {info.remaining.toLocaleString()} ریال
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-1">
                     {canConvert && (
@@ -395,6 +470,69 @@ export const InvoicesModule: React.FC = () => {
                   ⓘ این یک پیش‌فاکتور است — موجودی انبار تغییر نمی‌کند. بعد از تأیید می‌توانید آن را به فاکتور قطعی تبدیل کنید.
                 </div>
               ) : null}
+
+              {/* بخش پرداخت */}
+              {!editing.type.includes('پیش‌فاکتور') && (
+                <div className="mt-3 p-3 rounded-xl border-2 border-dashed border-emerald-500/30 bg-emerald-500/5">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={withPayment}
+                      onChange={(e) => {
+                        setWithPayment(e.target.checked);
+                        if (e.target.checked) setPayAmount(total);
+                        else setPayAmount(0);
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      💰 پرداخت همراه با صدور فاکتور
+                    </span>
+                  </label>
+
+                  {withPayment && (
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <label className="block">
+                        <span className="text-xs opacity-60 block mb-1">نوع پرداخت</span>
+                        <select
+                          value={payType}
+                          onChange={(e) => setPayType(e.target.value as any)}
+                          className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900"
+                        >
+                          <option value="نقد">نقد</option>
+                          <option value="کارت">کارت</option>
+                          <option value="چک">چک</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs opacity-60 block mb-1">مبلغ پرداختی</span>
+                        <input
+                          type="number"
+                          value={payAmount}
+                          onChange={(e) => setPayAmount(Number(e.target.value))}
+                          className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900"
+                          dir="ltr"
+                        />
+                      </label>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => setPayAmount(total)}
+                          className="w-full p-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                        >
+                          پرداخت کامل ({total.toLocaleString()})
+                        </button>
+                      </div>
+                      <div className="md:col-span-3 text-xs p-2 rounded-lg bg-black/5 dark:bg-white/5 flex justify-between">
+                        <span>مانده پس از پرداخت:</span>
+                        <b className={Math.max(0, total - payAmount) > 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                          {Math.max(0, total - payAmount).toLocaleString()} ریال
+                        </b>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
