@@ -10,6 +10,8 @@ import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '
 import { getInvoicePaymentInfo, payStatusLabel, payStatusColor, payStatusEmoji } from '../../lib/invoice-payment';
 import type { Payment } from '../../types/models';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
+import { createInvoiceJournalEntry } from '../../lib/accounting';
+import type { JournalEntry } from '../../types/accounting';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -159,6 +161,17 @@ export const InvoicesModule: React.FC = () => {
       }
 
       applyInvoiceEffects(inv, payments, cheques);
+
+      // ساخت سند حسابداری خودکار (به جز پیش‌فاکتورها)
+      if (!inv.type.includes('پیش‌فاکتور')) {
+        const entries = loadData<JournalEntry[]>('journal_entries', []);
+        const je = createInvoiceJournalEntry(inv, entries.length + 1);
+        if (je && je.lines && je.lines.length > 0) {
+          saveData('journal_entries', [...entries, je]);
+          notify.info(`سند حسابداری #${je.entryNumber} ساخته شد`);
+        }
+      }
+
       const effect = INVOICE_TYPES.find(t => t.value === inv.type)?.effect;
       if (withPayment && payAmount > 0) {
         notify.success(`فاکتور ثبت شد + پرداخت ${payAmount.toLocaleString()} ریال ثبت گردید`);

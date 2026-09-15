@@ -6,6 +6,8 @@ import { getInvoicePaymentInfo } from '../../lib/invoice-payment';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
+import { createPaymentJournalEntry } from '../../lib/accounting';
+import type { JournalEntry } from '../../types/accounting';
 
 const empty = (): Payment => ({
   id: '', invoiceId: '', contactId: '', contactName: '', type: 'نقد',
@@ -60,6 +62,14 @@ export const PaymentsModule: React.FC = () => {
     if (!editing.contactName.trim()) { notify.warning('نام طرف حساب الزامی است'); return; }
     if (editing.amount <= 0) { notify.warning('مبلغ الزامی است'); return; }
     setItems(prev => [...prev, editing]);
+
+    // ساخت سند حسابداری خودکار
+    const entries = loadData<JournalEntry[]>('journal_entries', []);
+    const je = createPaymentJournalEntry(editing, entries.length + 1);
+    if (je && je.lines && je.lines.length > 0) {
+      saveData('journal_entries', [...entries, je]);
+    }
+
     setShowForm(false);
   };
   const handleVoid = (reason: string) => {

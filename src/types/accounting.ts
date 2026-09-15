@@ -30,4 +30,7 @@ export interface JournalEntry extends VoidableEntity {
   lines: JournalLine[];   // سطرهای بدهکار و بستانکار
   referenceType?: 'INVOICE' | 'PAYMENT' | 'MANUAL'; // منشا سند
   referenceId?: string;   // آیدی فاکتور یا تراکنش مربوطه
+  void?: boolean;         // باطل شده
+  voidedAt?: string;      // تاریخ باطل شدن
+  voidedReason?: string;  // دلیل باطل شدن
 }

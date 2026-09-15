@@ -1,107 +1,83 @@
 import React, { useMemo, useEffect, useState } from 'react';
-import { Download, Scale } from 'lucide-react';
-import type { Invoice, Product, Payment, Cheque, Contact } from '../../types/models';
-import { invoiceTotal } from '../../types/models';
-import { loadData } from '../../lib/storage';
+import { Scale, Info, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
+import type { Account } from '../../types/accounting';
+import { getBalanceSheet, loadJournalEntries } from '../../lib/financial-statements';
+import { DEFAULT_ACCOUNTS } from '../../lib/accounting';
 import { useSettings, formatNum } from '../../lib/theme-context';
 
 export const BalanceSheetReport: React.FC = () => {
   const { settings } = useSettings();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [cheques, setCheques] = useState<Cheque[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
+  const [entries, setEntries] = useState<any[]>([]);
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
-    setProducts(loadData<Product[]>('products', []));
-    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
-    setCheques(loadData<Cheque[]>('cheques', []).filter(c => !c.void));
-    setContacts(loadData<Contact[]>('contacts', []));
+    setEntries(loadJournalEntries());
   }, []);
 
-  const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
+  const f = (n: number) => formatNum(Math.round(Math.abs(n)), settings.persianNumbers);
 
-  const report = useMemo(() => {
-    // دارایی‌ها
-    const cash = payments
-      .filter(p => p.direction === 'دریافت' && p.type === 'نقد')
-      .reduce((s, p) => s + p.amount, 0)
-      - payments.filter(p => p.direction === 'پرداخت' && p.type === 'نقد').reduce((s, p) => s + p.amount, 0);
+  const report = useMemo(() => getBalanceSheet(accounts, entries), [accounts, entries]);
 
-    const inventory = products.reduce((s, p) => s + p.stock * p.buyPrice, 0);
+  const hasData = report.totalAssets > 0 || report.totalLiabilities > 0 || report.totalEquity > 0;
+  const isBalanced = Math.abs(report.difference) < 100;
 
-    // حساب‌های دریافتنی (مانده بدهی مشتریان)
-    const receivable = contacts.reduce((sum, c) => {
-      const sales = invoices.filter(i => i.contactId === c.id && (i.type === 'فروش' || i.type === 'پیش‌فاکتور فروش'));
-      const total = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-      const paid = payments
-        .filter(p => p.contactId === c.id && p.direction === 'دریافت')
-        .reduce((s, p) => s + p.amount, 0);
-      return sum + Math.max(0, total - paid);
-    }, 0);
-
-    const chequesInHand = cheques
-      .filter(c => c.direction === 'دریافتی' && c.status === 'در جریان')
-      .reduce((s, c) => s + c.amount, 0);
-
-    const totalAssets = cash + inventory + receivable + chequesInHand;
-
-    // بدهی‌ها
-    const payable = contacts.reduce((sum, c) => {
-      const purchases = invoices.filter(i => i.contactId === c.id && i.type === 'خرید');
-      const total = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-      const paid = payments
-        .filter(p => p.contactId === c.id && p.direction === 'پرداخت')
-        .reduce((s, p) => s + p.amount, 0);
-      return sum + Math.max(0, total - paid);
-    }, 0);
-
-    const chequesOut = cheques
-      .filter(c => c.direction === 'پرداختی' && c.status === 'در جریان')
-      .reduce((s, c) => s + c.amount, 0);
-
-    // مالیات فروش
-    let taxPayable = 0;
-    invoices.filter(i => i.type === 'فروش').forEach(inv => {
-      inv.items.forEach(it => {
-        const price = it.quantity * it.unitPrice;
-        taxPayable += (price * it.taxPercent) / 100;
-      });
-    });
-
-    const totalLiabilities = payable + chequesOut + taxPayable;
-
-    // حقوق صاحبان سهام
-    const totalEquity = totalAssets - totalLiabilities;
-
-    return {
-      cash, inventory, receivable, chequesInHand, totalAssets,
-      payable, chequesOut, taxPayable, totalLiabilities,
-      totalEquity,
-    };
-  }, [invoices, products, payments, cheques, contacts]);
-
-  const Row: React.FC<{ label: string; value: number; bold?: boolean; color?: string }> = ({ label, value, bold, color }) => (
-    <div className={`flex justify-between items-center py-2 border-b border-black/5 dark:border-white/5 ${bold ? 'font-bold' : ''}`}>
-      <span className={`text-sm ${bold ? '' : 'opacity-80'}`}>{label}</span>
-      <span className={`font-mono text-sm ${color || ''}`} dir="ltr">
-        {f(value)} <span className="text-[10px] opacity-60">{settings.currency}</span>
-      </span>
-    </div>
-  );
+  const exportCSV = () => {
+    const rows = [
+      ['ترازنامه', ''],
+      ['— دارایی‌ها —', ''],
+      ...report.assets.map(a => [a.account.name, String(a.debit - a.credit)]),
+      ['جمع دارایی‌ها', String(report.totalAssets)],
+      ['', ''],
+      ['— بدهی‌ها —', ''],
+      ...report.liabilities.map(l => [l.account.name, String(l.credit - l.debit)]),
+      ['جمع بدهی‌ها', String(report.totalLiabilities)],
+      ['', ''],
+      ['— حقوق صاحبان سهام —', ''],
+      ...report.equity.map(e => [e.account.name, String(e.credit - e.debit)]),
+      ['جمع حقوق', String(report.totalEquity)],
+      ['', ''],
+      ['جمع بدهی و حقوق', String(report.totalLiabilities + report.totalEquity)],
+    ];
+    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `balance-sheet-${Date.now()}.csv`;
+    a.click();
+  };
 
   return (
     <div className="space-y-4" dir="rtl">
-      <div className="flex justify-between items-center">
-        <h2 className="text-base font-bold">ترازنامه</h2>
+      <div className="flex justify-between items-center flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${Math.abs(report.totalAssets - report.totalLiabilities - report.totalEquity) < 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-            {Math.abs(report.totalAssets - report.totalLiabilities - report.totalEquity) < 100 ? '✓ متوازن' : '✗ نامتوازن'}
-          </div>
+          <h2 className="text-base font-bold">ترازنامه</h2>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold">
+            از دفتر روزنامه
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasData && (
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${isBalanced ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+              {isBalanced ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+              {isBalanced ? 'متوازن' : `اختلاف: ${f(report.difference)}`}
+            </div>
+          )}
+          <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">
+            <Download className="w-3.5 h-3.5" /> CSV
+          </button>
         </div>
       </div>
+
+      {!hasData && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+          <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+            <b>هنوز سندی در دفتر روزنامه ثبت نشده.</b>
+            <br />
+            با صدور فاکتور یا ثبت پرداخت، اسناد حسابداری خودکار ساخته می‌شوند.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* دارایی‌ها */}
@@ -113,10 +89,18 @@ export const BalanceSheetReport: React.FC = () => {
             <h3 className="font-bold text-sm">دارایی‌ها</h3>
           </div>
 
-          <Row label="موجودی نقدی" value={report.cash} color="text-emerald-600" />
-          <Row label="موجودی انبار" value={report.inventory} color="text-emerald-600" />
-          <Row label="حساب‌های دریافتنی" value={report.receivable} color="text-emerald-600" />
-          <Row label="چک‌های دریافتی نزد صندوق" value={report.chequesInHand} color="text-emerald-600" />
+          {report.assets.length === 0 ? (
+            <div className="text-xs opacity-40 py-4 text-center">دارایی ثبت نشده</div>
+          ) : (
+            report.assets.map(a => (
+              <Row
+                key={a.account.id}
+                label={`${a.account.code} — ${a.account.name}`}
+                value={a.debit - a.credit}
+                color="text-emerald-600"
+              />
+            ))
+          )}
 
           <div className="mt-3 pt-3 border-t-2 border-indigo-500">
             <Row label="جمع دارایی‌ها" value={report.totalAssets} bold color="text-indigo-600" />
@@ -133,19 +117,53 @@ export const BalanceSheetReport: React.FC = () => {
           </div>
 
           <div className="text-xs opacity-60 mb-2">بدهی‌ها</div>
-          <Row label="حساب‌های پرداختنی" value={report.payable} color="text-rose-600" />
-          <Row label="چک‌های پرداختی" value={report.chequesOut} color="text-rose-600" />
-          <Row label="مالیات قابل پرداخت" value={report.taxPayable} color="text-rose-600" />
+          {report.liabilities.length === 0 ? (
+            <div className="text-xs opacity-40 py-2 pr-4">بدهی ثبت نشده</div>
+          ) : (
+            report.liabilities.map(l => (
+              <Row
+                key={l.account.id}
+                label={`${l.account.code} — ${l.account.name}`}
+                value={l.credit - l.debit}
+                color="text-rose-600"
+              />
+            ))
+          )}
           <Row label="جمع بدهی‌ها" value={report.totalLiabilities} bold color="text-rose-600" />
 
           <div className="text-xs opacity-60 mt-4 mb-2">حقوق صاحبان سهام</div>
-          <Row label="سرمایه / اندوخته" value={report.totalEquity} color="text-indigo-600" bold />
+          {report.equity.length === 0 ? (
+            <div className="text-xs opacity-40 py-2 pr-4">حقوقی ثبت نشده</div>
+          ) : (
+            report.equity.map(e => (
+              <Row
+                key={e.account.id}
+                label={`${e.account.code} — ${e.account.name}`}
+                value={e.credit - e.debit}
+                color="text-indigo-600"
+              />
+            ))
+          )}
+          <Row label="جمع حقوق" value={report.totalEquity} bold color="text-indigo-600" />
 
           <div className="mt-3 pt-3 border-t-2 border-rose-500">
             <Row label="جمع بدهی + حقوق" value={report.totalLiabilities + report.totalEquity} bold color="text-rose-600" />
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const Row: React.FC<{ label: string; value: number; bold?: boolean; color?: string }> = ({ label, value, bold, color }) => {
+  const { settings } = useSettings();
+  const f = (n: number) => formatNum(Math.round(Math.abs(n)), settings.persianNumbers);
+  return (
+    <div className={`flex justify-between items-center py-2 border-b border-black/5 dark:border-white/5 ${bold ? 'font-bold' : ''}`}>
+      <span className={`text-sm ${bold ? '' : 'opacity-80'}`}>{label}</span>
+      <span className={`font-mono text-sm ${color || ''}`} dir="ltr">
+        {f(value)} <span className="text-[10px] opacity-60">{settings.currency}</span>
+      </span>
     </div>
   );
 };
