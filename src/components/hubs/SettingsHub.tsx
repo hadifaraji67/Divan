@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive } from 'lucide-react';
+import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive, Server } from 'lucide-react';
 import { GeneralSettings } from '../settings/GeneralSettings';
 import { StoreSettings } from '../settings/StoreSettings';
 import { FiscalSettings } from '../settings/FiscalSettings';
 import { PrintSettings } from '../print/PrintSettings';
 import { BackupSettings } from '../settings/BackupSettings';
 import { UpdateSettings } from '../settings/UpdateSettings';
+import { ServerSettings } from '../settings/ServerSettings';
 
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update';
+type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server';
 
 const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
@@ -16,6 +17,7 @@ const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'fiscal', title: 'سال مالی', icon: Calendar },
   { id: 'backup', title: 'بکاپ و بازیابی', icon: HardDrive },
   { id: 'update', title: 'بروزرسانی', icon: RefreshCw },
+  { id: 'server', title: 'سرور و همگام‌سازی', icon: Server },
 ];
 
 export const SettingsHub: React.FC = () => {
@@ -51,6 +53,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'fiscal' && <FiscalSettings />}
         {active === 'backup' && <BackupSettings />}
         {active === 'update' && <UpdateSettings />}
+        {active === 'server' && <ServerSettings />}
       </div>
     </div>
   );
