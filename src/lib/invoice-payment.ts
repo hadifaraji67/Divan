@@ -13,47 +13,42 @@ export interface InvoicePaymentInfo {
 
 /**
  * محاسبه وضعیت پرداخت فاکتور
+ *
+ * قواعد:
+ * - فقط پرداخت‌هایی که صریحاً به این فاکتور وصل شده‌اند (invoiceId) لحاظ می‌شوند
+ * - پرداخت‌های بدون فاکتور در «مانده کل مشتری» حساب می‌شوند، نه در یک فاکتور خاص
+ * - پیش‌فاکتورها همیشه پرداخت‌نشده در نظر گرفته می‌شوند
  */
 export function getInvoicePaymentInfo(invoice: Invoice, allPayments: Payment[]): InvoicePaymentInfo {
   const total = invoiceTotal(invoice.items, invoice.discountPercent, invoice.taxPercent, invoice.shippingCost);
-  const isPurchase = invoice.type === 'خرید' || invoice.type === 'پیش‌فاکتور خرید';
-  const direction = isPurchase ? 'پرداخت' : 'دریافت';
 
-  // پرداخت‌های وصل به این فاکتور
-  const payments = allPayments.filter(p => p.invoiceId === invoice.id);
-
-  // اگر پرداخت مستقیم به فاکتور وصل نیست، از پرداخت‌های مشتری/تامین‌کننده استفاده کن
-  const fallbackPayments = allPayments.filter(p =>
-    p.contactId === invoice.contactId &&
-    p.direction === direction &&
-    !p.invoiceId
-  );
-
-  // محاسبه مجموع پرداخت‌ها
-  const directPaid = payments.reduce((s, p) => s + p.amount, 0);
-
-  let paid = directPaid;
-  // اگر پرداخت مستقیم نبود، از پرداخت‌های بدون فاکتور به‌نسبت استفاده کن
-  if (directPaid === 0 && fallbackPayments.length > 0) {
-    paid = fallbackPayments.reduce((s, p) => s + p.amount, 0);
-  }
-
-  // برای پیش‌فاکتورها، وضعیت پرداخت مهم نیست
+  // پیش‌فاکتورها: پرداخت نمی‌گیرند
   if (invoice.type === 'پیش‌فاکتور فروش' || invoice.type === 'پیش‌فاکتور خرید') {
     return { total, paid: 0, remaining: total, status: 'unpaid', payments: [] };
   }
 
+  // فقط پرداخت‌های وصل‌شده به این فاکتور
+  const payments = allPayments.filter(p => p.invoiceId === invoice.id);
+  const paid = payments.reduce((s, p) => s + p.amount, 0);
+
   const remaining = Math.max(0, total - paid);
   let status: InvoicePayStatus = 'unpaid';
-  if (paid >= total && total > 0) status = 'paid';
+  if (total > 0 && paid >= total) status = 'paid';
   else if (paid > 0) status = 'partial';
 
   return { total, paid, remaining, status, payments };
 }
 
 /**
- * برچسب فارسی وضعیت
+ * مجموع پرداخت‌های بدون فاکتور یک شخص
+ * (برای نمایش در دفتر معین به عنوان «در حساب جاری»)
  */
+export function getUnallocatedPayments(contactId: string, allPayments: Payment[]): number {
+  return allPayments
+    .filter(p => p.contactId === contactId && !p.invoiceId)
+    .reduce((s, p) => s + p.amount, 0);
+}
+
 export function payStatusLabel(status: InvoicePayStatus): string {
   return status === 'paid' ? 'پرداخت‌شده' : status === 'partial' ? 'نیمه‌پرداخت' : 'پرداخت‌نشده';
 }
