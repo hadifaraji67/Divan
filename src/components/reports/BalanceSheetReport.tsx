@@ -14,10 +14,10 @@ export const BalanceSheetReport: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
     setProducts(loadData<Product[]>('products', []));
-    setPayments(loadData<Payment[]>('payments', []));
-    setCheques(loadData<Cheque[]>('cheques', []));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
+    setCheques(loadData<Cheque[]>('cheques', []).filter(c => !c.void));
     setContacts(loadData<Contact[]>('contacts', []));
   }, []);
 

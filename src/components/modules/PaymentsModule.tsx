@@ -5,6 +5,7 @@ import { invoiceTotal } from '../../types/models';
 import { getInvoicePaymentInfo } from '../../lib/invoice-payment';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 const empty = (): Payment => ({
   id: '', invoiceId: '', contactId: '', contactName: '', type: 'نقد',
@@ -17,6 +18,8 @@ export const PaymentsModule: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Payment>(empty());
+  const [showArchived, setShowArchived] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Payment | null>(null);
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [allContacts, setAllContacts] = useState<any[]>([]);
 
@@ -36,13 +39,15 @@ export const PaymentsModule: React.FC = () => {
   }, [allInvoices, editing.direction, editing.contactId]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return items;
+    let list = showArchived ? items.filter(i => i.void) : items.filter(i => !i.void);
+    if (!search.trim()) return list;
     const q = search.trim();
-    return items.filter(p => p.contactName.includes(q) || p.refCode?.includes(q) || p.type.includes(q));
-  }, [items, search]);
+    return list.filter(p => p.contactName.includes(q) || p.refCode?.includes(q) || p.type.includes(q));
+  }, [items, search, showArchived]);
 
-  const totalIn = items.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
-  const totalOut = items.filter(p => p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
+  const activeItems = items.filter(p => !p.void);
+  const totalIn = activeItems.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
+  const totalOut = activeItems.filter(p => p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
 
   const openNew = (direction: 'دریافت' | 'پرداخت') => {
     const p = empty();
@@ -57,9 +62,23 @@ export const PaymentsModule: React.FC = () => {
     setItems(prev => [...prev, editing]);
     setShowForm(false);
   };
-  const remove = (id: string) => {
-    if (!confirm('حذف این پرداخت؟')) return;
-    setItems(p => p.filter(x => x.id !== id));
+  const handleVoid = (reason: string) => {
+    if (!voidTarget) return;
+    setItems(prev => prev.map(p =>
+      p.id === voidTarget.id
+        ? { ...p, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
+        : p
+    ));
+    notify.success('پرداخت باطل شد');
+    setVoidTarget(null);
+  };
+
+  const handleRestore = (id: string) => {
+    if (!confirm('این پرداخت بازگردانی شود؟')) return;
+    setItems(prev => prev.map(p =>
+      p.id === id ? { ...p, void: false, voidedAt: undefined, voidedReason: undefined } : p
+    ));
+    notify.success('پرداخت بازگردانی شد');
   };
 
   return (
@@ -79,8 +98,14 @@ export const PaymentsModule: React.FC = () => {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..."
-            className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm" />
+            className="w-full pr-10 pl-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900" />
         </div>
+        <ArchiveToggle
+          showArchived={showArchived}
+          onChange={setShowArchived}
+          activeCount={items.filter(i => !i.void).length}
+          voidedCount={items.filter(i => i.void).length}
+        />
         <button onClick={() => openNew('دریافت')} className="flex items-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg">
           <Plus className="w-4 h-4" /> دریافت
         </button>
@@ -94,8 +119,23 @@ export const PaymentsModule: React.FC = () => {
           <div className="p-12 text-center text-slate-400 text-sm">پرداختی ثبت نشده</div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {filtered.map(p => (
-              <div key={p.id} className="p-4 flex flex-wrap gap-3 items-center justify-between hover:bg-slate-50">
+            {filtered.map(p => {
+              if (showArchived) {
+                return (
+                  <VoidedItemCard
+                    key={p.id}
+                    title={`${p.direction === 'دریافت' ? 'دریافت' : 'پرداخت'} — ${p.type}`}
+                    subtitle={p.contactName}
+                    amount={p.amount}
+                    amountUnit="ریال"
+                    voidedAt={p.voidedAt}
+                    voidedReason={p.voidedReason}
+                    onRestore={() => handleRestore(p.id)}
+                  />
+                );
+              }
+              return (
+              <div key={p.id} className="p-4 flex flex-wrap gap-3 items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${p.direction === 'دریافت' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
                     <CreditCard className="w-5 h-5" />
@@ -113,13 +153,21 @@ export const PaymentsModule: React.FC = () => {
                   <div className={`font-bold text-sm ${p.direction === 'دریافت' ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {p.direction === 'دریافت' ? '+' : '-'}{p.amount.toLocaleString()} ریال
                   </div>
-                  <button onClick={() => remove(p.id)} className="p-2 rounded-lg hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setVoidTarget(p)} title="باطل کردن" className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      <VoidConfirmDialog
+        open={!!voidTarget}
+        title={voidTarget ? `پرداخت ${voidTarget.amount.toLocaleString()} ریالی` : ''}
+        onConfirm={handleVoid}
+        onCancel={() => setVoidTarget(null)}
+      />
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-3 md:p-4 overflow-y-auto">

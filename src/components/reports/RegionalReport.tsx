@@ -12,7 +12,7 @@ export const RegionalReport: React.FC = () => {
   const [groupBy, setGroupBy] = useState<'province' | 'county' | 'city'>('province');
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
     setContacts(loadData<Contact[]>('contacts', []));
   }, []);
 

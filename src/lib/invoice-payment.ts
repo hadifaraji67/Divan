@@ -28,7 +28,7 @@ export function getInvoicePaymentInfo(invoice: Invoice, allPayments: Payment[]):
   }
 
   // فقط پرداخت‌های وصل‌شده به این فاکتور
-  const payments = allPayments.filter(p => p.invoiceId === invoice.id);
+  const payments = allPayments.filter(p => p.invoiceId === invoice.id && !p.void);
   const paid = payments.reduce((s, p) => s + p.amount, 0);
 
   const remaining = Math.max(0, total - paid);
@@ -45,7 +45,7 @@ export function getInvoicePaymentInfo(invoice: Invoice, allPayments: Payment[]):
  */
 export function getUnallocatedPayments(contactId: string, allPayments: Payment[]): number {
   return allPayments
-    .filter(p => p.contactId === contactId && !p.invoiceId)
+    .filter(p => p.contactId === contactId && !p.invoiceId && !p.void)
     .reduce((s, p) => s + p.amount, 0);
 }
 

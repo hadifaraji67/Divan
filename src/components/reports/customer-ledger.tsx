@@ -26,8 +26,8 @@ export const CustomerLedger: React.FC = () => {
   useEffect(() => {
     const c = loadData<Contact[]>('contacts', []);
     setContacts(c);
-    setInvoices(loadData<Invoice[]>('invoices', []));
-    setPayments(loadData<Payment[]>('payments', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
     if (c.length > 0) setSelectedId(c[0].id);
   }, []);
 

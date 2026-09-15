@@ -1,3 +1,12 @@
+// ═══════════════════════════════════════════════
+// تایپ پایه برای موجودیت‌های قابل باطل کردن
+// ═══════════════════════════════════════════════
+export interface Voidable {
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
+}
+
 export interface Contact {
   id: string;
   code: string;
@@ -103,6 +112,9 @@ export interface Invoice {
   paymentTerms?: string;
   notes?: string;
   createdAt: string;
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
 }
 
 export type PaymentType = 'نقد' | 'کارت' | 'چک';
@@ -122,6 +134,9 @@ export interface Payment {
   direction: 'دریافت' | 'پرداخت';
   notes?: string;
   createdAt: string;
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
 }
 
 export interface Cheque {
@@ -136,6 +151,9 @@ export interface Cheque {
   status: 'در جریان' | 'وصول شده' | 'برگشتی' | 'خرج شده';
   notes?: string;
   createdAt: string;
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
 }
 
 export interface JournalLine {
@@ -155,6 +173,9 @@ export interface JournalEntry {
   referenceType?: 'INVOICE' | 'PAYMENT' | 'MANUAL';
   referenceId?: string;
   createdAt: string;
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
 }
 
 export function invoiceSubtotal(items: InvoiceLine[]): number {
@@ -172,4 +193,19 @@ export function invoiceTax(items: InvoiceLine[], discountPercent: number, taxPer
 
 export function invoiceTotal(items: InvoiceLine[], discountPercent: number, taxPercent: number, shipping: number): number {
   return invoiceSubtotal(items) - invoiceDiscount(items, discountPercent) + invoiceTax(items, discountPercent, taxPercent) + shipping;
+}
+
+
+// ═══════════════════════════════════════════════
+// توابع کمکی برای فیلتر کردن آیتم‌های باطل‌شده
+// ═══════════════════════════════════════════════
+
+/** فقط آیتم‌های فعال (باطل‌نشده) */
+export function filterActive<T extends { void?: boolean }>(items: T[]): T[] {
+  return items.filter(item => !item.void);
+}
+
+/** فقط آیتم‌های باطل‌شده */
+export function filterVoided<T extends { void?: boolean }>(items: T[]): T[] {
+  return items.filter(item => item.void);
 }

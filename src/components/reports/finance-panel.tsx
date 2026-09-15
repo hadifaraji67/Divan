@@ -12,9 +12,9 @@ export const FinancePanel: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([]);
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []));
-    setPayments(loadData<Payment[]>('payments', []));
-    setCheques(loadData<Cheque[]>('cheques', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
+    setCheques(loadData<Cheque[]>('cheques', []).filter(c => !c.void));
   }, []);
 
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);

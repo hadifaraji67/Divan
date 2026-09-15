@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, X, CheckSquare, Calendar } from 'lucide-react';
 import type { Cheque } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 const empty = (): Cheque => ({
   id: '', contactId: '', contactName: '', bankName: '', chequeNumber: '',
@@ -23,19 +24,21 @@ export const ChequesModule: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Cheque>(empty());
   const [filter, setFilter] = useState<'all' | 'دریافتی' | 'پرداختی'>('all');
+  const [showArchived, setShowArchived] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Cheque | null>(null);
 
   useEffect(() => { setItems(loadData<Cheque[]>('cheques', [])); }, []);
   useEffect(() => { saveData('cheques', items); }, [items]);
 
   const filtered = useMemo(() => {
-    let r = items;
+    let r = showArchived ? items.filter(i => i.void) : items.filter(i => !i.void);
     if (filter !== 'all') r = r.filter(c => c.direction === filter);
     if (search.trim()) {
       const q = search.trim();
       r = r.filter(c => c.contactName.includes(q) || c.chequeNumber.includes(q) || c.bankName.includes(q));
     }
     return r;
-  }, [items, search, filter]);
+  }, [items, search, filter, showArchived]);
 
   const openNew = () => { const c = empty(); c.id = genId(); c.createdAt = new Date().toISOString(); setEditing(c); setShowForm(true); };
   const save = () => {
@@ -46,9 +49,23 @@ export const ChequesModule: React.FC = () => {
       : [...prev, editing]);
     setShowForm(false);
   };
-  const remove = (id: string) => {
-    if (!confirm('حذف این چک؟')) return;
-    setItems(p => p.filter(x => x.id !== id));
+  const handleVoid = (reason: string) => {
+    if (!voidTarget) return;
+    setItems(prev => prev.map(c =>
+      c.id === voidTarget.id
+        ? { ...c, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
+        : c
+    ));
+    notify.success('چک باطل شد');
+    setVoidTarget(null);
+  };
+
+  const handleRestore = (id: string) => {
+    if (!confirm('این چک بازگردانی شود؟')) return;
+    setItems(prev => prev.map(c =>
+      c.id === id ? { ...c, void: false, voidedAt: undefined, voidedReason: undefined } : c
+    ));
+    notify.success('چک بازگردانی شد');
   };
   const changeStatus = (id: string, status: Cheque['status']) => {
     setItems(prev => prev.map(c => c.id === id ? { ...c, status } : c));
@@ -62,14 +79,20 @@ export const ChequesModule: React.FC = () => {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..."
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm" />
         </div>
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
           {(['all', 'دریافتی', 'پرداختی'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 text-xs rounded-md ${filter === f ? 'bg-white shadow font-bold' : 'text-slate-600'}`}>
+              className={`px-3 py-1.5 text-xs rounded-md ${filter === f ? 'bg-white dark:bg-slate-700 shadow font-bold' : 'opacity-70'}`}>
               {f === 'all' ? 'همه' : f}
             </button>
           ))}
         </div>
+        <ArchiveToggle
+          showArchived={showArchived}
+          onChange={setShowArchived}
+          activeCount={items.filter(i => !i.void).length}
+          voidedCount={items.filter(i => i.void).length}
+        />
         <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
           <Plus className="w-4 h-4" /> چک جدید
         </button>
@@ -94,8 +117,26 @@ export const ChequesModule: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filtered.map(c => (
-                  <tr key={c.id} className="hover:bg-slate-50">
+                {filtered.map(c => {
+                  if (showArchived) {
+                    return (
+                      <tr key={c.id}>
+                        <td colSpan={8} className="p-0">
+                          <VoidedItemCard
+                            title={`چک ${c.chequeNumber} — ${c.bankName}`}
+                            subtitle={`${c.contactName} — ${c.direction}`}
+                            amount={c.amount}
+                            amountUnit="ریال"
+                            voidedAt={c.voidedAt}
+                            voidedReason={c.voidedReason}
+                            onRestore={() => handleRestore(c.id)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                  <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                     <td className="p-3 font-bold">{c.contactName}</td>
                     <td className="p-3 text-slate-600">{c.bankName}</td>
                     <td className="p-3 font-mono text-xs">{c.chequeNumber}</td>
@@ -112,10 +153,11 @@ export const ChequesModule: React.FC = () => {
                       </select>
                     </td>
                     <td className="p-3">
-                      <button onClick={() => remove(c.id)} className="p-1.5 rounded hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setVoidTarget(c)} title="باطل کردن" className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

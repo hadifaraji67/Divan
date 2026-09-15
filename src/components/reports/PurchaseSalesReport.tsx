@@ -10,7 +10,7 @@ export const PurchaseSalesReport: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [period, setPeriod] = useState<'all' | 'month' | 'quarter' | 'year'>('all');
 
-  useEffect(() => { setInvoices(loadData<Invoice[]>('invoices', [])); }, []);
+  useEffect(() => { setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void)); }, []);
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
 
   const filtered = useMemo(() => {

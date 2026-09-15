@@ -25,9 +25,9 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
   useEffect(() => {
     setContacts(loadData<Contact[]>('contacts', []));
     setProducts(loadData<Product[]>('products', []));
-    setInvoices(loadData<Invoice[]>('invoices', []));
-    setPayments(loadData<Payment[]>('payments', []));
-    setCheques(loadData<Cheque[]>('cheques', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
+    setCheques(loadData<Cheque[]>('cheques', []).filter(c => !c.void));
   }, []);
 
   const stats = useMemo(() => {

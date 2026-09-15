@@ -43,8 +43,8 @@ export const CustomerClub: React.FC = () => {
 
   useEffect(() => {
     setContacts(loadData<Contact[]>('contacts', []));
-    setInvoices(loadData<Invoice[]>('invoices', []));
-    setPayments(loadData<Payment[]>('payments', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
   }, []);
 
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);

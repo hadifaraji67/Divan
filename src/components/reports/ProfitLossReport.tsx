@@ -11,7 +11,7 @@ export const ProfitLossReport: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
     setProducts(loadData<Product[]>('products', []));
   }, []);
 

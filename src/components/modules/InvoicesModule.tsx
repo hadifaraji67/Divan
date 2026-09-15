@@ -9,6 +9,7 @@ import { InvoicePrintPro } from '../print/InvoicePrintPro';
 import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '../../lib/invoice-logic';
 import { getInvoicePaymentInfo, payStatusLabel, payStatusColor, payStatusEmoji } from '../../lib/invoice-payment';
 import type { Payment } from '../../types/models';
+import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -41,6 +42,8 @@ export const InvoicesModule: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Invoice>(empty());
   const [preview, setPreview] = useState<Invoice | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [withPayment, setWithPayment] = useState(false);
   const [payType, setPayType] = useState<'نقد' | 'کارت' | 'چک'>('نقد');
@@ -60,14 +63,14 @@ export const InvoicesModule: React.FC = () => {
   useEffect(() => { saveData('invoices', invoices); }, [invoices]);
 
   const filtered = useMemo(() => {
-    let list = invoices;
+    let list = showArchived ? invoices.filter(i => i.void) : invoices.filter(i => !i.void);
     if (typeFilter !== 'all') list = list.filter(i => i.type === typeFilter);
     if (search.trim()) {
       const q = search.trim();
       list = list.filter(i => i.number.includes(q) || i.contactName.includes(q));
     }
     return [...list].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  }, [invoices, search, typeFilter]);
+  }, [invoices, search, typeFilter, showArchived]);
 
   const stats = useMemo(() => {
     const count = (t: InvoiceType) => invoices.filter(i => i.type === t).length;
@@ -102,10 +105,23 @@ export const InvoicesModule: React.FC = () => {
 
   const openEdit = (inv: Invoice) => { setEditing({ ...inv }); setShowForm(true); };
 
-  const remove = (id: string) => {
-    if (!confirm('حذف این فاکتور؟')) return;
-    setInvoices(p => p.filter(i => i.id !== id));
-    notify.success('حذف شد');
+  const handleVoid = (reason: string) => {
+    if (!voidTarget) return;
+    setInvoices(prev => prev.map(i =>
+      i.id === voidTarget.id
+        ? { ...i, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
+        : i
+    ));
+    notify.success('فاکتور باطل شد');
+    setVoidTarget(null);
+  };
+
+  const handleRestore = (id: string) => {
+    if (!confirm('این فاکتور بازگردانی شود؟')) return;
+    setInvoices(prev => prev.map(i =>
+      i.id === id ? { ...i, void: false, voidedAt: undefined, voidedReason: undefined } : i
+    ));
+    notify.success('فاکتور بازگردانی شد');
   };
 
   const save = () => {
@@ -224,6 +240,12 @@ export const InvoicesModule: React.FC = () => {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..."
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900" />
         </div>
+        <ArchiveToggle
+          showArchived={showArchived}
+          onChange={setShowArchived}
+          activeCount={invoices.filter(i => !i.void).length}
+          voidedCount={invoices.filter(i => i.void).length}
+        />
         <button onClick={() => openNew('فروش')} className="flex items-center gap-1.5 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">
           <Plus className="w-3.5 h-3.5" /> فاکتور فروش
         </button>
@@ -245,6 +267,22 @@ export const InvoicesModule: React.FC = () => {
               const t = invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
               const isPre = inv.type === 'پیش‌فاکتور فروش' || inv.type === 'پیش‌فاکتور خرید';
               const canConvert = isPre;
+              
+              if (showArchived) {
+                return (
+                  <VoidedItemCard
+                    key={inv.id}
+                    title={`${inv.number} — ${invoiceTypeLabel(inv.type)}`}
+                    subtitle={inv.contactName}
+                    amount={t}
+                    amountUnit="ریال"
+                    voidedAt={inv.voidedAt}
+                    voidedReason={inv.voidedReason}
+                    onRestore={() => handleRestore(inv.id)}
+                  />
+                );
+              }
+              
               return (
                 <div key={inv.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 flex flex-wrap gap-3 items-center justify-between">
                   <div className="flex-1 min-w-[200px]">
@@ -295,7 +333,7 @@ export const InvoicesModule: React.FC = () => {
                       className="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-indigo-600">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => remove(inv.id)} title="حذف"
+                    <button onClick={() => setVoidTarget(inv)} title="باطل کردن"
                       className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -544,6 +582,14 @@ export const InvoicesModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* دیالوگ تایید باطل کردن */}
+      <VoidConfirmDialog
+        open={!!voidTarget}
+        title={voidTarget ? `فاکتور ${voidTarget.number}` : ''}
+        onConfirm={handleVoid}
+        onCancel={() => setVoidTarget(null)}
+      />
 
       {/* پیش‌نمایش */}
       {preview && (

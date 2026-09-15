@@ -21,10 +21,10 @@ export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'cust
   const [cheques, setCheques] = useState<Cheque[]>([]);
 
   useEffect(() => {
-    setInvoices(loadData<Invoice[]>('invoices', []));
+    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
     setContacts(loadData<Contact[]>('contacts', []));
     setProducts(loadData<Product[]>('products', []));
-    setPayments(loadData<Payment[]>('payments', []));
+    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
     setCheques(loadData<Cheque[]>('cheques', []));
   }, []);
 

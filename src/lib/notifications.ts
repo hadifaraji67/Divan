@@ -46,11 +46,11 @@ function daysDiff(target: { y: number; m: number; d: number }): number {
 
 export function getNotifications(): AppNotification[] {
   const notifications: AppNotification[] = [];
-  const cheques = loadData<Cheque[]>('cheques', []);
+  const cheques = loadData<Cheque[]>('cheques', []).filter(c => !c.void).filter(c => !c.void);
   const products = loadData<Product[]>('products', []);
   const contacts = loadData<Contact[]>('contacts', []);
-  const invoices = loadData<Invoice[]>('invoices', []);
-  const payments = loadData<Payment[]>('payments', []);
+  const invoices = loadData<Invoice[]>('invoices', []).filter(i => !i.void).filter(i => !i.void);
+  const payments = loadData<Payment[]>('payments', []).filter(p => !p.void).filter(p => !p.void);
 
   // ۱. چک‌های نزدیک سررسید (۷ روز)
   cheques.filter(c => c.status === 'در جریان').forEach(c => {
