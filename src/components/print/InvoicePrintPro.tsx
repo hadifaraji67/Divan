@@ -4,6 +4,7 @@ import type { Invoice, Contact, Product } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
+import { roundRial, calculateLineTotal } from '../../lib/format';
 
 interface Props {
   invoice: Invoice;
@@ -199,10 +200,11 @@ const FormalInvoice: React.FC<{ invoice: Invoice; contact?: Contact; products: P
   // محاسبات
   const items = invoice.items.map((it, i) => {
     const product = products.find(p => p.id === it.productId);
-    const totalBeforeDiscount = it.quantity * it.unitPrice;
-    const discountAmount = (totalBeforeDiscount * it.discountPercent) / 100;
+    const calc = calculateLineTotal(it.quantity, it.unitPrice, it.discountPercent, it.taxPercent);
+    const totalBeforeDiscount = calc.total;
+    const discountAmount = calc.discount;
     const afterDiscount = totalBeforeDiscount - discountAmount;
-    const taxAmount = (afterDiscount * it.taxPercent) / 100;
+    const taxAmount = calc.tax;
     const grandTotal = afterDiscount + taxAmount;
     return {
       rowNum: i + 1,
@@ -546,9 +548,9 @@ const SimpleInvoice: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ invo
   const { settings } = useSettings();
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
 
-  const subtotal = invoice.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-  const discount = (subtotal * invoice.discountPercent) / 100;
-  const tax = ((subtotal - discount) * invoice.taxPercent) / 100;
+  const subtotal = roundRial(invoice.items.reduce((s, it) => s + roundRial(it.quantity * it.unitPrice), 0));
+  const discount = roundRial((subtotal * invoice.discountPercent) / 100);
+  const tax = roundRial(((subtotal - discount) * invoice.taxPercent) / 100);
   const total = subtotal - discount + tax + invoice.shippingCost;
 
   const docLabel = invoice.type === 'پیش‌فاکتور فروش' ? 'پیش‌فاکتور' : invoice.type === 'خرید' ? 'فاکتور خرید' : invoice.type === 'برگشت از فروش' ? 'برگشت از فروش' : 'فاکتور فروش';
@@ -614,7 +616,7 @@ const SimpleInvoice: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ invo
               <td className="p-2.5 text-center text-slate-600">{it.unit}</td>
               <td className="p-2.5 text-center">{f(it.quantity)}</td>
               <td className="p-2.5 text-left font-mono">{f(it.unitPrice)}</td>
-              <td className="p-2.5 text-left font-mono font-bold">{f(it.quantity * it.unitPrice)}</td>
+              <td className="p-2.5 text-left font-mono font-bold">{f(roundRial(it.quantity * it.unitPrice))}</td>
             </tr>
           ))}
         </tbody>
@@ -669,9 +671,9 @@ const ThermalReceipt: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ inv
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
   const width = settings.printPaper === 'thermal58' ? '58mm' : '80mm';
 
-  const subtotal = invoice.items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-  const discount = (subtotal * invoice.discountPercent) / 100;
-  const tax = ((subtotal - discount) * invoice.taxPercent) / 100;
+  const subtotal = roundRial(invoice.items.reduce((s, it) => s + roundRial(it.quantity * it.unitPrice), 0));
+  const discount = roundRial((subtotal * invoice.discountPercent) / 100);
+  const tax = roundRial(((subtotal - discount) * invoice.taxPercent) / 100);
   const total = subtotal - discount + tax + invoice.shippingCost;
 
   return (
@@ -695,7 +697,7 @@ const ThermalReceipt: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ inv
           <div className="font-bold">{it.productName}</div>
           <div className="flex justify-between" style={{ fontSize: '10px' }}>
             <span>{f(it.quantity)} × {f(it.unitPrice)}</span>
-            <span className="font-bold">{f(it.quantity * it.unitPrice)}</span>
+            <span className="font-bold">{f(roundRial(it.quantity * it.unitPrice))}</span>
           </div>
         </div>
       ))}

@@ -4,6 +4,7 @@ import { notify } from '../../lib/toast';
 import { loadData, saveData, genId } from '../../lib/storage';
 import type { Contact } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
+import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 export interface Installment {
   id: string;
@@ -19,6 +20,9 @@ export interface Installment {
   payments: { number: number; date: string; amount: number; paid: boolean; paidDate?: string }[];
   notes?: string;
   createdAt: string;
+  void?: boolean;
+  voidedAt?: string;
+  voidedReason?: string;
 }
 
 const empty = (): Installment => ({
@@ -35,6 +39,8 @@ export const InstallmentsModule: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Installment>(empty());
+  const [showArchived, setShowArchived] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Installment | null>(null);
 
   useEffect(() => {
     setItems(loadData<Installment[]>('installments', []));
@@ -46,7 +52,7 @@ export const InstallmentsModule: React.FC = () => {
 
   const stats = useMemo(() => {
     let totalContract = 0, totalPaid = 0, overdue = 0, activeCount = 0;
-    items.forEach(it => {
+    items.filter(i => !i.void).forEach(it => {
       totalContract += it.totalAmount;
       totalPaid += it.payments.filter(p => p.paid).reduce((s, p) => s + p.amount, 0);
       const unpaid = it.payments.filter(p => !p.paid).length;
@@ -62,6 +68,25 @@ export const InstallmentsModule: React.FC = () => {
     it.createdAt = new Date().toISOString();
     setEditing(it);
     setShowForm(true);
+  };
+
+  const handleVoid = (reason: string) => {
+    if (!voidTarget) return;
+    setItems(prev => prev.map(it =>
+      it.id === voidTarget.id
+        ? { ...it, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
+        : it
+    ));
+    notify.success('قرارداد باطل شد');
+    setVoidTarget(null);
+  };
+
+  const handleRestore = (id: string) => {
+    if (!confirm('این قرارداد بازگردانی شود؟')) return;
+    setItems(prev => prev.map(it =>
+      it.id === id ? { ...it, void: false, voidedAt: undefined, voidedReason: undefined } : it
+    ));
+    notify.success('قرارداد بازگردانی شد');
   };
 
   const handleSave = () => {
@@ -120,11 +145,6 @@ export const InstallmentsModule: React.FC = () => {
     }));
   };
 
-  const remove = (id: string) => {
-    if (!confirm('حذف این قرارداد؟')) return;
-    setItems(prev => prev.filter(x => x.id !== id));
-  };
-
   const today = new Date().toLocaleDateString('fa-IR');
 
   return (
@@ -137,11 +157,19 @@ export const InstallmentsModule: React.FC = () => {
         <StatCard icon={AlertTriangle} label="قسط معوق" value={f(stats.overdue)} unit="عدد" color="amber" />
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap gap-2 justify-between items-center">
         <h3 className="text-sm font-bold">قراردادهای اقساط</h3>
-        <button onClick={openNew} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">
-          <Plus className="w-3.5 h-3.5" /> قرارداد جدید
-        </button>
+        <div className="flex gap-2">
+          <ArchiveToggle
+            showArchived={showArchived}
+            onChange={setShowArchived}
+            activeCount={items.filter(i => !i.void).length}
+            voidedCount={items.filter(i => i.void).length}
+          />
+          <button onClick={openNew} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">
+            <Plus className="w-3.5 h-3.5" /> قرارداد جدید
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -150,7 +178,21 @@ export const InstallmentsModule: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map(it => {
+          {(showArchived ? items.filter(i => i.void) : items.filter(i => !i.void)).map(it => {
+            if (showArchived) {
+              return (
+                <VoidedItemCard
+                  key={it.id}
+                  title={it.title || `قرارداد ${it.contactName}`}
+                  subtitle={it.contactName}
+                  amount={it.totalAmount}
+                  amountUnit="ریال"
+                  voidedAt={it.voidedAt}
+                  voidedReason={it.voidedReason}
+                  onRestore={() => handleRestore(it.id)}
+                />
+              );
+            }
             const paid = it.payments.filter(p => p.paid).length;
             const progress = (paid / it.installmentsCount) * 100;
             return (
@@ -161,7 +203,7 @@ export const InstallmentsModule: React.FC = () => {
                       <div className="font-bold text-sm">{it.title || `قرارداد ${it.contactName}`}</div>
                       <div className="text-xs opacity-60 mt-0.5">{it.contactName}</div>
                     </div>
-                    <button onClick={() => remove(it.id)} className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600">
+                    <button onClick={() => setVoidTarget(it)} title="باطل کردن" className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -212,6 +254,14 @@ export const InstallmentsModule: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* دیالوگ تایید */}
+      <VoidConfirmDialog
+        open={!!voidTarget}
+        title={voidTarget ? (voidTarget.title || `قرارداد ${voidTarget.contactName}`) : ''}
+        onConfirm={handleVoid}
+        onCancel={() => setVoidTarget(null)}
+      />
 
       {/* فرم */}
       {showForm && (

@@ -9,6 +9,7 @@ import { loadData } from '../../lib/storage';
 import type { Contact, Product, Invoice, Payment, Cheque } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
+import { roundRial } from '../../types/models';
 
 interface Props {
   onNavigate: (view: any) => void;
@@ -78,7 +79,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       inv.items.forEach(it => {
         const cur = map.get(it.productId) || { name: it.productName, qty: 0, total: 0 };
         cur.qty += it.quantity;
-        cur.total += it.quantity * it.unitPrice;
+        cur.total += roundRial(it.quantity * it.unitPrice);
         map.set(it.productId, cur);
       });
     });

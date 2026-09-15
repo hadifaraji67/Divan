@@ -178,21 +178,42 @@ export interface JournalEntry {
   voidedReason?: string;
 }
 
+/**
+ * رند به نزدیک‌ترین ریال صحیح (بدون اعشار)
+ */
+export const roundRial = (n: number): number => Math.round(Number(n) || 0);
+
+/**
+ * جمع اقلام — رند در هر خط
+ */
 export function invoiceSubtotal(items: InvoiceLine[]): number {
-  return items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  return roundRial(items.reduce((sum, it) => sum + roundRial(it.quantity * it.unitPrice), 0));
 }
 
+/**
+ * تخفیف — رند شده
+ */
 export function invoiceDiscount(items: InvoiceLine[], discountPercent: number): number {
-  return (invoiceSubtotal(items) * discountPercent) / 100;
+  return roundRial((invoiceSubtotal(items) * Number(discountPercent || 0)) / 100);
 }
 
+/**
+ * مالیات — رند شده
+ */
 export function invoiceTax(items: InvoiceLine[], discountPercent: number, taxPercent: number): number {
   const after = invoiceSubtotal(items) - invoiceDiscount(items, discountPercent);
-  return (after * taxPercent) / 100;
+  return roundRial((after * Number(taxPercent || 0)) / 100);
 }
 
+/**
+ * مبلغ نهایی — رند شده
+ */
 export function invoiceTotal(items: InvoiceLine[], discountPercent: number, taxPercent: number, shipping: number): number {
-  return invoiceSubtotal(items) - invoiceDiscount(items, discountPercent) + invoiceTax(items, discountPercent, taxPercent) + shipping;
+  const subtotal = invoiceSubtotal(items);
+  const discount = invoiceDiscount(items, discountPercent);
+  const tax = invoiceTax(items, discountPercent, taxPercent);
+  const ship = roundRial(Number(shipping) || 0);
+  return roundRial(subtotal - discount + tax + ship);
 }
 
 

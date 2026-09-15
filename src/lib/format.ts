@@ -43,3 +43,36 @@ export const lineTotals = (items: any[]) => {
   if (!Array.isArray(items)) return 0;
   return items.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
 };
+
+// ═══════════════════════════════════════════════
+// توابع رند کردن مالی (ریال — بدون اعشار)
+// ═══════════════════════════════════════════════
+
+/**
+ * رند به نزدیک‌ترین ریال صحیح
+ */
+export const roundRial = (n: number): number => Math.round(Number(n) || 0);
+
+/**
+ * محاسبه جمع یک خط فاکتور با رند
+ * فرمول: (تعداد × قیمت واحد) × (1 - تخفیف/100) × (1 + مالیات/100)
+ */
+export function calculateLineTotal(
+  quantity: number,
+  unitPrice: number,
+  discountPercent = 0,
+  taxPercent = 0
+): { total: number; discount: number; tax: number; payable: number } {
+  const qty = Number(quantity) || 0;
+  const price = Number(unitPrice) || 0;
+  const disc = Number(discountPercent) || 0;
+  const tax = Number(taxPercent) || 0;
+
+  const total = roundRial(qty * price);
+  const discountAmount = roundRial((total * disc) / 100);
+  const afterDiscount = roundRial(total - discountAmount);
+  const taxAmount = roundRial((afterDiscount * tax) / 100);
+  const payable = roundRial(afterDiscount + taxAmount);
+
+  return { total, discount: discountAmount, tax: taxAmount, payable };
+}

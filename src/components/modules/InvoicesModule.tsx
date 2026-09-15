@@ -12,6 +12,7 @@ import type { Payment } from '../../types/models';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 import { createInvoiceJournalEntry } from '../../lib/accounting';
 import type { JournalEntry } from '../../types/accounting';
+import { calculateLineTotal } from '../../lib/format';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -456,7 +457,7 @@ export const InvoicesModule: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {editing.items.map((it, i) => {
-                          const lineTotal = it.quantity * it.unitPrice * (1 - it.discountPercent / 100) * (1 + it.taxPercent / 100);
+                          const { payable: lineTotal } = calculateLineTotal(it.quantity, it.unitPrice, it.discountPercent, it.taxPercent);
                           return (
                             <tr key={i}>
                               <td className="p-2">{it.productName}</td>

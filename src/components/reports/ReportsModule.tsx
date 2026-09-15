@@ -7,6 +7,7 @@ import type { Contact, Product, Invoice, Payment, Cheque } from '../../types/mod
 import { invoiceTotal } from '../../types/models';
 import { loadData } from '../../lib/storage';
 import { useSettings, formatNum } from '../../lib/theme-context';
+import { roundRial } from '../../types/models';
 
 type Tab = 'sales' | 'products' | 'customers' | 'profit' | 'inventory';
 
@@ -76,8 +77,8 @@ export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'cust
         const cur = prodMap.get(it.productId) || { name: it.productName, qty: 0, revenue: 0, cost: 0 };
         const prod = products.find(p => p.id === it.productId);
         cur.qty += it.quantity;
-        cur.revenue += it.quantity * it.unitPrice;
-        cur.cost += (prod?.buyPrice || 0) * it.quantity;
+        cur.revenue += roundRial(it.quantity * it.unitPrice);
+        cur.cost += roundRial((prod?.buyPrice || 0) * it.quantity);
         prodMap.set(it.productId, cur);
       });
     });
