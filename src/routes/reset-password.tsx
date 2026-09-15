@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/field";
+import { Field } from "@/components/shared/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
