@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Store, Printer, Calendar, Database, Palette, RefreshCw } from 'lucide-react';
+import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive } from 'lucide-react';
 import { GeneralSettings } from '../settings/GeneralSettings';
 import { StoreSettings } from '../settings/StoreSettings';
 import { FiscalSettings } from '../settings/FiscalSettings';
 import { PrintSettings } from '../print/PrintSettings';
-import { BackupRestore } from '../BackupRestore';
+import { BackupSettings } from '../settings/BackupSettings';
 import { UpdateSettings } from '../settings/UpdateSettings';
 
 type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update';
@@ -14,7 +14,7 @@ const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'store', title: 'اطلاعات فروشگاه', icon: Store },
   { id: 'print', title: 'تنظیمات چاپ', icon: Printer },
   { id: 'fiscal', title: 'سال مالی', icon: Calendar },
-  { id: 'backup', title: 'پشتیبان‌گیری', icon: Database },
+  { id: 'backup', title: 'بکاپ و بازیابی', icon: HardDrive },
   { id: 'update', title: 'بروزرسانی', icon: RefreshCw },
 ];
 
@@ -49,7 +49,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'store' && <StoreSettings />}
         {active === 'print' && <PrintSettings />}
         {active === 'fiscal' && <FiscalSettings />}
-        {active === 'backup' && <BackupRestore />}
+        {active === 'backup' && <BackupSettings />}
         {active === 'update' && <UpdateSettings />}
       </div>
     </div>

@@ -5,6 +5,7 @@ import BottomNav from './components/layout/BottomNav';
 import { UpdateBanner } from './components/shared/UpdateBanner';
 import { notify } from './lib/toast';
 import { useEdgeSwipe } from './lib/use-swipe';
+import { useAutoBackup } from './lib/backup/use-auto-backup';
 
 // ماژول‌ها
 import { ContactsModule } from './components/modules/ContactsModule';
@@ -66,6 +67,9 @@ export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accounts] = useState<Account[]>(DEFAULT_ACCOUNTS);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
+
+  // بکاپ خودکار روزانه
+  useAutoBackup();
 
   useEdgeSwipe({
     onOpenRight: () => setSidebarOpen(true),
