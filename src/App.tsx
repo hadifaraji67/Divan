@@ -6,6 +6,7 @@ import { UpdateBanner } from './components/shared/UpdateBanner';
 import { notify } from './lib/toast';
 import { useEdgeSwipe } from './lib/use-swipe';
 import { useAutoBackup } from './lib/backup/use-auto-backup';
+import { startWatcher } from './lib/sync/watcher';
 
 // ماژول‌ها
 import { ContactsModule } from './components/modules/ContactsModule';
@@ -24,6 +25,7 @@ import { ReportsHub } from './components/hubs/ReportsHub';
 import { FiscalYearClosing } from './components/modules/FiscalYearClosing';
 import { SettingsHub } from './components/hubs/SettingsHub';
 import { ComingSoon } from './components/shared/ComingSoon';
+import { AppGuard } from './components/setup/AppGuard';
 import { Users, FileText, Wallet, Package, Calendar, Settings } from 'lucide-react';
 import type { Account, JournalEntry, JournalLine } from './types/accounting';
 import { DEFAULT_ACCOUNTS } from './lib/accounting';
@@ -70,6 +72,12 @@ export const App: React.FC = () => {
 
   // بکاپ خودکار روزانه
   useAutoBackup();
+
+  // شروع watcher همگام‌سازی
+  React.useEffect(() => {
+    const stop = startWatcher();
+    return stop;
+  }, []);
 
   useEdgeSwipe({
     onOpenRight: () => setSidebarOpen(true),
@@ -132,6 +140,7 @@ export const App: React.FC = () => {
   };
 
   return (
+    <AppGuard>
     <div className="flex h-screen overflow-hidden" dir="rtl">
       <Sidebar
         active={active}
@@ -163,6 +172,7 @@ export const App: React.FC = () => {
         <UpdateBanner />
       </main>
     </div>
+    </AppGuard>
   );
 };
 

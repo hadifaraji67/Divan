@@ -1,0 +1,20 @@
+{
+  "port": 4000,
+  "host": "0.0.0.0",
+  "database": {
+    "host": "127.0.0.1",
+    "port": 5432,
+    "database": "divan",
+    "user": "divan_app",
+    "password": "divan1234"
+  },
+  "jwt": {
+    "secret": "CHANGE-THIS-SECRET-IN-PRODUCTION",
+    "expiresIn": "30d"
+  },
+  "admin": {
+    "username": "admin",
+    "password": "divan1234",
+    "fullName": "مدیر سیستم"
+  }
+}

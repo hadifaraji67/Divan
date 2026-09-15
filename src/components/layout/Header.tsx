@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu, Moon, Sun, Monitor, Bell, User, Search } from 'lucide-react';
 import { useSettings, type Theme } from '../../lib/theme-context';
 import { NotificationsPanel } from '../shared/NotificationsPanel';
+import { SyncStatus } from '../shared/SyncStatus';
 
 interface HeaderProps {
   title: string;
@@ -44,6 +45,8 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
       >
         <ThemeIcon className="w-4 h-4" />
       </button>
+
+      <SyncStatus />
 
       <NotificationsPanel onNavigate={(v) => { /* App-level navigation */ }} />
 
