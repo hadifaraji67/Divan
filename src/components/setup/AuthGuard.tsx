@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, LogOut, RefreshCw } from 'lucide-react';
+import { AlertTriangle, LogOut, RefreshCw, Fingerprint, Scan, Loader2 } from 'lucide-react';
 import { getMode } from '../../lib/server/mode';
 import { serverClient } from '../../lib/server/server-client';
 import { notify } from '../../lib/toast';
+import {
+  checkBiometricAvailability,
+  loginWithBiometric,
+  isBiometricEnabled,
+  type BiometricAvailability,
+} from '../../lib/server/biometric';
 
 interface Props {
   children: React.ReactNode;
   onNeedLogin: () => void;
 }
 
-/**
- * در حالت سرور، اگر کاربر وارد نشده باشد، children را رندر نمی‌کند
- */
 export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
   const [checked, setChecked] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
   const [expired, setExpired] = useState(false);
+
+  // بیومتریک
+  const [bioAvail, setBioAvail] = useState<BiometricAvailability | null>(null);
+  const [bioEnabled, setBioEnabled] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
 
   const check = () => {
     const mode = getMode();
@@ -29,10 +37,17 @@ export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
     setChecked(true);
   };
 
+  // بررسی بیومتریک
+  const checkBio = async () => {
+    const a = await checkBiometricAvailability();
+    setBioAvail(a);
+    setBioEnabled(isBiometricEnabled());
+  };
+
   useEffect(() => {
     check();
+    checkBio();
 
-    // شنونده برای 401 — اگر توکن منقضی شد
     const handler = () => {
       setExpired(true);
       setIsAuthed(false);
@@ -40,8 +55,6 @@ export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
     };
 
     window.addEventListener('divan-auth-expired', handler);
-
-    // بررسی دوره‌ای (هر ۳۰ ثانیه)
     const timer = setInterval(check, 30000);
 
     return () => {
@@ -49,6 +62,29 @@ export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
       clearInterval(timer);
     };
   }, []);
+
+  // ورود با بیومتریک
+  const handleBiometricLogin = async () => {
+    setBioBusy(true);
+    try {
+      const cred = await loginWithBiometric();
+      if (!cred) {
+        notify.warning('تأیید هویت ناموفق');
+        setBioBusy(false);
+        return;
+      }
+
+      // ورود با رمز خوانده‌شده از Keychain
+      await serverClient.login(cred.username, cred.password);
+      notify.success('ورود موفق');
+      setExpired(false);
+      setIsAuthed(true);
+    } catch (err: any) {
+      notify.error(err.message || 'خطا در ورود بیومتریک');
+    } finally {
+      setBioBusy(false);
+    }
+  };
 
   if (!checked) {
     return (
@@ -59,6 +95,10 @@ export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
   }
 
   if (!isAuthed) {
+    const canUseBio = bioAvail?.available && bioEnabled;
+    const BioIcon = bioAvail?.type === 'face' ? Scan : Fingerprint;
+    const bioLabel = bioAvail?.type === 'face' ? 'ورود با چهره' : 'ورود با اثر انگشت';
+
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900" dir="rtl">
         <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 text-center">
@@ -81,15 +121,35 @@ export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
               : 'برای دسترسی به داده‌های سرور، باید وارد شوید.'}
           </p>
 
-          <button
-            onClick={() => {
-              setExpired(false);
-              onNeedLogin();
-            }}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl"
-          >
-            ورود به حساب
-          </button>
+          <div className="space-y-2">
+            {canUseBio && (
+              <button
+                onClick={handleBiometricLogin}
+                disabled={bioBusy}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl"
+              >
+                {bioBusy ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> در حال تأیید...</>
+                ) : (
+                  <><BioIcon className="w-5 h-5" /> {bioLabel}</>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setExpired(false);
+                onNeedLogin();
+              }}
+              className={`w-full py-3 text-sm font-bold rounded-xl ${
+                canUseBio
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}
+            >
+              ورود با نام کاربری و رمز
+            </button>
+          </div>
         </div>
       </div>
     );

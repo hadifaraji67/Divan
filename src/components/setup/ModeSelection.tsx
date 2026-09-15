@@ -7,6 +7,8 @@ import { serverClient } from '../../lib/server/server-client';
 import { setMode } from '../../lib/server/mode';
 import { notify } from '../../lib/toast';
 import { APP_VERSION } from '../../lib/update-service';
+import { BiometricButton } from './BiometricButton';
+import { enableBiometric, checkBiometricAvailability, isBiometricEnabled, isCapacitor } from '../../lib/server/biometric';
 
 interface Props { onComplete: () => void; }
 type Screen = 'choice' | 'server-config' | 'server-login' | 'server-setup';
@@ -19,6 +21,7 @@ export const ModeSelection: React.FC<Props> = ({ onComplete }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
   const handleLocalMode = () => {
     setMode('local');
@@ -50,9 +53,43 @@ export const ModeSelection: React.FC<Props> = ({ onComplete }) => {
       await serverClient.login(username.trim(), password);
       setMode('server');
       notify.success('ورود موفق');
+
+      // اگر بیومتریک در دسترس است و قبلاً فعال نشده → پیشنهاد بده
+      if (isCapacitor() && !isBiometricEnabled()) {
+        const avail = await checkBiometricAvailability();
+        if (avail.available) {
+          setShowBiometricPrompt(true);
+          setBusy(false);
+          return;
+        }
+      }
+
       onComplete();
     } catch (err: any) { setError(err?.message || 'خطا در ورود'); }
     finally { setBusy(false); }
+  };
+
+  const handleEnableBiometric = async () => {
+    setBusy(true);
+    try {
+      const ok = await enableBiometric(username.trim(), password);
+      if (ok) {
+        notify.success('ورود بیومتریک فعال شد');
+      } else {
+        notify.warning('فعال‌سازی بیومتریک ناموفق بود');
+      }
+    } catch (err: any) {
+      notify.error(err.message);
+    } finally {
+      setBusy(false);
+      setShowBiometricPrompt(false);
+      onComplete();
+    }
+  };
+
+  const handleSkipBiometric = () => {
+    setShowBiometricPrompt(false);
+    onComplete();
   };
 
   const handleSetup = async () => {
@@ -177,8 +214,45 @@ export const ModeSelection: React.FC<Props> = ({ onComplete }) => {
             className="w-full flex items-center justify-center gap-2 p-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl">
             {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> در حال ورود...</> : <><Shield className="w-4 h-4" /> ورود</>}
           </button>
+
+          <BiometricButton
+            onSuccess={(u, p) => {
+              setUsername(u);
+              setPassword(p);
+              // ورود خودکار
+              setTimeout(() => handleLogin(), 100);
+            }}
+            onError={(e) => setError(e)}
+          />
         </div>
       </Shell>
+    );
+  }
+
+  if (showBiometricPrompt) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900" dir="rtl">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-emerald-500/30">
+            <Shield className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-lg font-bold mb-2">فعال‌سازی ورود سریع</h2>
+          <p className="text-sm opacity-60 leading-relaxed mb-6">
+            آیا می‌خواهید دفعه بعد با اثر انگشت یا چهره وارد شوید؟
+            نیازی به وارد کردن رمز نخواهد بود.
+          </p>
+          <div className="flex gap-2">
+            <button onClick={handleSkipBiometric} disabled={busy}
+              className="flex-1 px-4 py-3 text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 rounded-xl">
+              بعداً
+            </button>
+            <button onClick={handleEnableBiometric} disabled={busy}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-bold rounded-xl">
+              {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> فعال‌سازی...</> : <><Check className="w-4 h-4" /> فعال کن</>}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 

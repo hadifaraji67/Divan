@@ -10,6 +10,7 @@ import { useSync } from '../../lib/sync/use-sync';
 import { notify } from '../../lib/toast';
 import { useSettings } from '../../lib/theme-context';
 import { ModeSelection } from '../setup/ModeSelection';
+import { BiometricSettings } from './BiometricSettings';
 
 export const ServerSettings: React.FC = () => {
   const { settings } = useSettings();
@@ -186,6 +187,11 @@ export const ServerSettings: React.FC = () => {
             </div>
           </Section>
         </>
+      )}
+
+      {/* تنظیمات بیومتریک */}
+      {mode === 'server' && user && (
+        <BiometricSettings />
       )}
 
       {/* بخش حالت مستقل */}
