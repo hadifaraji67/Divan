@@ -109,6 +109,16 @@ class ServerClient {
 
       if (!res.ok) {
         const msg = data?.error || `HTTP ${res.status}`;
+
+        // اگر توکن منقضی یا نامعتبر بود → خودکار خارج شو
+        if (res.status === 401 && this._token) {
+          const wasAuthenticated = this.isAuthenticated;
+          this.logout();
+          if (wasAuthenticated && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('divan-auth-expired'));
+          }
+        }
+
         throw new Error(msg);
       }
 

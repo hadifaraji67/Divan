@@ -1,0 +1,101 @@
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, LogOut, RefreshCw } from 'lucide-react';
+import { getMode } from '../../lib/server/mode';
+import { serverClient } from '../../lib/server/server-client';
+import { notify } from '../../lib/toast';
+
+interface Props {
+  children: React.ReactNode;
+  onNeedLogin: () => void;
+}
+
+/**
+ * در حالت سرور، اگر کاربر وارد نشده باشد، children را رندر نمی‌کند
+ */
+export const AuthGuard: React.FC<Props> = ({ children, onNeedLogin }) => {
+  const [checked, setChecked] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [expired, setExpired] = useState(false);
+
+  const check = () => {
+    const mode = getMode();
+    if (mode !== 'server') {
+      setIsAuthed(true);
+      setChecked(true);
+      return;
+    }
+    const authed = serverClient.isAuthenticated;
+    setIsAuthed(authed);
+    setChecked(true);
+  };
+
+  useEffect(() => {
+    check();
+
+    // شنونده برای 401 — اگر توکن منقضی شد
+    const handler = () => {
+      setExpired(true);
+      setIsAuthed(false);
+      notify.error('نشست شما منقضی شده — لطفاً دوباره وارد شوید');
+    };
+
+    window.addEventListener('divan-auth-expired', handler);
+
+    // بررسی دوره‌ای (هر ۳۰ ثانیه)
+    const timer = setInterval(check, 30000);
+
+    return () => {
+      window.removeEventListener('divan-auth-expired', handler);
+      clearInterval(timer);
+    };
+  }, []);
+
+  if (!checked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900">
+        <RefreshCw className="w-6 h-6 animate-spin opacity-40" />
+      </div>
+    );
+  }
+
+  if (!isAuthed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900" dir="rtl">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 text-center">
+          <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${
+            expired ? 'bg-amber-500/10' : 'bg-rose-500/10'
+          }`}>
+            {expired ? (
+              <AlertTriangle className="w-7 h-7 text-amber-600" />
+            ) : (
+              <LogOut className="w-7 h-7 text-rose-600" />
+            )}
+          </div>
+
+          <h2 className="text-lg font-bold mb-2">
+            {expired ? 'نشست منقضی شده' : 'نیاز به ورود'}
+          </h2>
+          <p className="text-sm opacity-60 mb-6 leading-relaxed">
+            {expired
+              ? 'برای امنیت، نشست شما بسته شده. لطفاً دوباره وارد شوید.'
+              : 'برای دسترسی به داده‌های سرور، باید وارد شوید.'}
+          </p>
+
+          <button
+            onClick={() => {
+              setExpired(false);
+              onNeedLogin();
+            }}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl"
+          >
+            ورود به حساب
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+export default AuthGuard;
