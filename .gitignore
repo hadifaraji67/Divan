@@ -11,3 +11,11 @@ node_modules/
 dist/
 .tanstack/
 .DS_Store
+
+# Backup files
+*.bak
+*.bak-*
+package.json.bak-*
+
+# Trash folder
+.trash-*
