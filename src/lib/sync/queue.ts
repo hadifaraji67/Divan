@@ -32,6 +32,10 @@ export function saveQueue(queue: SyncChange[]): void {
       : queue;
     localStorage.setItem(QUEUE_KEY, JSON.stringify(limited));
     window.dispatchEvent(new CustomEvent('divan-queue-changed', { detail: limited.length }));
+    // رویداد sync بلافاصله بعد از تغییر
+    if (limited.length > 0) {
+      window.dispatchEvent(new CustomEvent('divan-sync-needed'));
+    }
   } catch (err) {
     console.error('[queue] خطا در ذخیره:', err);
   }

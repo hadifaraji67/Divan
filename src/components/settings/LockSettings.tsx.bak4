@@ -32,13 +32,8 @@ export const LockSettings: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const qrWrapRef = useRef<HTMLDivElement>(null);
-  const [qrDownloading, setQrDownloading] = useState(false);
-  const [justCopied, setJustCopied] = useState(false);
-  const [justShared, setJustShared] = useState(false);
 
   const handleDownloadQR = async () => {
-    if (qrDownloading) return;
-    setQrDownloading(true);
     try {
       const canvas = qrWrapRef.current?.querySelector('canvas');
       if (!canvas) { notify.error('QR یافت نشد'); return; }
@@ -102,31 +97,6 @@ export const LockSettings: React.FC = () => {
     } catch (e) {
       console.error(e);
       notify.error('خطا در ذخیره تصویر');
-    } finally {
-      setQrDownloading(false);
-    }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(recoveryCode);
-    notify.success('کد کپی شد');
-    setJustCopied(true);
-    setTimeout(() => setJustCopied(false), 2000);
-  };
-
-  const handleShare = async () => {
-    const text = 'کد بازیابی دیوان:\n' + recoveryCode + '\n\nاین کد را ذخیره کنید.';
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: 'کد بازیابی', text });
-        setJustShared(true);
-        setTimeout(() => setJustShared(false), 2000);
-      } else {
-        navigator.clipboard.writeText(text);
-        notify.success('کپی شد');
-      }
-    } catch {
-      // کاربر انصراف داد
     }
   };
 
@@ -248,29 +218,26 @@ export const LockSettings: React.FC = () => {
 
           <div className="grid grid-cols-3 gap-2 mb-4">
             <button
-              onClick={handleCopy}
-              disabled={justCopied}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors"
+              onClick={() => { navigator.clipboard.writeText(recoveryCode); notify.success('کد کپی شد'); }}
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl"
             >
-              {justCopied ? <><Check className="w-4 h-4" /> کپی شد</> : <><Copy className="w-4 h-4" /> کپی کد</>}
+              <Copy className="w-4 h-4" /> کپی کد
             </button>
             <button
               onClick={handleDownloadQR}
-              disabled={qrDownloading}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl transition-opacity"
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl"
             >
-              {qrDownloading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> در حال...</>
-              ) : (
-                <><Download className="w-4 h-4" /> دانلود</>
-              )}
+              <Download className="w-4 h-4" /> دانلود
             </button>
             <button
-              onClick={handleShare}
-              disabled={justShared}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-700 hover:bg-slate-600 disabled:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors"
+              onClick={() => {
+                const text = `کد بازیابی دیوان:\n${recoveryCode}\n\nاین کد را ذخیره کنید.`;
+                if (navigator.share) navigator.share({ title: 'کد بازیابی', text }).catch(() => {});
+                else { navigator.clipboard.writeText(text); notify.success('کپی شد'); }
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl"
             >
-              {justShared ? <><Check className="w-4 h-4" /> شد</> : <>اشتراک‌گذاری</>}
+              اشتراک‌گذاری
             </button>
           </div>
 

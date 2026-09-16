@@ -15,6 +15,8 @@ export type SyncState = 'idle' | 'syncing' | 'error' | 'offline';
 let currentState: SyncState = 'idle';
 let isSyncing = false;
 let autoSyncTimer: any = null;
+let debounceTimer: any = null;
+const SYNC_DEBOUNCE_MS = 1500; // ۱.۵ ثانیه تأخیر بعد از آخرین تغییر
 
 export function getSyncState(): SyncState { return currentState; }
 
@@ -128,18 +130,63 @@ export async function syncNow(): Promise<{ success: boolean; pushed: number; pul
   }
 }
 
+/**
+ * درخواست sync با debounce — بعد از آخرین تغییر اجرا می‌شود
+ * اگر در همین بازه تغییر جدیدی بیاید، تایمر ریست می‌شود
+ */
+export function requestSync(delayMs: number = SYNC_DEBOUNCE_MS): void {
+  if (typeof window === 'undefined') return;
+  if (getMode() !== 'server') return;
+  if (!serverClient.isAuthenticated) return;
+
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    if (getMode() === 'server' && serverClient.isAuthenticated) {
+      // اگر در حال sync هستیم، نادیده بگیر (sync بعدی به‌صورت خودکار در interval می‌آید)
+      if (!isSyncing) {
+        syncNow().catch(() => {});
+      }
+    }
+  }, delayMs);
+}
+
+/**
+ * لغو sync در انتظار (مثلاً هنگام خروج)
+ */
+export function cancelPendingSync(): void {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+}
+
 export function startAutoSync(): () => void {
   if (autoSyncTimer) return () => {};
 
+  // ۱. interval چک دوره‌ای (شبکه امن — هر ۵ دقیقه)
   autoSyncTimer = setInterval(() => {
     if (getMode() === 'server' && serverClient.isAuthenticated) {
       syncNow().catch(() => {});
     }
   }, AUTO_SYNC_INTERVAL);
 
+  // ۲. رویدادمحور: بلافاصله بعد از تغییر
+  const onSyncNeeded = () => requestSync();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('divan-sync-needed', onSyncNeeded);
+  }
+
   return () => {
     if (autoSyncTimer) clearInterval(autoSyncTimer);
     autoSyncTimer = null;
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('divan-sync-needed', onSyncNeeded);
+    }
   };
 }
 
