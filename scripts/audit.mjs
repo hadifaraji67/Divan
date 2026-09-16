@@ -77,14 +77,18 @@ async function main() {
   }
 
   const entryPoints = [
+    // Entry point واقعی از index.html
+    join(SRC, 'main.tsx'),
+    // Router و App
     join(SRC, 'router.tsx'),
     join(SRC, 'App.tsx'),
+    // TanStack Router
+    join(SRC, 'routeTree.gen.ts'),
     join(SRC, 'routes', '__root.tsx'),
     join(SRC, 'routes', 'index.tsx'),
     join(SRC, 'routes', 'reset-password.tsx'),
-    join(SRC, 'routes', 'api', 'auth', '$.ts'),
+    // Service Worker و ابزارها
     join(SRC, 'registerServiceWorker.ts'),
-    join(SRC, 'routeTree.gen.ts'),
   ];
 
   // ۱. بلااستفاده‌ها
@@ -98,6 +102,7 @@ async function main() {
     const rel = relative(SRC, f);
     if (entryPoints.includes(f)) continue;
     if (rel.startsWith('routes/')) continue;
+    if (rel.startsWith('lib/security/use-lock')) continue;  // مستقیم از lock-service استفاده می‌شود
     if (referrers[f].size === 0) unused.push(f);
   }
 
