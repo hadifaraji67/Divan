@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, Unlock, Shield, Key, Fingerprint, Grid3x3, Type,
-  Check, AlertTriangle, Eye, EyeOff, Copy, Loader2, X,
+  Check, AlertTriangle, Eye, EyeOff, Copy, Loader2, X, Download,
 } from 'lucide-react';
 import {
   getLockInfo, isLockEnabled, enableLock, disableLock, changeSecret,
@@ -10,6 +11,7 @@ import {
 import type { LockMethod, AutoLockDelay } from '../../lib/security/lock-types';
 import { checkBiometricAvailability, isCapacitor } from '../../lib/server/biometric';
 import { notify } from '../../lib/toast';
+import { buildRecoveryQRText } from '../../lib/security/recovery-code';
 
 export const LockSettings: React.FC = () => {
   const [enabled, setEnabled] = useState(isLockEnabled());
@@ -29,6 +31,22 @@ export const LockSettings: React.FC = () => {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const qrWrapRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadQR = async () => {
+    if (!qrWrapRef.current) return;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(qrWrapRef.current, { backgroundColor: '#ffffff', scale: 3 });
+      const link = document.createElement('a');
+      link.download = 'divan-recovery-' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      notify.success('تصویر QR ذخیره شد');
+    } catch {
+      notify.error('خطا در ذخیره تصویر');
+    }
+  };
 
   const [oldSecret, setOldSecret] = useState('');
   const [newSecret, setNewSecret] = useState('');
@@ -127,18 +145,36 @@ export const LockSettings: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 mb-4 text-center">
-            <div className="font-mono text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 tracking-widest" dir="ltr">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 mb-4">
+            <div className="font-mono text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 tracking-widest text-center mb-4" dir="ltr">
               {recoveryCode}
+            </div>
+            <div ref={qrWrapRef} className="flex flex-col items-center gap-2 bg-white p-3 rounded-xl">
+              <QRCodeSVG
+                value={buildRecoveryQRText(recoveryCode)}
+                size={200}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1e1b4b"
+              />
+              <p className="text-[10px] text-slate-500 text-center">
+                با اسکن QR، کد بازیابی خودکار وارد می‌شود
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-4">
             <button
               onClick={() => { navigator.clipboard.writeText(recoveryCode); notify.success('کد کپی شد'); }}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl"
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl"
             >
               <Copy className="w-4 h-4" /> کپی کد
+            </button>
+            <button
+              onClick={handleDownloadQR}
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl"
+            >
+              <Download className="w-4 h-4" /> دانلود
             </button>
             <button
               onClick={() => {
@@ -146,7 +182,7 @@ export const LockSettings: React.FC = () => {
                 if (navigator.share) navigator.share({ title: 'کد بازیابی', text }).catch(() => {});
                 else { navigator.clipboard.writeText(text); notify.success('کپی شد'); }
               }}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl"
+              className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl"
             >
               اشتراک‌گذاری
             </button>
