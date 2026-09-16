@@ -17,7 +17,7 @@ export const UpdateSettings: React.FC = () => {
   const doCheck = async () => {
     setChecking(true);
     try {
-      const i = await checkForUpdates();
+      const i = await checkForUpdates({ ignoreDismiss: true });
       setInfo(i);
       setLastCheck(Date.now());
       if (i.available) {

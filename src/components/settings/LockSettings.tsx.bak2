@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Lock, Unlock, Shield, Key, Fingerprint, Grid3x3, Type,
   Check, AlertTriangle, Eye, EyeOff, Copy, Loader2, X, Download,
@@ -34,28 +34,16 @@ export const LockSettings: React.FC = () => {
   const qrWrapRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadQR = async () => {
+    if (!qrWrapRef.current) return;
     try {
-      const canvas = qrWrapRef.current?.querySelector('canvas');
-      if (!canvas) { notify.error('QR یافت نشد'); return; }
-      // canvas را روی یک canvas جدید با پس‌زمینه سفید بزرگ می‌کنیم
-      const size = canvas.width;
-      const padding = 40;
-      const out = document.createElement('canvas');
-      out.width = size + padding * 2;
-      out.height = size + padding * 2;
-      const ctx = out.getContext('2d');
-      if (!ctx) { notify.error('خطا در ساخت تصویر'); return; }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, out.width, out.height);
-      ctx.drawImage(canvas, padding, padding);
-      const url = out.toDataURL('image/png');
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(qrWrapRef.current, { backgroundColor: '#ffffff', scale: 3 });
       const link = document.createElement('a');
       link.download = 'divan-recovery-' + Date.now() + '.png';
-      link.href = url;
+      link.href = canvas.toDataURL('image/png');
       link.click();
       notify.success('تصویر QR ذخیره شد');
-    } catch (e) {
-      console.error(e);
+    } catch {
       notify.error('خطا در ذخیره تصویر');
     }
   };
@@ -162,13 +150,12 @@ export const LockSettings: React.FC = () => {
               {recoveryCode}
             </div>
             <div ref={qrWrapRef} className="flex flex-col items-center gap-2 bg-white p-3 rounded-xl">
-              <QRCodeCanvas
+              <QRCodeSVG
                 value={buildRecoveryQRText(recoveryCode)}
                 size={200}
                 level="M"
                 bgColor="#ffffff"
                 fgColor="#1e1b4b"
-                style={{ width: 200, height: 200 }}
               />
               <p className="text-[10px] text-slate-500 text-center">
                 با اسکن QR، کد بازیابی خودکار وارد می‌شود

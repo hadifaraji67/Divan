@@ -194,16 +194,13 @@ export async function downloadNativeUpdate(url: string): Promise<void> {
 
 /* ============ چک کلی ============ */
 
-export async function checkForUpdates(): Promise<UpdateInfo> {
-  const platform = detectPlatform();
+export async function checkForUpdates(options?: { ignoreDismiss?: boolean }): Promise<UpdateInfo> {
   const state = loadState();
 
-  // اگر کاربر این نسخه را نادیده گرفته بود، رد کن
-  const info = platform === 'native' || platform === 'web'
-    ? await checkGitHubRelease()
-    : await checkGitHubRelease();
+  const info = await checkGitHubRelease();
 
-  if (info.available && state.dismissedVersion === info.latestVersion) {
+  // اگر ignoreDismiss=true باشد (مثلاً از دکمه «بررسی به‌روزرسانی»)، dismiss را نادیده بگیر
+  if (!options?.ignoreDismiss && info.available && state.dismissedVersion === info.latestVersion) {
     if (!state.ignoredUntil || Date.now() < state.ignoredUntil) {
       return { ...info, available: false };
     }
