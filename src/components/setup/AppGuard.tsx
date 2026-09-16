@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ModeSelection } from './ModeSelection';
 import { AuthGuard } from './AuthGuard';
+import { LockScreen } from '../security/LockScreen';
 import { getMode } from '../../lib/server/mode';
 import { serverClient } from '../../lib/server/server-client';
+import { isLockEnabled, isLocked, checkStartupLock } from '../../lib/security/lock-service';
 
 interface Props {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
   const [ready, setReady] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [needsUnlock, setNeedsUnlock] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -23,14 +26,14 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
   const checkSetup = async () => {
     const setupDone = localStorage.getItem(SETUP_KEY);
 
+    // ۱. اولین بار → انتخاب حالت
     if (setupDone !== 'true') {
-      // اولین بار → صفحه انتخاب حالت
       setNeedsSetup(true);
       setChecking(false);
       return;
     }
 
-    // اگر حالت سرور است و وارد نشده → نیاز به login
+    // ۲. حالت سرور و وارد نشده → Login
     const mode = getMode();
     if (mode === 'server' && !serverClient.isAuthenticated) {
       setNeedsLogin(true);
@@ -38,20 +41,28 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    // همه چیز OK
+    // ۳. قفل محلی فعال و بسته → صفحه قفل
+    if (isLockEnabled() && checkStartupLock()) {
+      setNeedsUnlock(true);
+      setChecking(false);
+      return;
+    }
+
+    // ۴. همه چیز OK
     setReady(true);
     setChecking(false);
   };
 
-  const handleComplete = () => {
+  const handleSetupComplete = () => {
     localStorage.setItem(SETUP_KEY, 'true');
     setNeedsSetup(false);
-    setNeedsLogin(false);
 
-    // اگر حالت سرور و وارد شده → ready
+    // بعد از setup، چک کن مرحله بعد چیست
     const mode = getMode();
     if (mode === 'server' && !serverClient.isAuthenticated) {
       setNeedsLogin(true);
+    } else if (isLockEnabled() && isLocked()) {
+      setNeedsUnlock(true);
     } else {
       setReady(true);
     }
@@ -59,9 +70,21 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
 
   const handleLoginComplete = () => {
     setNeedsLogin(false);
+
+    // بعد از login، چک کن قفل محلی هست یا نه
+    if (isLockEnabled() && isLocked()) {
+      setNeedsUnlock(true);
+    } else {
+      setReady(true);
+    }
+  };
+
+  const handleUnlockComplete = () => {
+    setNeedsUnlock(false);
     setReady(true);
   };
 
+  // ═══ صفحه بارگذاری ═══
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900">
@@ -75,19 +98,22 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
     );
   }
 
-  // ۱. نیاز به setup (اولین بار)
+  // ═══ ۱. Setup اولیه ═══
   if (needsSetup) {
-    return <ModeSelection onComplete={handleComplete} />;
+    return <ModeSelection onComplete={handleSetupComplete} />;
   }
 
-  // ۲. نیاز به login (حالت سرور بدون توکن)
+  // ═══ ۲. Login سرور ═══
   if (needsLogin) {
-    return (
-      <ModeSelection onComplete={handleLoginComplete} />
-    );
+    return <ModeSelection onComplete={handleLoginComplete} />;
   }
 
-  // ۳. اگر ready شد، اما در حالت سرور و بدون ورود → AuthGuard
+  // ═══ ۳. قفل محلی ═══
+  if (needsUnlock) {
+    return <LockScreen onUnlock={handleUnlockComplete} />;
+  }
+
+  // ═══ ۴. همه چیز OK ═══
   return (
     <AuthGuard onNeedLogin={() => {
       setReady(false);

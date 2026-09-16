@@ -7,8 +7,10 @@ import { PrintSettings } from '../print/PrintSettings';
 import { BackupSettings } from '../settings/BackupSettings';
 import { UpdateSettings } from '../settings/UpdateSettings';
 import { ServerSettings } from '../settings/ServerSettings';
+import { LockSettings } from '../settings/LockSettings';
+import { Shield } from 'lucide-react';
 
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server';
+type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security';
 
 const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
@@ -18,6 +20,7 @@ const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'backup', title: 'بکاپ و بازیابی', icon: HardDrive },
   { id: 'update', title: 'بروزرسانی', icon: RefreshCw },
   { id: 'server', title: 'سرور و همگام‌سازی', icon: Server },
+  { id: 'security', title: 'امنیت', icon: Shield },
 ];
 
 export const SettingsHub: React.FC = () => {
@@ -54,6 +57,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'backup' && <BackupSettings />}
         {active === 'update' && <UpdateSettings />}
         {active === 'server' && <ServerSettings />}
+        {active === 'security' && <LockSettings />}
       </div>
     </div>
   );
