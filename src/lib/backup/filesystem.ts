@@ -90,6 +90,30 @@ export async function readFromDevice(path: string): Promise<string | null> {
   }
 }
 
+/**
+ * خواندن محتوای یک فایل بکاپ از روی گوشی
+ */
+export async function readBackupFile(filename: string): Promise<string | null> {
+  if (!isCapacitor()) return null;
+
+  try {
+    const w = window as any;
+    const { Filesystem, Encoding, Directory } = w.Capacitor?.Plugins || {};
+    if (!Filesystem) return null;
+
+    const result = await Filesystem.readFile({
+      path: `${BACKUP_DIR}/${filename}`,
+      directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+      encoding: Encoding?.UTF8 || 'utf8',
+    });
+
+    return typeof result.data === 'string' ? result.data : null;
+  } catch (err) {
+    console.error('[FS] readBackupFile error:', err);
+    return null;
+  }
+}
+
 export async function listBackups(): Promise<{ name: string; uri: string; size: number; mtime: number }[]> {
   if (!isCapacitor()) return [];
   try {

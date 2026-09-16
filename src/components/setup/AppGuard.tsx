@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ModeSelection } from './ModeSelection';
 import { AuthGuard } from './AuthGuard';
 import { LockScreen } from '../security/LockScreen';
+import { BackupDiscoveryScreen } from './BackupDiscoveryScreen';
 import { getMode } from '../../lib/server/mode';
 import { serverClient } from '../../lib/server/server-client';
-import { isLockEnabled, isLocked, checkStartupLock } from '../../lib/security/lock-service';
+import { isLockEnabled, checkStartupLock } from '../../lib/security/lock-service';
+import { shouldSuggestBackup } from '../../lib/backup/discovery';
+import { isCapacitor } from '../../lib/backup/filesystem';
 
 interface Props {
   children: React.ReactNode;
@@ -14,6 +17,7 @@ const SETUP_KEY = 'divan_setup_completed';
 
 export const AppGuard: React.FC<Props> = ({ children }) => {
   const [ready, setReady] = useState(false);
+  const [needsBackupCheck, setNeedsBackupCheck] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [needsUnlock, setNeedsUnlock] = useState(false);
@@ -26,14 +30,22 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
   const checkSetup = async () => {
     const setupDone = localStorage.getItem(SETUP_KEY);
 
-    // ۱. اولین بار → انتخاب حالت
+    // ═══ ۱. اولین بار (setup کامل نشده) ═══
     if (setupDone !== 'true') {
+      // اگر در APK هستیم و بکاپ‌ها پیشنهاد داده نشده → صفحه بازیابی
+      if (isCapacitor() && shouldSuggestBackup()) {
+        setNeedsBackupCheck(true);
+        setChecking(false);
+        return;
+      }
+
+      // در غیر این صورت → انتخاب حالت
       setNeedsSetup(true);
       setChecking(false);
       return;
     }
 
-    // ۲. حالت سرور و وارد نشده → Login
+    // ═══ ۲. حالت سرور و وارد نشده → Login ═══
     const mode = getMode();
     if (mode === 'server' && !serverClient.isAuthenticated) {
       setNeedsLogin(true);
@@ -41,27 +53,49 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    // ۳. قفل محلی فعال و بسته → صفحه قفل
+    // ═══ ۳. قفل محلی فعال و بسته → LockScreen ═══
     if (isLockEnabled() && checkStartupLock()) {
       setNeedsUnlock(true);
       setChecking(false);
       return;
     }
 
-    // ۴. همه چیز OK
+    // ═══ ۴. همه چیز OK ═══
     setReady(true);
     setChecking(false);
+  };
+
+  // بعد از بازیابی بکاپ موفق → setup را کامل شده در نظر بگیر
+  const handleBackupComplete = () => {
+    localStorage.setItem(SETUP_KEY, 'true');
+    setNeedsBackupCheck(false);
+
+    // اگر بعد از بازیابی، حالت سرور بود و login لازم → Login
+    const mode = getMode();
+    if (mode === 'server' && !serverClient.isAuthenticated) {
+      setNeedsLogin(true);
+      return;
+    }
+
+    setReady(true);
+    // reload کن تا داده‌های بازیابی‌شده بارگذاری شوند
+    setTimeout(() => window.location.reload(), 300);
+  };
+
+  // بعد از رد کردن بکاپ → برو به setup معمولی
+  const handleBackupSkip = () => {
+    setNeedsBackupCheck(false);
+    setNeedsSetup(true);
   };
 
   const handleSetupComplete = () => {
     localStorage.setItem(SETUP_KEY, 'true');
     setNeedsSetup(false);
 
-    // بعد از setup، چک کن مرحله بعد چیست
     const mode = getMode();
     if (mode === 'server' && !serverClient.isAuthenticated) {
       setNeedsLogin(true);
-    } else if (isLockEnabled() && isLocked()) {
+    } else if (isLockEnabled() && checkStartupLock()) {
       setNeedsUnlock(true);
     } else {
       setReady(true);
@@ -71,8 +105,7 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
   const handleLoginComplete = () => {
     setNeedsLogin(false);
 
-    // بعد از login، چک کن قفل محلی هست یا نه
-    if (isLockEnabled() && isLocked()) {
+    if (isLockEnabled() && checkStartupLock()) {
       setNeedsUnlock(true);
     } else {
       setReady(true);
@@ -98,22 +131,32 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
     );
   }
 
-  // ═══ ۱. Setup اولیه ═══
+  // ═══ ۱. بازیابی بکاپ ═══
+  if (needsBackupCheck) {
+    return (
+      <BackupDiscoveryScreen
+        onComplete={handleBackupComplete}
+        onSkip={handleBackupSkip}
+      />
+    );
+  }
+
+  // ═══ ۲. Setup اولیه ═══
   if (needsSetup) {
     return <ModeSelection onComplete={handleSetupComplete} />;
   }
 
-  // ═══ ۲. Login سرور ═══
+  // ═══ ۳. Login سرور ═══
   if (needsLogin) {
     return <ModeSelection onComplete={handleLoginComplete} />;
   }
 
-  // ═══ ۳. قفل محلی ═══
+  // ═══ ۴. قفل محلی ═══
   if (needsUnlock) {
     return <LockScreen onUnlock={handleUnlockComplete} />;
   }
 
-  // ═══ ۴. همه چیز OK ═══
+  // ═══ ۵. همه چیز OK ═══
   return (
     <AuthGuard onNeedLogin={() => {
       setReady(false);
