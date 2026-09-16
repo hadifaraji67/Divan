@@ -1,67 +1,22 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-// import { OfflineCache } from "@/components/offline-cache";
-import { Toaster } from "sonner";
-import { ThemeProvider } from "@/lib/theme-context";
-import appCss from "../styles.css?url";
-
-const APP_NAME = "دیوان - سامانه جامع حسابداری";
+import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { AppErrorComponent } from '../lib/error-component';
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: APP_NAME },
-      { name: "theme-color", content: "#1b3654" },
-      {
-        name: "description",
-        content: "سامانه جامع حسابداری دیوان — صدور پیش‌فاکتور، مدیریت مشتریان و کالاها",
-      },
-      { name: "apple-mobile-web-app-title", content: "دیوان" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black" },
-      { property: "og:title", content: APP_NAME },
-      {
-        property: "og:description",
-        content: "سامانه جامع حسابداری دیوان — صدور پیش‌فاکتور، مدیریت مشتریان و کالاها",
-      },
-      { property: "og:type", content: "website" },
-    ],
-    links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/icons/icon-180.png" },
-      { rel: "stylesheet", href: "/fonts/vazirmatn.css" },
-    ],
-  }),
-  component: () => (
-    <html lang="fa" dir="rtl" className="antialiased" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <ThemeProvider>
-        {/* <OfflineCache /> */}
-        <div className="app-shell">
-          <Outlet />
-        </div>
-        <Toaster
-          position="top-center"
-          dir="rtl"
-          richColors
-          closeButton
-          expand
-          visibleToasts={3}
-          toastOptions={{
-            style: {
-              fontFamily: 'Vazirmatn, sans-serif',
-              borderRadius: '12px',
-            },
-          }}
-        />
-        <Scripts />
-      </ThemeProvider>
-      </body>
-    </html>
+  component: RootComponent,
+  errorComponent: AppErrorComponent,
+  notFoundComponent: () => (
+    <div className="min-h-screen flex items-center justify-center p-4" dir="rtl">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-2">۴۰۴</h1>
+        <p className="text-sm opacity-60 mb-4">صفحه یافت نشد</p>
+        <a href="/" className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">
+          بازگشت به خانه
+        </a>
+      </div>
+    </div>
   ),
 });
+
+function RootComponent() {
+  return <Outlet />;
+}
