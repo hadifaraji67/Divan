@@ -19,3 +19,8 @@ package.json.bak-*
 
 # Trash folder
 .trash-*
+
+# Keystore (هرگز push نشود)
+android/keystore/
+*.keystore
+*.jks
