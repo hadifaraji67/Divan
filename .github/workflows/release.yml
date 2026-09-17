@@ -105,12 +105,20 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "release/divan-${VERSION}.apk"
           ls -la release/
 
+      - name: پاک‌سازی dist از فایل‌های اضافی
+        run: |
+          cd dist
+          find . -name "*.zip" -delete
+          find . -name "*.apk" -delete
+          cd ..
+
       - name: ساخت ZIP برای OTA
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           cd dist
           zip -r -q "../release/web-${VERSION}.zip" .
           cd ..
+          echo "فایل‌های ساخته شده:"
           ls -la release/
 
       - name: ساخت manifest.json
@@ -118,6 +126,8 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"
           ZIP_NAME="web-${VERSION}.zip"
+          echo "ZIP_NAME=${ZIP_NAME}"
+          echo "VERSION=${VERSION}"
           ZIP_SIZE=$(stat -c%s "release/${ZIP_NAME}")
           APK_NAME="divan-${VERSION}.apk"
           APK_SIZE=$(stat -c%s "release/${APK_NAME}")
