@@ -1,0 +1,19 @@
+{
+  "version": "5.0.0-beta.4",
+  "releaseNotes": "نسخه v5.0.0-beta.4 — github.com/hadifaraji67/Divan/releases/tag/v5.0.0-beta.4",
+  "ota": {
+    "available": true,
+    "url": "https://github.com/hadifaraji67/Divan/releases/download/v5.0.0-beta.4/web-v5.0.0-beta.4.zip",
+    "size": 495771,
+    "checksum": "sha256:f9fd06b99327841a05e91f8e7ec0b63c28f6b2266b5c3c87cd8354a33e701e27",
+    "minNativeVersion": "4.9.0"
+  },
+  "apk": {
+    "available": true,
+    "url": "https://github.com/hadifaraji67/Divan/releases/download/v5.0.0-beta.4/divan-v5.0.0-beta.4.apk",
+    "size": 4389429,
+    "versionCode": 50000
+  },
+  "requiresNativeUpdate": false,
+  "generatedAt": "2026-09-17T19:22:02Z"
+}
