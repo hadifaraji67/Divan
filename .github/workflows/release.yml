@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'نسخه (مثلاً v3.3.0)'
+        description: 'نسخه (مثلاً v4.9.0)'
         required: true
         type: string
 
@@ -68,10 +68,10 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
-          test -n "$KEYSTORE_BASE64" || { echo "::error::KEYSTORE_BASE64 is not configured"; exit 1; }
+          test -n "$KEYSTORE_BASE64" || { echo "::error::KEYSTORE_BASE64 not configured"; exit 1; }
           mkdir -p android/keystore
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore/divan-release.keystore
-          test -s android/keystore/divan-release.keystore || { echo "::error::Decoded keystore is empty"; exit 1; }
+          test -s android/keystore/divan-release.keystore || { echo "::error::Decoded keystore empty"; exit 1; }
           ls -la android/keystore/
 
       - name: Validate signing secrets
@@ -81,10 +81,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$KEYSTORE_PASSWORD" || { echo "::error::KEYSTORE_PASSWORD is not configured"; exit 1; }
-          test -n "$KEY_ALIAS" || { echo "::error::KEY_ALIAS is not configured"; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "::error::KEY_PASSWORD is not configured"; exit 1; }
-          echo "✅ همه secrets موجود هستند"
+          test -n "$KEYSTORE_PASSWORD" || { echo "::error::KEYSTORE_PASSWORD not configured"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "::error::KEY_ALIAS not configured"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "::error::KEY_PASSWORD not configured"; exit 1; }
+          echo "✅ همه secrets موجود"
 
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
@@ -107,13 +107,13 @@ jobs:
 
       - name: ساخت ZIP برای OTA
         run: |
-          mkdir -p release
-          cd dist && zip -r -q "../release/web-${{ steps.version.outputs.version }}.zip" .
+          VERSION="${{ steps.version.outputs.version }}"
+          cd dist
+          zip -r -q "../release/web-${VERSION}.zip" .
           cd ..
-          echo "ZIP ساخته شد:"
           ls -la release/
 
-      - name: به‌روزرسانی manifest.json
+      - name: ساخت manifest.json
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_NO_V="${VERSION#v}"
@@ -122,11 +122,15 @@ jobs:
           APK_NAME="divan-${VERSION}.apk"
           APK_SIZE=$(stat -c%s "release/${APK_NAME}")
           CHECKSUM="sha256:$(sha256sum release/${ZIP_NAME} | cut -d' ' -f1)"
+          MAJOR=$(echo $VERSION_NO_V | cut -d. -f1)
+          MINOR=$(echo $VERSION_NO_V | cut -d. -f2)
+          PATCH=$(echo $VERSION_NO_V | cut -d. -f3)
+          VCODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
 
-          cat > manifest.json << EOF
+          cat > manifest.json << MANIFEST_END
           {
             "version": "${VERSION_NO_V}",
-            "releaseNotes": "نسخه ${VERSION} — برای جزئیات: github.com/hadifaraji67/Divan/releases/tag/${VERSION}",
+            "releaseNotes": "نسخه ${VERSION} — github.com/hadifaraji67/Divan/releases/tag/${VERSION}",
             "ota": {
               "available": true,
               "url": "https://github.com/hadifaraji67/Divan/releases/download/${VERSION}/${ZIP_NAME}",
@@ -138,23 +142,14 @@ jobs:
               "available": true,
               "url": "https://github.com/hadifaraji67/Divan/releases/download/${VERSION}/${APK_NAME}",
               "size": ${APK_SIZE},
-              "versionCode": 40900
+              "versionCode": ${VCODE}
             },
             "requiresNativeUpdate": false,
             "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
-          EOF
+          MANIFEST_END
 
-          echo "manifest.json:"
           cat manifest.json
-          echo ""
-          echo "📌 این فایل باید در commit جدید روی main قرار بگیرد (workflow جداگانه انجام می‌دهد)"
-
-      - name: ذخیره manifest به عنوان artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: manifest
-          path: manifest.json
 
       - name: ایجاد Release خودکار
         uses: softprops/action-gh-release@v2
@@ -164,16 +159,13 @@ jobs:
           body: |
             ## 🎉 نسخه ${{ steps.version.outputs.version }}
 
-            ### 📱 نصب APK
+            ### 📱 نصب APK (بار اول)
             1. فایل `divan-${{ steps.version.outputs.version }}.apk` را دانلود کنید
-            2. روی گوشی اندروید نصب کنید
-            3. اگر پیام «منابع ناشناس» داد → **Allow** بزنید
+            2. روی گوشی نصب کنید
 
-            ### ✨ تغییرات این نسخه
-            این بخش به‌صورت خودکار از commit‌های قبلی ساخته می‌شود. برای مشاهده جزئیات کامل، به [لیست commits](https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.version }}) مراجعه کنید.
-
-            ### 🔄 آپدیت خودکار
-            اگر نسخه قبلی را نصب کرده‌اید، هنگام باز کردن نرم‌افزار پیام آپدیت نشان داده می‌شود.
+            ### ⚡ بروزرسانی OTA (از v4.9.1 به بعد)
+            - به‌طور خودکار در اپ اطلاع داده می‌شود
+            - فقط `web-${{ steps.version.outputs.version }}.zip` دانلود می‌شود (~۴۸۴ KB)
 
             ---
             **نسخه PWA آنلاین:** [divan-one.vercel.app](https://divan-one.vercel.app)
@@ -186,9 +178,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: خلاصه
-        run: |
-          echo "## ✅ Release ${{ steps.version.outputs.version }} ساخته شد" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📥 [دانلود APK](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }})" >> $GITHUB_STEP_SUMMARY
