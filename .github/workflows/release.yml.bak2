@@ -63,28 +63,11 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Decode and validate Keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Decode Keystore
         run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_BASE64" || { echo "::error::KEYSTORE_BASE64 is not configured"; exit 1; }
           mkdir -p android/keystore
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore/divan-release.keystore
-          test -s android/keystore/divan-release.keystore || { echo "::error::Decoded keystore is empty"; exit 1; }
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore/divan-release.keystore
           ls -la android/keystore/
-
-      - name: Validate signing secrets
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$KEYSTORE_PASSWORD" || { echo "::error::KEYSTORE_PASSWORD is not configured"; exit 1; }
-          test -n "$KEY_ALIAS" || { echo "::error::KEY_ALIAS is not configured"; exit 1; }
-          test -n "$KEY_PASSWORD" || { echo "::error::KEY_PASSWORD is not configured"; exit 1; }
-          echo "✅ همه secrets موجود هستند"
 
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
