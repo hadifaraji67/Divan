@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// ─── خواندن نسخه از package.json ───
+def pkgJson = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
+def pkgVersion = pkgJson.version
+def versionParts = pkgVersion.tokenize('.')
+def vCode = (versionParts[0].toInteger() * 10000) + (versionParts[1].toInteger() * 100) + (versionParts.size() > 2 ? versionParts[2].toInteger() : 0)
+def vName = pkgVersion
+
+
 // ─── Signing Config ───
 def keystoreProps = new Properties()
 def keystorePropsFile = rootProject.file("keystore.properties")
@@ -27,8 +35,8 @@ android {
         applicationId "ir.divan.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode vCode
+        versionName vName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
