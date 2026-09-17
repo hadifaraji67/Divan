@@ -105,6 +105,57 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "release/divan-${VERSION}.apk"
           ls -la release/
 
+      - name: ساخت ZIP برای OTA
+        run: |
+          mkdir -p release
+          cd dist && zip -r -q "../release/web-${{ steps.version.outputs.version }}.zip" .
+          cd ..
+          echo "ZIP ساخته شد:"
+          ls -la release/
+
+      - name: به‌روزرسانی manifest.json
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NO_V="${VERSION#v}"
+          ZIP_NAME="web-${VERSION}.zip"
+          ZIP_SIZE=$(stat -c%s "release/${ZIP_NAME}")
+          APK_NAME="divan-${VERSION}.apk"
+          APK_SIZE=$(stat -c%s "release/${APK_NAME}")
+          CHECKSUM="sha256:$(sha256sum release/${ZIP_NAME} | cut -d' ' -f1)"
+
+          cat > manifest.json << EOF
+          {
+            "version": "${VERSION_NO_V}",
+            "releaseNotes": "نسخه ${VERSION} — برای جزئیات: github.com/hadifaraji67/Divan/releases/tag/${VERSION}",
+            "ota": {
+              "available": true,
+              "url": "https://github.com/hadifaraji67/Divan/releases/download/${VERSION}/${ZIP_NAME}",
+              "size": ${ZIP_SIZE},
+              "checksum": "${CHECKSUM}",
+              "minNativeVersion": "4.9.0"
+            },
+            "apk": {
+              "available": true,
+              "url": "https://github.com/hadifaraji67/Divan/releases/download/${VERSION}/${APK_NAME}",
+              "size": ${APK_SIZE},
+              "versionCode": 40900
+            },
+            "requiresNativeUpdate": false,
+            "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+          echo "manifest.json:"
+          cat manifest.json
+          echo ""
+          echo "📌 این فایل باید در commit جدید روی main قرار بگیرد (workflow جداگانه انجام می‌دهد)"
+
+      - name: ذخیره manifest به عنوان artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: manifest.json
+
       - name: ایجاد Release خودکار
         uses: softprops/action-gh-release@v2
         with:
@@ -128,6 +179,8 @@ jobs:
             **نسخه PWA آنلاین:** [divan-one.vercel.app](https://divan-one.vercel.app)
           files: |
             release/*.apk
+            release/*.zip
+            manifest.json
           draft: false
           prerelease: false
           generate_release_notes: true

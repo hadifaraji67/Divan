@@ -1,0 +1,19 @@
+{
+  "version": "4.9.0",
+  "releaseNotes": "نسخه 4.9.0 — برای جزئیات: github.com/hadifaraji67/Divan/releases/tag/v4.9.0",
+  "ota": {
+    "available": true,
+    "url": "https://github.com/hadifaraji67/Divan/releases/download/v4.9.0/web-v4.9.0.zip",
+    "size": 495605,
+    "checksum": "sha256:7dda6fc07785b14ccc643b4ea63998adfbf1c15ff6586480ca105c94b0a2b261",
+    "minNativeVersion": "4.9.0"
+  },
+  "apk": {
+    "available": true,
+    "url": "https://github.com/hadifaraji67/Divan/releases/download/v4.9.0/divan-v4.9.0.apk",
+    "size": 3900000,
+    "versionCode": 40900
+  },
+  "requiresNativeUpdate": false,
+  "generatedAt": "2026-09-17T06:49:00.760Z"
+}

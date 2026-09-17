@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   RefreshCw, Download, CheckCircle2, AlertCircle, ExternalLink,
-  Smartphone, Globe, Clock, Sparkles, Info, GitBranch,
+  Smartphone, Globe, Clock, Sparkles, Info, GitBranch, Zap,
 } from 'lucide-react';
-import { APP_VERSION, checkForUpdates, detectPlatform, applyPwaUpdate, downloadNativeUpdate, type UpdateInfo } from '../../lib/update-service';
+import {
+  APP_VERSION, checkForUpdates, detectPlatform,
+  type UpdateInfo,
+} from '../../lib/update/update-v2';
 import { notify } from '../../lib/toast';
+import { UpdateChoiceDialog } from '../shared/UpdateChoiceDialog';
 
 const GITHUB_REPO = 'hadifaraji67/Divan';
 
@@ -12,12 +16,13 @@ export const UpdateSettings: React.FC = () => {
   const [checking, setChecking] = useState(false);
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [lastCheck, setLastCheck] = useState<number | null>(null);
+  const [showDialog, setShowDialog] = useState(false);
   const platform = detectPlatform();
 
   const doCheck = async () => {
     setChecking(true);
     try {
-      const i = await checkForUpdates({ ignoreDismiss: true });
+      const i = await checkForUpdates(true);
       setInfo(i);
       setLastCheck(Date.now());
       if (i.available) {
@@ -33,27 +38,14 @@ export const UpdateSettings: React.FC = () => {
     }
   };
 
-  // چک خودکار در اولین بار
   useEffect(() => {
     const t = setTimeout(() => doCheck(), 500);
     return () => clearTimeout(t);
   }, []);
 
-  const handleUpdate = async () => {
-    if (!info) return;
-
-    if (info.source === 'pwa') {
-      // PWA: reload
-      notify.info('در حال بروزرسانی...');
-      setTimeout(() => applyPwaUpdate(), 800);
-    } else if (info.downloadUrl) {
-      // Native: باز کردن لینک APK
-      notify.info('در حال دانلود نسخه جدید');
-      await downloadNativeUpdate(info.downloadUrl);
-    } else {
-      // باز کردن صفحه Release
-      window.open(`https://github.com/${GITHUB_REPO}/releases`, '_blank');
-    }
+  const handleUpdate = () => {
+    if (!info?.available) return;
+    setShowDialog(true);
   };
 
   const formatTime = (ts: number | null) => {
@@ -70,8 +62,14 @@ export const UpdateSettings: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4" dir="rtl">
+      {showDialog && info && (
+        <UpdateChoiceDialog
+          info={info}
+          onClose={() => setShowDialog(false)}
+          onSuccess={() => { setShowDialog(false); setLastCheck(Date.now()); }}
+        />
+      )}
 
-      {/* کارت اصلی نسخه */}
       <div className="rounded-2xl border bg-white dark:bg-slate-900/50 overflow-hidden" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
         <div className="p-5 border-b bg-gradient-to-br from-indigo-500/5 to-violet-500/5" style={{ borderColor: 'inherit' }}>
           <div className="flex items-center gap-4">
@@ -98,7 +96,6 @@ export const UpdateSettings: React.FC = () => {
         </div>
 
         <div className="p-4 space-y-3">
-          {/* وضعیت بررسی */}
           <div className="flex items-center justify-between text-xs">
             <span className="opacity-60 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
@@ -114,7 +111,6 @@ export const UpdateSettings: React.FC = () => {
             </button>
           </div>
 
-          {/* پیام آپدیت */}
           {info && info.available && (
             <div className="mt-3 p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/30">
               <div className="flex items-start gap-3 mb-3">
@@ -128,28 +124,27 @@ export const UpdateSettings: React.FC = () => {
                   <div className="text-xs mt-1 opacity-80">
                     نسخه {info.latestVersion} منتشر شده — شما روی {APP_VERSION} هستید
                   </div>
-                </div>
-              </div>
-
-              {info.releaseNotes && (
-                <div className="mb-3 p-3 rounded-lg bg-white/60 dark:bg-slate-900/40 max-h-32 overflow-y-auto">
-                  <div className="text-[10px] font-bold opacity-60 mb-1">تغییرات این نسخه:</div>
-                  <div className="text-[11px] leading-relaxed whitespace-pre-wrap">
-                    {info.releaseNotes.slice(0, 500)}
-                    {info.releaseNotes.length > 500 ? '...' : ''}
+                  <div className="flex gap-3 mt-2 text-[10px] opacity-70">
+                    {info.otaAvailable && (
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3 h-3" /> بروزرسانی سریع
+                      </span>
+                    )}
+                    {info.apkAvailable && (
+                      <span className="flex items-center gap-1">
+                        <Download className="w-3 h-3" /> دانلود کامل
+                      </span>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
               <button
                 onClick={handleUpdate}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-colors"
               >
-                {info.source === 'pwa' ? (
-                  <><RefreshCw className="w-4 h-4" /> بروزرسانی خودکار</>
-                ) : (
-                  <><Download className="w-4 h-4" /> دانلود و نصب نسخه جدید</>
-                )}
+                <Download className="w-4 h-4" />
+                مشاهده گزینه‌های بروزرسانی
               </button>
             </div>
           )}
@@ -170,7 +165,6 @@ export const UpdateSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* اطلاعات سیستم */}
       <div className="rounded-2xl border bg-white dark:bg-slate-900/50 p-4" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
         <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
           <Info className="w-4 h-4 text-sky-500" />
@@ -198,43 +192,30 @@ export const UpdateSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* لینک‌ها */}
       <div className="rounded-2xl border bg-white dark:bg-slate-900/50 p-4" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
         <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
           <GitBranch className="w-4 h-4 text-violet-500" />
           لینک‌های مفید
         </h3>
         <div className="space-y-2">
-          <a
-            href={`https://github.com/${GITHUB_REPO}/releases`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm"
-          >
+          <a href={`https://github.com/${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm">
             <span className="flex items-center gap-2">
               <Download className="w-4 h-4 text-indigo-500" />
               <span>تاریخچه نسخه‌ها (Releases)</span>
             </span>
             <ExternalLink className="w-3.5 h-3.5 opacity-50" />
           </a>
-          <a
-            href="https://divan-one.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm"
-          >
+          <a href="https://divan-one.vercel.app" target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm">
             <span className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-sky-500" />
               <span>نسخه وب (PWA)</span>
             </span>
             <ExternalLink className="w-3.5 h-3.5 opacity-50" />
           </a>
-          <a
-            href={`https://github.com/${GITHUB_REPO}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm"
-          >
+          <a href={`https://github.com/${GITHUB_REPO}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm">
             <span className="flex items-center gap-2">
               <GitBranch className="w-4 h-4 text-slate-500" />
               <span>مخزن GitHub</span>
@@ -245,7 +226,7 @@ export const UpdateSettings: React.FC = () => {
       </div>
 
       <div className="text-center text-[11px] opacity-40">
-        سیستم آپدیت خودکار فعال است — هنگام ورود، بررسی می‌شود
+        سیستم بروزرسانی ترکیبی — OTA + APK
       </div>
     </div>
   );
