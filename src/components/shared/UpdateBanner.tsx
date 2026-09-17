@@ -62,9 +62,9 @@ export const UpdateBanner: React.FC<Props> = ({ forceCheck }) => {
             <Sparkles className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0 pr-8">
-            <div className="font-bold text-sm">نسخه {info.latestVersion} آماده است</div>
+            <div className="font-bold text-sm">نسخه <span dir="ltr" className="inline-block">{info.latestVersion}</span> آماده است</div>
             <div className="text-[11px] opacity-80 mt-0.5">
-              شما روی نسخه {info.currentVersion} هستید
+              شما روی نسخه <span dir="ltr" className="inline-block">{info.currentVersion}</span> هستید
             </div>
             <div className="flex gap-3 mt-1.5 text-[10px] opacity-70">
               {info.otaAvailable && (

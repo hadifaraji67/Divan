@@ -61,9 +61,9 @@ export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }
           <div className="flex items-start justify-between">
             <div>
               <div className="text-xs opacity-60 mb-1">نسخه جدید در دسترس</div>
-              <div className="font-bold text-lg">دیوان {info.latestVersion}</div>
+              <div className="font-bold text-lg">دیوان <span dir="ltr" className="inline-block">{info.latestVersion}</span></div>
               <div className="text-xs opacity-60 mt-1">
-                نسخه فعلی: {info.currentVersion}
+                نسخه فعلی: <span dir="ltr" className="inline-block">{info.currentVersion}</span>
               </div>
             </div>
             <button

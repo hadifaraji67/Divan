@@ -79,7 +79,7 @@ export const UpdateSettings: React.FC = () => {
             <div className="flex-1">
               <div className="text-xs opacity-60">نسخه فعلی</div>
               <div className="text-2xl font-bold flex items-center gap-2">
-                {APP_VERSION}
+                <span dir="ltr" className="inline-block">{APP_VERSION}</span>
                 {info && !info.available && !checking && (
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 )}
@@ -122,7 +122,7 @@ export const UpdateSettings: React.FC = () => {
                     نسخه جدید در دسترس است
                   </div>
                   <div className="text-xs mt-1 opacity-80">
-                    نسخه {info.latestVersion} منتشر شده — شما روی {APP_VERSION} هستید
+                    نسخه <span dir="ltr" className="inline-block">{info.latestVersion}</span> منتشر شده — شما روی <span dir="ltr" className="inline-block">{APP_VERSION}</span> هستید
                   </div>
                   <div className="flex gap-3 mt-2 text-[10px] opacity-70">
                     {info.otaAvailable && (
@@ -173,7 +173,7 @@ export const UpdateSettings: React.FC = () => {
         <div className="space-y-2 text-xs">
           <div className="flex justify-between py-1.5 border-b border-black/5 dark:border-white/5">
             <span className="opacity-60">نسخه نرم‌افزار</span>
-            <b>{APP_VERSION}</b>
+            <b><span dir="ltr" className="inline-block">{APP_VERSION}</span></b>
           </div>
           <div className="flex justify-between py-1.5 border-b border-black/5 dark:border-white/5">
             <span className="opacity-60">پلتفرم</span>
