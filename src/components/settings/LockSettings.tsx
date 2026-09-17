@@ -11,7 +11,7 @@ import {
 import type { LockMethod, AutoLockDelay } from '../../lib/security/lock-types';
 import { checkBiometricAvailability, isCapacitor } from '../../lib/server/biometric';
 import { notify } from '../../lib/toast';
-import { buildRecoveryQRText } from '../../lib/security/recovery-code';
+import { RecoveryQR } from '../security/RecoveryQR';
 
 export const LockSettings: React.FC = () => {
   const [enabled, setEnabled] = useState(isLockEnabled());
@@ -217,72 +217,23 @@ export const LockSettings: React.FC = () => {
     return (
       <div className="max-w-2xl mx-auto" dir="rtl">
         <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-5">
-          <div className="flex items-start gap-3 mb-4">
+          <div className="flex items-start gap-3 mb-5">
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-sm mb-1">کد بازیابی — مهم!</h3>
+              <h3 className="font-bold text-base mb-1">کد بازیابی — مهم!</h3>
               <p className="text-xs opacity-70 leading-relaxed">
                 این کد را در جای امنی ذخیره کنید. اگر رمز را فراموش کنید، تنها راه بازیابی این کد است.
               </p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 mb-4">
-            <div className="font-mono text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400 tracking-widest text-center mb-4" dir="ltr">
-              {recoveryCode}
-            </div>
-            <div ref={qrWrapRef} className="flex flex-col items-center gap-2 bg-white p-3 rounded-xl">
-              <QRCodeCanvas
-                value={buildRecoveryQRText(recoveryCode)}
-                size={200}
-                level="M"
-                bgColor="#ffffff"
-                fgColor="#1e1b4b"
-                style={{ width: 200, height: 200 }}
-              />
-              <p className="text-[10px] text-slate-500 text-center">
-                با اسکن QR، کد بازیابی خودکار وارد می‌شود
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <button
-              onClick={handleCopy}
-              disabled={justCopied}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors"
-            >
-              {justCopied ? <><Check className="w-4 h-4" /> کپی شد</> : <><Copy className="w-4 h-4" /> کپی کد</>}
-            </button>
-            <button
-              onClick={handleDownloadQR}
-              disabled={qrDownloading}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl transition-opacity"
-            >
-              {qrDownloading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> در حال...</>
-              ) : (
-                <><Download className="w-4 h-4" /> دانلود</>
-              )}
-            </button>
-            <button
-              onClick={handleShare}
-              disabled={justShared}
-              className="flex items-center justify-center gap-2 px-3 py-3 bg-slate-700 hover:bg-slate-600 disabled:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-colors"
-            >
-              {justShared ? <><Check className="w-4 h-4" /> شد</> : <>اشتراک‌گذاری</>}
-            </button>
-          </div>
-
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-700 dark:text-rose-400 mb-4 leading-relaxed">
-            <b>هشدار:</b> این کد فقط یک بار نمایش داده می‌شود.
-          </div>
+          <RecoveryQR code={recoveryCode} />
 
           <button
             onClick={() => { setShowRecovery(false); setRecoveryCode(''); }}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl"
+            className="w-full mt-5 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl"
           >
-            کد را ذخیره کردم
+            کد را ذخیره کردم — ادامه
           </button>
         </div>
       </div>
