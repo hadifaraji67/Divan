@@ -182,15 +182,26 @@ export async function applyOtaUpdate(url: string): Promise<{ success: boolean; e
     const { LiveUpdate } = w.Capacitor.Plugins;
     if (!LiveUpdate) return { success: false, error: 'پلاگین LiveUpdate یافت نشد' };
 
-    // دانلود و اعمال
-    await LiveUpdate.downloadBundle({ url, bundleId: `v${Date.now()}` });
-    await LiveUpdate.setNextBundle({ bundleId: `v${Date.now()}` });
+    // ⚠️ مهم: bundleId باید یکسان باشد بین download و setNext
+    const bundleId = `ota-${Date.now()}`;
+    console.log('[OTA] شروع دانلود با bundleId:', bundleId);
+
+    // ۱. دانلود bundle
+    await LiveUpdate.downloadBundle({ url, bundleId });
+    console.log('[OTA] دانلود موفق');
+
+    // ۲. تنظیم به عنوان bundle بعدی
+    await LiveUpdate.setNextBundle({ bundleId });
+    console.log('[OTA] setNextBundle موفق');
+
+    // ۳. ری‌استارت اپ برای اعمال
     await LiveUpdate.reload();
 
     return { success: true };
   } catch (err: any) {
     console.error('[OTA] خطا:', err);
-    return { success: false, error: err?.message || 'خطا در OTA' };
+    const msg = err?.message || err?.errorMessage || 'خطا در OTA';
+    return { success: false, error: msg };
   }
 }
 
