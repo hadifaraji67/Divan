@@ -7,10 +7,21 @@ const config: CapacitorConfig = {
   appId: "ir.divan.app",
   appName: "دیوان",
   webDir: "dist",
+  server: {
+    hostname: "localhost",
+    androidScheme: "https",
+    iosScheme: "capacitor",
+  },
   android: {
     allowMixedContent: true,
   },
   plugins: {
+    LiveUpdate: {
+      appId: "ir.divan.app",
+      autoUpdateStrategy: "none",
+      readyTimeout: 10000,
+      resetWhenUpdate: false,
+    },
     SplashScreen: {
       launchShowDuration: 800,
       backgroundColor: "#1b3654",
