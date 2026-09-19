@@ -119,7 +119,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
             </div>
             <h2 className="text-lg md:text-xl font-bold">به دیوان خوش آمدید 👋</h2>
             <p className="text-xs md:text-sm opacity-80 mt-1">
-              {settings.storeName} — خلاصه عملکرد امروز شما
+              {settings.storeName} — خلاصه عملکرد امروز شما ✨
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
