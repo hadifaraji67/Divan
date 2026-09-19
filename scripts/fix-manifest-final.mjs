@@ -1,4 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const file = 'android/app/src/main/AndroidManifest.xml';
+const src = readFileSync(file, 'utf8');
+
+const appMatch = src.match(/<application[\s\S]*?<\/application>/);
+if (!appMatch) {
+  console.error('Application block not found');
+  process.exit(1);
+}
+
+const newManifest = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
@@ -25,28 +36,9 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
 
-    <application
-        android:requestLegacyExternalStorage="true"
-        android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="false">
-
-        <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
-            android:theme="@style/AppTheme.NoActionBar"
-            android:launchMode="singleTask"
-            android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+    ${appMatch[0]}
 </manifest>
+`;
+
+writeFileSync(file, newManifest);
+console.log('AndroidManifest.xml rewritten successfully');
