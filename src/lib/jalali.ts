@@ -113,6 +113,15 @@ export function formatJalali(jy: number, jm: number, jd: number, persian = true)
   return persian ? toFaDigits(str) : str;
 }
 
+/** فرمت طولانی: «شنبه، ۲۸ شهریور ۱۴۰۵» */
+export function formatJalaliLong(jy: number, jm: number, jd: number): string {
+  const weekday = FA_WEEKDAYS[jalaliWeekday(jy, jm, jd)];
+  const day = toFaDigits(jd);
+  const month = FA_MONTHS[jm - 1];
+  const year = toFaDigits(jy);
+  return `${weekday}، ${day} ${month} ${year}`;
+}
+
 export function parseJalali(str: string): { jy: number; jm: number; jd: number } | null {
   if (!str) return null;
   const clean = toEnDigits(str).replace(/[^\d/]/g, '');

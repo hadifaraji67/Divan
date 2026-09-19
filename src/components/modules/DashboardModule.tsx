@@ -10,6 +10,7 @@ import type { Contact, Product, Invoice, Payment, Cheque } from '../../types/mod
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { roundRial } from '../../types/models';
+import { formatJalaliLong, todayJalali } from '../../lib/jalali';
 
 interface Props {
   onNavigate: (view: any) => void;
@@ -114,9 +115,9 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
           <div>
             <div className="flex items-center gap-2 text-xs opacity-80 mb-1">
               <Star className="w-3.5 h-3.5" fill="currentColor" />
-              {new Date().toLocaleDateString('fa-IR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {(() => { const t = todayJalali(); return formatJalaliLong(t.jy, t.jm, t.jd); })()}
             </div>
-            <h2 className="text-lg md:text-xl font-bold">خوش آمدید به دیوان 👋</h2>
+            <h2 className="text-lg md:text-xl font-bold">به دیوان خوش آمدید 👋</h2>
             <p className="text-xs md:text-sm opacity-80 mt-1">
               {settings.storeName} — خلاصه عملکرد امروز شما
             </p>
