@@ -1,4 +1,7 @@
-/**
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const file = 'src/lib/backup/filesystem.ts';
+const newFile = `/**
  * لایه دسترسی به فایل‌سیستم
  * - در APK: Directory.External + Share
  * - در مرورگر: دانلود
@@ -37,7 +40,7 @@ export async function saveToDevice(
       let uri = '';
       try {
         const result = await Filesystem.writeFile({
-          path: `${BACKUP_DIR}/${filename}`,
+          path: \`\${BACKUP_DIR}/\${filename}\`,
           data: content,
           directory: Directory.External,
           encoding: Encoding?.UTF8 || 'utf8',
@@ -47,7 +50,7 @@ export async function saveToDevice(
       } catch (err) {
         console.error('[FS] external failed, fallback to Data:', err);
         const result = await Filesystem.writeFile({
-          path: `${BACKUP_DIR}/${filename}`,
+          path: \`\${BACKUP_DIR}/\${filename}\`,
           data: content,
           directory: Directory.Data,
           encoding: Encoding?.UTF8 || 'utf8',
@@ -102,7 +105,7 @@ export async function readBackupFile(filename: string): Promise<string | null> {
   for (const dir of [Directory.External, Directory.Data]) {
     try {
       const result = await Filesystem.readFile({
-        path: `${BACKUP_DIR}/${filename}`,
+        path: \`\${BACKUP_DIR}/\${filename}\`,
         directory: dir,
         encoding: Encoding?.UTF8 || 'utf8',
       });
@@ -125,7 +128,7 @@ export async function listBackups(): Promise<{ name: string; uri: string; size: 
       if (files.length > 0) {
         return files.map((f: any) => ({
           name: f.name,
-          uri: `${BACKUP_DIR}/${f.name}`,
+          uri: \`\${BACKUP_DIR}/\${f.name}\`,
           size: f.size || 0,
           mtime: f.mtime || 0,
         }));
@@ -182,3 +185,7 @@ function downloadInBrowser(filename: string, content: string, mimeType: string):
 }
 
 export { isCapacitor };
+`;
+
+writeFileSync(file, newFile);
+console.log('✅ filesystem.ts با Directory.External + Share');
