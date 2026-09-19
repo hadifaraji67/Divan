@@ -49,7 +49,7 @@ export async function saveToDevice(
       try {
         await Filesystem.mkdir({
           path: BACKUP_DIR,
-          directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+          directory: Directory.Documents || 'DOCUMENTS',
           recursive: true,
         });
       } catch { /* exists */ }
@@ -57,7 +57,7 @@ export async function saveToDevice(
       const result = await Filesystem.writeFile({
         path: `${BACKUP_DIR}/${filename}`,
         data: content,
-        directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+        directory: Directory.Documents || 'DOCUMENTS',
         encoding: Encoding?.UTF8 || 'utf8',
       });
 
@@ -103,7 +103,7 @@ export async function readBackupFile(filename: string): Promise<string | null> {
 
     const result = await Filesystem.readFile({
       path: `${BACKUP_DIR}/${filename}`,
-      directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+      directory: Directory.Documents || 'DOCUMENTS',
       encoding: Encoding?.UTF8 || 'utf8',
     });
 
@@ -123,7 +123,7 @@ export async function listBackups(): Promise<{ name: string; uri: string; size: 
 
     const result = await Filesystem.readdir({
       path: BACKUP_DIR,
-      directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+      directory: Directory.Documents || 'DOCUMENTS',
     });
 
     const files = (result.files || []).filter((f: any) => f.name?.endsWith('.divan'));
@@ -149,7 +149,7 @@ export async function deleteBackup(path: string): Promise<boolean> {
 
     await Filesystem.deleteFile({
       path,
-      directory: Directory.ExternalStorage || 'EXTERNAL_STORAGE',
+      directory: Directory.Documents || 'DOCUMENTS',
     });
     return true;
   } catch (err) {
