@@ -3,7 +3,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const file = 'android/app/build.gradle';
 let src = readFileSync(file, 'utf8');
 
-// الگوی فعلی
 const before = `def pkgVersion = pkgJson.version.toString()
 // حذف suffix های pre-release/build: 5.0.0-beta.1 → 5.0.0
 def numericVersion = pkgVersion.split(/[-+]/)[0]
@@ -29,10 +28,7 @@ def minor = versionParts[1].toInteger()
 def patch = versionParts.size() > 2 ? versionParts[2].toInteger() : 0
 
 // ─── محاسبه phase برای pre-release ───
-// alpha.N → 1..49
-// beta.N  → 51..79
-// rc.N    → 81..98
-// stable  → 99
+// alpha.N → 1..49   |   beta.N → 51..79   |   rc.N → 81..98   |   stable → 99
 def phase = 99
 def preMatch = pkgVersion =~ /-(alpha|beta|rc)\\.(\\d+)/
 if (preMatch.find()) {
@@ -55,8 +51,5 @@ if (src.includes(before)) {
   console.log('✅ versionCode با phase pre-release');
 } else {
   console.log('❌ بلوک پیدا نشد');
-  console.log('');
-  console.log('=== محتوای فعلی ===');
-  console.log(src.split('\n').slice(0, 25).join('\n'));
   process.exit(1);
 }
