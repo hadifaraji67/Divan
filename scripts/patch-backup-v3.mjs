@@ -1,4 +1,7 @@
-/**
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const file = 'src/lib/backup/filesystem.ts';
+const newFile = `/**
  * لایه دسترسی به فایل‌سیستم
  * - ساده، بدون hang، بدون Share خودکار
  */
@@ -22,12 +25,10 @@ export async function requestStoragePermission(): Promise<boolean> {
 }
 
 /** wrapper با timeout برای جلوگیری از hang */
-function withTimeout<T>(p: Promise<T>, ms: number, name: string): Promise<any> {
+function withTimeout<T>(p: Promise<T>, ms: number, name: string): Promise<T> {
   return Promise.race([
-    p as Promise<any>,
-    new Promise<any>((_, reject) =>
-      setTimeout(() => reject(new Error(`timeout: ${name}`)), ms)
-    ),
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(\`timeout: \${name}\`)), ms)),
   ]);
 }
 
@@ -55,14 +56,14 @@ export async function saveToDevice(
       console.log('[FS] trying dir:', dir);
       const result = await withTimeout(
         Filesystem.writeFile({
-          path: `${BACKUP_DIR}/${filename}`,
+          path: \`\${BACKUP_DIR}/\${filename}\`,
           data: content,
           directory: dir,
           encoding: Encoding?.UTF8 || 'utf8',
           recursive: true,
         }),
         15000,
-        `writeFile-${dir}`
+        \`writeFile-\${dir}\`
       );
       console.log('[FS] ✅ saved to', dir, result.uri);
       return { path: result.uri, filename, size: content.length };
@@ -98,12 +99,12 @@ export async function readBackupFile(filename: string): Promise<string | null> {
     try {
       const result = await withTimeout(
         Filesystem.readFile({
-          path: `${BACKUP_DIR}/${filename}`,
+          path: \`\${BACKUP_DIR}/\${filename}\`,
           directory: dir,
           encoding: Encoding?.UTF8 || 'utf8',
         }),
         10000,
-        `read-${dir}`
+        \`read-\${dir}\`
       );
       if (typeof result.data === 'string') return result.data;
     } catch { /* next */ }
@@ -122,13 +123,13 @@ export async function listBackups(): Promise<{ name: string; uri: string; size: 
       const result = await withTimeout(
         Filesystem.readdir({ path: BACKUP_DIR, directory: dir }),
         10000,
-        `readdir-${dir}`
+        \`readdir-\${dir}\`
       );
       const files = (result.files || []).filter((f: any) => f.name?.endsWith('.divan'));
       if (files.length > 0) {
         return files.map((f: any) => ({
           name: f.name,
-          uri: `${BACKUP_DIR}/${f.name}`,
+          uri: \`\${BACKUP_DIR}/\${f.name}\`,
           size: f.size || 0,
           mtime: f.mtime || 0,
         }));
@@ -183,3 +184,6 @@ function downloadInBrowser(filename: string, content: string, mimeType: string):
 }
 
 export { isCapacitor };
+`;
+writeFileSync(file, newFile);
+console.log('✅ filesystem.ts با timeout + 3 fallback + بدون Share خودکار');
