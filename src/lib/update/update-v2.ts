@@ -14,7 +14,7 @@ export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __AP
 
 const GITHUB_OWNER = 'hadifaraji67';
 const GITHUB_REPO = 'Divan';
-const MANIFEST_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/manifest.json`;
+const RELEASES_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
 export type Platform = 'pwa' | 'native' | 'web';
 
@@ -100,20 +100,31 @@ let cachedManifest: { data: UpdateManifest; time: number } | null = null;
 const MANIFEST_CACHE_MS = 1000 * 60 * 5;
 
 async function fetchManifest(force = false): Promise<UpdateManifest | null> {
-  // cache
   if (!force && cachedManifest && Date.now() - cachedManifest.time < MANIFEST_CACHE_MS) {
     return cachedManifest.data;
   }
 
   try {
-    const res = await fetch(MANIFEST_URL, {
-      headers: { Accept: 'application/json' },
+    const res = await fetch(RELEASES_API + '?per_page=10', {
+      headers: { Accept: 'application/vnd.github+json' },
       cache: 'no-cache',
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as UpdateManifest;
-    cachedManifest = { data, time: Date.now() };
-    return data;
+
+    const releases: any[] = await res.json();
+
+    for (const rel of releases) {
+      const asset = rel.assets?.find((a: any) => a.name === 'manifest.json');
+      if (!asset) continue;
+
+      const mRes = await fetch(asset.browser_download_url, { cache: 'no-cache' });
+      if (!mRes.ok) continue;
+
+      const data = (await mRes.json()) as UpdateManifest;
+      cachedManifest = { data, time: Date.now() };
+      return data;
+    }
+    return null;
   } catch {
     return null;
   }
