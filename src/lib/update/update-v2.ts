@@ -14,7 +14,7 @@ export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __AP
 
 const GITHUB_OWNER = 'hadifaraji67';
 const GITHUB_REPO = 'Divan';
-const RELEASES_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases?per_page=100`;
+const RELEASES_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
 export type Platform = 'pwa' | 'native' | 'web';
 
