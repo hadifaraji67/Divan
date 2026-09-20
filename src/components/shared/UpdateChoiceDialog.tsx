@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, X, Loader2, Zap, Clock } from 'lucide-react';
+import { X, Loader2, Zap, Package, Feather, Download } from 'lucide-react';
 import type { UpdateInfo } from '../../lib/update/update-v2';
 import { applyApkUpdate } from '../../lib/update/update-v2';
 import { notify } from '../../lib/toast';
@@ -17,14 +17,14 @@ function formatSize(bytes?: number): string {
 }
 
 export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }) => {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'full' | 'light' | null>(null);
 
-  const handleDownload = async () => {
-    if (!info.apkUrl) return;
-    setBusy(true);
+  const handleDownload = async (url: string | undefined, mode: 'full' | 'light') => {
+    if (!url) return;
+    setBusy(mode);
     notify.info('در حال باز کردن لینک دانلود...');
-    const result = await applyApkUpdate(info.apkUrl);
-    setBusy(false);
+    const result = await applyApkUpdate(url);
+    setBusy(null);
     if (result.success) {
       notify.success('لینک دانلود در مرورگر باز شد');
       onSuccess();
@@ -39,8 +39,7 @@ export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden" dir="rtl">
-        {/* Header */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto" dir="rtl">
         <div className="p-5 bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border-b border-black/5 dark:border-white/5">
           <div className="flex items-start justify-between">
             <div>
@@ -50,7 +49,7 @@ export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }
                 نسخه فعلی: <span dir="ltr" className="inline-block">{info.currentVersion}</span>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" disabled={busy}>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10" disabled={busy !== null}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -58,67 +57,90 @@ export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }
 
         <div className="p-4 space-y-3">
           <div className="text-xs text-center opacity-60 mb-1">
-            نوع بروزرسانی را انتخاب کنید
+            نسخه مناسب دستگاهت را انتخاب کن
           </div>
 
-          {/* APK — Active */}
+          {/* FULL */}
           <button
-            onClick={handleDownload}
-            disabled={busy}
+            onClick={() => handleDownload(info.apkUrl, 'full')}
+            disabled={busy !== null}
             className="w-full p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-2 border-emerald-500/30 hover:border-emerald-500/60 disabled:opacity-60 text-right transition-all"
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
-                {busy ? (
+                {busy === 'full' ? (
                   <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
                 ) : (
-                  <Download className="w-5 h-5 text-emerald-600" />
+                  <Package className="w-5 h-5 text-emerald-600" />
                 )}
               </div>
               <div className="flex-1">
-                <div className="font-bold text-sm">📦 دانلود و نصب</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-bold text-sm">📦 نسخه کامل</div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold">
+                    توصیه می‌شود
+                  </span>
+                </div>
                 <div className="text-[11px] opacity-70 mt-0.5">
-                  {formatSize(info.apkSize)} — حدود ۱ دقیقه
+                  {formatSize(info.apkSize)} — همه‌جا کار می‌کند
                 </div>
                 <div className="text-[10px] opacity-50 mt-1">
-                  بدون حذف داده‌ها — نصب مستقیم
+                  ✓ بدون نیاز به Google Play Services
                 </div>
               </div>
             </div>
           </button>
 
-          {/* OTA — Coming Soon */}
+          {/* LIGHT */}
+          {info.apkLightAvailable && (
+            <button
+              onClick={() => handleDownload(info.apkLightUrl, 'light')}
+              disabled={busy !== null}
+              className="w-full p-4 rounded-xl bg-gradient-to-br from-sky-500/10 to-blue-500/10 border-2 border-sky-500/30 hover:border-sky-500/60 disabled:opacity-60 text-right transition-all"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center shrink-0">
+                  {busy === 'light' ? (
+                    <Loader2 className="w-5 h-5 text-sky-600 animate-spin" />
+                  ) : (
+                    <Feather className="w-5 h-5 text-sky-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-bold text-sm">🪶 نسخه سبک</div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-700 dark:text-sky-400 font-bold">
+                      حجم کم
+                    </span>
+                  </div>
+                  <div className="text-[11px] opacity-70 mt-0.5">
+                    {formatSize(info.apkLightSize)} — دانلود سریع
+                  </div>
+                  <div className="text-[10px] opacity-50 mt-1">
+                    ⚠️ نیاز به Google Play Services
+                  </div>
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* OTA */}
           <button
             onClick={handleOtaComingSoon}
-            className="w-full p-4 rounded-xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 text-right transition-all relative overflow-hidden"
+            className="w-full p-3 rounded-xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-2 border-dashed border-amber-500/30 text-right transition-all opacity-70"
           >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0 relative">
-                <Zap className="w-5 h-5 text-amber-600" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
-                  <Clock className="w-2.5 h-2.5 text-white" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="font-bold text-sm opacity-70">⚡ بروزرسانی سریع</div>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold">
-                    🚧 به‌زودی
-                  </span>
-                </div>
-                <div className="text-[11px] opacity-50 mt-0.5">
-                  فقط ۴۹۳ KB — ۲ ثانیه
-                </div>
-                <div className="text-[10px] opacity-40 mt-1">
-                  در حال توسعه — به‌زودی در دسترس
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-600" />
+              <div className="font-bold text-xs opacity-70">⚡ بروزرسانی سریع</div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 font-bold mr-auto">
+                🚧 به‌زودی
+              </span>
             </div>
           </button>
 
           <button
             onClick={onClose}
-            disabled={busy}
+            disabled={busy !== null}
             className="w-full py-2.5 text-xs opacity-60 hover:opacity-100 disabled:opacity-30 transition-opacity"
           >
             بعداً

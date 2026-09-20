@@ -1,8 +1,9 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// ⚠️ مهم: این config برای APK مستقل است.
-// فایل‌های بیلد شده (dist/) داخل APK بسته‌بندی می‌شوند.
-// به همین دلیل بدون اینترنت هم کار می‌کند.
+const mlkitMode = process.env.MLKIT_MODE || "full";
+const isLight = mlkitMode === "light";
+console.log(`[Capacitor] MLKit mode: ${mlkitMode}`);
+
 const config: CapacitorConfig = {
   appId: "ir.divan.app",
   appName: "دیوان",
@@ -12,16 +13,8 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     iosScheme: "capacitor",
   },
-  android: {
-    allowMixedContent: true,
-  },
+  android: { allowMixedContent: true },
   plugins: {
-    LiveUpdate: {
-      appId: "ir.divan.app",
-      autoUpdateStrategy: "none",
-      readyTimeout: 30000,
-      resetWhenUpdate: false,
-    },
     SplashScreen: {
       launchShowDuration: 800,
       backgroundColor: "#1b3654",
