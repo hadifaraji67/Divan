@@ -35,12 +35,6 @@ declare module '@tanstack/react-router' {
   console.log('[Diwan] platform:', w.Capacitor?.platform, '| native:', w.Capacitor?.isNativePlatform?.());
 })();
 
-(async () => {
-  const w = window as any;
-  if (w.Capacitor?.isNativePlatform?.() && w.Capacitor?.Plugins?.LiveUpdate) {
-    try { await w.Capacitor.Plugins.LiveUpdate.notifyAppReady(); } catch {}
-  }
-})();
 installGlobalHandlers();
 
 const rootElement = document.getElementById('root')!;
