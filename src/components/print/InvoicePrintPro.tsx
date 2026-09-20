@@ -4,6 +4,8 @@ import type { Invoice, Contact, Product } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
+import { buildInvoiceText, shareInvoiceWhatsApp, shareInvoiceSMS, shareInvoiceGeneric } from '../../lib/invoice-share';
+import { MessageCircle, Send } from 'lucide-react';
 import { roundRial, calculateLineTotal } from '../../lib/format';
 
 interface Props {
@@ -116,6 +118,24 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
   const isFormal = settings.printMode === 'formal';
   const isThermal = settings.printPaper === 'thermal80' || settings.printPaper === 'thermal58';
   const isA5 = settings.printPaper === 'A5';
+  const handleShareWhatsApp = async () => {
+    if (!invoice) return;
+    const text = buildInvoiceText(invoice, contact, settings?.storeName);
+    await shareInvoiceWhatsApp(text, contact?.phone);
+  };
+
+  const handleShareSMS = async () => {
+    if (!invoice) return;
+    const text = buildInvoiceText(invoice, contact, settings?.storeName);
+    await shareInvoiceSMS(text, contact?.phone);
+  };
+
+  const handleShareGeneric = async () => {
+    if (!invoice) return;
+    const text = buildInvoiceText(invoice, contact, settings?.storeName);
+    await shareInvoiceGeneric(text);
+  };
+
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm overflow-y-auto" dir="rtl">
