@@ -67,11 +67,7 @@ export const UpdateBanner: React.FC<Props> = ({ forceCheck }) => {
               شما روی نسخه <span dir="ltr" className="inline-block">{info.currentVersion}</span> هستید
             </div>
             <div className="flex gap-3 mt-1.5 text-[10px] opacity-70">
-              {info.otaAvailable && (
-                <span className="flex items-center gap-1">
-                  <Zap className="w-3 h-3" /> بروزرسانی سریع
-                </span>
-              )}
+              
               {info.apkAvailable && (
                 <span className="flex items-center gap-1">
                   <Download className="w-3 h-3" /> دانلود کامل

@@ -69,7 +69,7 @@ export const ContactsModule: React.FC = () => {
     setContacts(prev => prev.filter(c => c.id !== id));
   };
   const handleExportContacts = async () => {
-    await exportToCSV('مشتریان', filtered || items, [
+    await exportToCSV('مشتریان', filtered || (typeof contacts !== 'undefined' ? contacts : []), [
       { key: 'name', label: 'نام' },
       { key: 'phone', label: 'تلفن' },
       { key: 'mobile', label: 'موبایل' },

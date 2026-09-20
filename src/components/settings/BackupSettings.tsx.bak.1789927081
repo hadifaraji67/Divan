@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Download, Upload, HardDrive, Shield, Clock, Trash2, RefreshCw,
   Check, X, AlertTriangle, FileText, Info, Smartphone, Cloud, Lock,
-  Unlock, Share2, Eye, Calendar, Zap, RotateCcw,
+  Unlock, Share2, Eye, Calendar, Zap,
 } from 'lucide-react';
 import { createBackup, parseBackup, inspectBackup } from '../../lib/backup/backup-core';
-import { saveToDevice, listBackups, deleteBackup, shareFile, readBackupFile, isCapacitor, requestStoragePermission } from '../../lib/backup/filesystem';
+import { saveToDevice, listBackups, deleteBackup, shareFile, isCapacitor, requestStoragePermission } from '../../lib/backup/filesystem';
 import { runBackup, loadBackupSettings, saveBackupSettings, type BackupSettings as BSettings } from '../../lib/backup/use-auto-backup';
 import { notify } from '../../lib/toast';
 import { formatNum } from '../../lib/theme-context';
@@ -126,37 +126,6 @@ export const BackupSettings: React.FC = () => {
       refreshBackups();
     } else {
       notify.error('خطا در حذف');
-    }
-  };
-
-  const handleRestoreFromList = async (backup: StoredBackup) => {
-    setBusy(true);
-    const toastId = notify.loading('در حال خواندن بکاپ...');
-    try {
-      const content = await readBackupFile(backup.name);
-      notify.dismiss(toastId);
-
-      if (!content) {
-        notify.error('خواندن فایل ناموفق بود');
-        setBusy(false);
-        return;
-      }
-
-      const meta = inspectBackup(content);
-      if (!meta.valid) {
-        notify.error(meta.error || 'فایل معتبر نیست');
-        setBusy(false);
-        return;
-      }
-
-      setRestoreFile({ name: backup.name, content, meta });
-      setRestorePassword('');
-      setShowRestoreDialog(true);
-    } catch (err: any) {
-      notify.dismiss(toastId);
-      notify.error(err?.message || 'خطای ناشناخته');
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -345,14 +314,6 @@ export const BackupSettings: React.FC = () => {
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
-                        onClick={() => handleRestoreFromList(b)}
-                        disabled={busy}
-                        className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 disabled:opacity-50"
-                        title="بازیابی از این بکاپ"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                      <button
                       onClick={() => handleShare(b)}
                       title="اشتراک‌گذاری"
                       className="p-2 rounded-lg hover:bg-sky-50 dark:hover:bg-sky-500/10 text-sky-600"

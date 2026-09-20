@@ -24,9 +24,9 @@ export function buildInvoiceText(invoice: Invoice, contact?: Contact, storeName?
   lines.push('*اقلام:*');
 
   invoice.items?.slice(0, 20).forEach((item, i) => {
-    const qty = item.qty || 1;
-    const price = item.price || 0;
-    lines.push(`${i + 1}. ${item.name} — ${qty} × ${formatNum(price, true)}`);
+    const qty = item.quantity || 1;
+    const price = item.unitPrice || 0;
+    lines.push(`${i + 1}. ${item.productName} — ${qty} × ${formatNum(price, true)}`);
   });
 
   if (invoice.items?.length > 20) {

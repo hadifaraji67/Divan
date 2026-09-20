@@ -232,13 +232,13 @@ export const InvoicesModule: React.FC = () => {
   const total = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
   const handleExportInvoices = async () => {
     const { invoiceTotal } = await import('../../types/models');
-    await exportToCSV('فاکتورها', filtered || items, [
+    await exportToCSV('فاکتورها', filtered || invoices, [
       { key: 'number', label: 'شماره' },
       { key: 'date', label: 'تاریخ' },
       { key: 'type', label: 'نوع' },
       { key: 'contactName', label: 'مشتری' },
-      { key: 'items', label: 'تعداد اقلام', format: (v) => Array.isArray(v) ? v.length : 0 },
-      { key: 'total', label: 'مبلغ کل', format: (v, row) => invoiceTotal(row.items || [], row.discountPercent || 0, row.taxPercent || 0, row.shippingCost || 0) },
+      { key: 'items', label: 'تعداد اقلام', format: (v) => String(Array.isArray(v) ? v.length : 0) },
+      { key: 'total', label: 'مبلغ کل', format: (_v, row) => String(Math.round(invoiceTotal(row.items || [], row.discountPercent || 0, row.taxPercent || 0, row.shippingCost || 0))) },
       { key: 'status', label: 'وضعیت' },
     ]);
   };
