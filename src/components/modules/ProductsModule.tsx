@@ -181,8 +181,14 @@ export const ProductsModule: React.FC = () => {
                 <span className="text-xs text-slate-600 block mb-1">بارکد</span>
                 <div className="flex gap-2">
                   <div className="flex gap-2">
+                  <div className="flex gap-2">
                   <input value={editing.barcode || ''} onChange={(e) => setEditing({ ...editing, barcode: e.target.value })}
                     className="flex-1 p-2 border rounded-lg text-sm font-mono" dir="ltr" placeholder="مثلاً: 6260123456789" />
+                  <button type="button" onClick={() => setShowScanner(true)}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1 text-xs font-bold whitespace-nowrap">
+                    <Camera className="w-4 h-4" /> اسکن
+                  </button>
+                </div>
                   <button type="button" onClick={() => setShowScanner(true)}
                     className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1 text-xs font-bold whitespace-nowrap">
                     <Camera className="w-4 h-4" /> اسکن
