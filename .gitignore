@@ -24,3 +24,4 @@ package.json.bak-*
 android/keystore/
 *.keystore
 *.jks
+android/keystore.properties
