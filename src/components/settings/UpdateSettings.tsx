@@ -126,11 +126,7 @@ export const UpdateSettings: React.FC = () => {
                     نسخه <span dir="ltr" className="inline-block">{info.latestVersion}</span> منتشر شده — شما روی <span dir="ltr" className="inline-block">{APP_VERSION}</span> هستید
                   </div>
                   <div className="flex gap-3 mt-2 text-[10px] opacity-70">
-                    {info.otaAvailable && (
-                      <span className="flex items-center gap-1">
-                        <Zap className="w-3 h-3" /> بروزرسانی سریع
-                      </span>
-                    )}
+                    
                     {info.apkAvailable && (
                       <span className="flex items-center gap-1">
                         <Download className="w-3 h-3" /> دانلود کامل
