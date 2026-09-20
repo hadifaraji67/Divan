@@ -97,9 +97,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          npx cap sync android
-          ./gradlew assembleRelease --stacktrace --no-daemon
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: ذخیره APK کامل
         run: |
@@ -117,7 +115,6 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          npx cap sync android
           ./gradlew clean
           ./gradlew assembleRelease --stacktrace --no-daemon
 
