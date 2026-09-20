@@ -1,3 +1,5 @@
+import { logError, logWarn, logInfo } from '../error-logger';
+
 /**
  * لایه دسترسی به فایل‌سیستم
  * - ساده، بدون hang، بدون Share خودکار
@@ -67,7 +69,7 @@ export async function saveToDevice(
       console.log('[FS] ✅ saved to', dir, result.uri);
       return { path: result.uri, filename, size: content.length };
     } catch (err: any) {
-      console.warn('[FS] failed dir', dir, ':', err?.message);
+      logWarn('backup', `dir failed: ${dir}`, { err: err?.message });
     }
   }
 

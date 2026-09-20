@@ -6,6 +6,7 @@ import { AppErrorComponent } from './lib/error-component';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
 import './styles.css';
+import { installGlobalHandlers } from './lib/error-logger';
 
 const router = createRouter({
   routeTree,
@@ -33,6 +34,14 @@ declare module '@tanstack/react-router' {
   // لاگ پلتفرم
   console.log('[Diwan] platform:', w.Capacitor?.platform, '| native:', w.Capacitor?.isNativePlatform?.());
 })();
+
+(async () => {
+  const w = window as any;
+  if (w.Capacitor?.isNativePlatform?.() && w.Capacitor?.Plugins?.LiveUpdate) {
+    try { await w.Capacitor.Plugins.LiveUpdate.notifyAppReady(); } catch {}
+  }
+})();
+installGlobalHandlers();
 
 const rootElement = document.getElementById('root')!;
 
