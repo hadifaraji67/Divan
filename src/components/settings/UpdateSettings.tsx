@@ -9,6 +9,7 @@ import {
 } from '../../lib/update/update-v2';
 import { notify } from '../../lib/toast';
 import { UpdateChoiceDialog } from '../shared/UpdateChoiceDialog';
+import { UpdateDebug } from '../shared/UpdateDebug';
 
 const GITHUB_REPO = 'hadifaraji67/Divan';
 
@@ -224,6 +225,8 @@ export const UpdateSettings: React.FC = () => {
           </a>
         </div>
       </div>
+
+      <UpdateDebug />
 
       <div className="text-center text-[11px] opacity-40">
         سیستم بروزرسانی ترکیبی — OTA + APK
