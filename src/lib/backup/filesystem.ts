@@ -1,16 +1,24 @@
 /**
  * لایه دسترسی به فایل‌سیستم
- * - استفاده از API رسمی @capacitor/filesystem
- * - در مرورگر: دانلود
+ * - اولویت: Documents (عمومی) → External (اپ) → Data (خصوصی)
+ * - URI واقعی برای Share
  */
 
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Directory, Encoding } from '@capacitor/filesystem';
 import { logError, logWarn, logInfo } from '../error-logger';
 
 export interface SaveResult {
   path: string;
   filename: string;
   size: number;
+  directory: string;
+}
+
+export interface StoredBackup {
+  name: string;
+  uri: string;
+  size: number;
+  mtime: number;
 }
 
 const isCapacitor = (): boolean => {
@@ -19,25 +27,37 @@ const isCapacitor = (): boolean => {
   return !!(w.Capacitor?.isNativePlatform?.() || w.Capacitor?.platform);
 };
 
+const getFilesystem = (): any => {
+  const w = window as any;
+  return w.Capacitor?.Plugins?.Filesystem;
+};
+
 const BACKUP_DIR = 'Divan-Backups';
 
-const BACKUP_DIRECTORIES = [
-  Directory.Data,
-  Directory.Documents,
-  Directory.Cache,
-].filter(Boolean) as Directory[];
+const TRY_DIRS = (): Directory[] => {
+  const w = window as any;
+  const Filesystem = w.Capacitor?.Plugins?.Filesystem;
+  if (!Filesystem) return [];
+  // اولویت: Documents → External → Data
+  return [Directory.Documents, Directory.External, Directory.Data].filter(Boolean) as Directory[];
+};
 
-export async function requestStoragePermission(): Promise<boolean> {
-  return true;
-}
+const DIR_NAME: Record<string, string> = {};
+DIR_NAME[Directory.Documents] = 'DOCUMENTS';
+DIR_NAME[Directory.External] = 'EXTERNAL';
+DIR_NAME[Directory.Data] = 'DATA';
 
-function withTimeout<T>(p: Promise<T>, ms: number, name: string): Promise<T> {
+function withTimeout<T>(p: Promise<T>, ms: number, name: string): Promise<any> {
   return Promise.race([
-    p,
-    new Promise<T>((_, reject) =>
+    p as Promise<any>,
+    new Promise<any>((_, reject) =>
       setTimeout(() => reject(new Error(`timeout: ${name}`)), ms)
     ),
   ]);
+}
+
+export async function requestStoragePermission(): Promise<boolean> {
+  return true;
 }
 
 export async function saveToDevice(
@@ -49,157 +69,184 @@ export async function saveToDevice(
     return downloadInBrowser(filename, content, mimeType);
   }
 
-  for (const directory of BACKUP_DIRECTORIES) {
+  const Filesystem = getFilesystem();
+  if (!Filesystem) {
+    logError('backup', 'Filesystem plugin نیست');
+    return null;
+  }
+
+  const dirs = TRY_DIRS();
+
+  for (const dir of dirs) {
     try {
       const result = await withTimeout(
         Filesystem.writeFile({
           path: `${BACKUP_DIR}/${filename}`,
           data: content,
-          directory,
+          directory: dir,
           encoding: Encoding.UTF8,
           recursive: true,
         }),
         15000,
-        `write-${directory}`
+        `write-${dir}`
       );
 
-      logInfo('backup', 'saved backup to native directory', {
-        directory,
-        uri: result.uri,
-      });
-      return { path: result.uri, filename, size: content.length };
+      const dirName = DIR_NAME[dir] || String(dir);
+      logInfo('backup', `saved to ${dirName}`, { uri: result.uri });
+
+      return {
+        path: result.uri,
+        filename,
+        size: content.length,
+        directory: dirName,
+      };
     } catch (err: any) {
-      logWarn('backup', `directory failed: ${directory}`, {
-        err: err?.message,
-      });
+      logWarn('backup', `dir fail: ${dir}`, { err: err?.message });
     }
   }
 
-  logError('backup', 'saveToDevice: all directories failed', { filename });
-  return downloadInBrowser(filename, content, mimeType);
+  logError('backup', 'همه پوشه‌ها fail', { filename });
+  return null;
 }
 
 export async function readFromDevice(path: string): Promise<string | null> {
   if (!isCapacitor()) return null;
+  const Filesystem = getFilesystem();
+  if (!Filesystem) return null;
 
   try {
-    const result = await Filesystem.readFile({
-      path,
-      encoding: Encoding.UTF8,
-    });
+    const result = await Filesystem.readFile({ path, encoding: Encoding.UTF8 });
     return typeof result.data === 'string' ? result.data : null;
   } catch (err: any) {
-    logError('backup', 'readFromDevice failed', { path }, err);
+    logError('backup', 'read fail', { path }, err);
     return null;
   }
 }
 
 export async function readBackupFile(filename: string): Promise<string | null> {
   if (!isCapacitor()) return null;
+  const Filesystem = getFilesystem();
+  if (!Filesystem) return null;
 
-  for (const directory of BACKUP_DIRECTORIES) {
+  for (const dir of TRY_DIRS()) {
     try {
       const result = await withTimeout(
         Filesystem.readFile({
           path: `${BACKUP_DIR}/${filename}`,
-          directory,
+          directory: dir,
           encoding: Encoding.UTF8,
         }),
         10000,
-        `read-${directory}`
+        `read-${dir}`
       );
       if (typeof result.data === 'string') return result.data;
-    } catch {
-      /* try the next directory */
-    }
+    } catch {}
   }
-
+  logError('backup', 'readBackupFile fail همه پوشه‌ها', { filename });
   return null;
 }
 
-export async function listBackups(): Promise<
-  { name: string; uri: string; size: number; mtime: number }[]
-> {
+export async function listBackups(): Promise<StoredBackup[]> {
   if (!isCapacitor()) return [];
+  const Filesystem = getFilesystem();
+  if (!Filesystem) return [];
 
-  for (const directory of BACKUP_DIRECTORIES) {
+  const seen = new Set<string>();
+  const result: StoredBackup[] = [];
+
+  for (const dir of TRY_DIRS()) {
     try {
-      const result = await withTimeout(
-        Filesystem.readdir({ path: BACKUP_DIR, directory }),
+      const readResult = await withTimeout(
+        Filesystem.readdir({ path: BACKUP_DIR, directory: dir }),
         10000,
-        `readdir-${directory}`
+        `readdir-${dir}`
       );
-      const files = (result.files || []).filter((file: any) =>
-        file.name?.endsWith('.divan')
-      );
+      const files = (readResult.files || []).filter((f: any) => f.name?.endsWith('.divan'));
 
-      if (files.length > 0) {
-        return files.map((file: any) => ({
-          name: file.name,
-          uri: `${BACKUP_DIR}/${file.name}`,
-          size: file.size || 0,
-          mtime: file.mtime || 0,
-        }));
+      for (const f of files) {
+        if (seen.has(f.name)) continue;
+        seen.add(f.name);
+
+        let uri = `${BACKUP_DIR}/${f.name}`;
+        try {
+          const uriResult = await Filesystem.getUri({
+            path: `${BACKUP_DIR}/${f.name}`,
+            directory: dir,
+          });
+          uri = uriResult.uri;
+        } catch (e: any) {
+          logWarn('backup', 'getUri fail', { err: e?.message });
+        }
+
+        result.push({
+          name: f.name,
+          uri,
+          size: f.size || 0,
+          mtime: f.mtime || 0,
+        });
       }
-    } catch {
-      /* try the next directory */
-    }
+    } catch {}
   }
 
-  return [];
+  return result;
 }
 
 export async function deleteBackup(path: string): Promise<boolean> {
   if (!isCapacitor()) return false;
+  const Filesystem = getFilesystem();
+  if (!Filesystem) return false;
 
-  for (const directory of BACKUP_DIRECTORIES) {
+  const filename = path.split('/').pop() || path;
+
+  for (const dir of TRY_DIRS()) {
     try {
-      await Filesystem.deleteFile({ path, directory });
+      await Filesystem.deleteFile({
+        path: `${BACKUP_DIR}/${filename}`,
+        directory: dir,
+      });
       return true;
-    } catch {
-      /* try the next directory */
-    }
+    } catch {}
   }
-
   return false;
 }
 
-export async function shareFile(
-  path: string,
-  title = 'بکاپ دیوان'
-): Promise<boolean> {
+export async function shareFile(uri: string, title = 'بکاپ دیوان'): Promise<boolean> {
   if (!isCapacitor()) return false;
-
   try {
-    const Share = (window as any).Capacitor?.Plugins?.Share;
-    if (!Share) return false;
+    const w = window as any;
+    const Share = w.Capacitor?.Plugins?.Share;
+    if (!Share) {
+      logWarn('backup', 'Share plugin نیست');
+      return false;
+    }
+
+    logInfo('backup', 'sharing', { uri });
+
     await Share.share({
       title,
-      url: path,
+      url: uri,
       dialogTitle: 'اشتراک‌گذاری بکاپ',
     });
+
     return true;
-  } catch {
+  } catch (err: any) {
+    logWarn('backup', 'share canceled/failed', { err: err?.message });
     return false;
   }
 }
 
-function downloadInBrowser(
-  filename: string,
-  content: string,
-  mimeType: string
-): SaveResult | null {
+function downloadInBrowser(filename: string, content: string, mimeType: string): SaveResult | null {
   try {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return { path: filename, filename, size: content.length };
+    return { path: filename, filename, size: content.length, directory: 'BROWSER' };
   } catch {
     return null;
   }
