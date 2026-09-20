@@ -21,6 +21,23 @@ export const BarcodeScanner: React.FC<Props> = ({ onDetected, onClose }) => {
         const BD = (window as any).BarcodeDetector;
         if (!BD) throw new Error('BarcodeDetector در این دستگاه پشتیبانی نمی‌شود');
 
+        // ─── درخواست مجوز در APK ───
+        const w = window as any;
+        if (w.Capacitor?.isNativePlatform?.()) {
+          try {
+            const { Camera } = w.Capacitor.Plugins;
+            if (Camera?.requestPermissions) {
+              const perm = await Camera.requestPermissions({ permissions: ['camera'] });
+              if (perm?.camera !== 'granted') {
+                throw new Error('دسترسی به دوربین رد شد — از تنظیمات گوشی اجازه بده');
+              }
+            }
+          } catch (permErr: any) {
+            console.warn('[Barcode] permission request:', permErr);
+          }
+        }
+
+        // ─── درخواست stream ───
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } },
         });
