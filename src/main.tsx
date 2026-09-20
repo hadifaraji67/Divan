@@ -5,35 +5,34 @@ import { routeTree } from './routeTree.gen';
 import { AppErrorComponent } from './lib/error-component';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
-import { installGlobalHandlers, logInfo, logError } from './lib/error-logger';
-import { Capacitor } from '@capacitor/core';
-import { LiveUpdate } from '@capawesome/capacitor-live-update';
+import { installGlobalHandlers } from './lib/error-logger';
 import './styles.css';
 
 /* ═══════════════════════════════════════════════════════
-   ⚠️ CRITICAL: notifyAppReady باید ASAP اجرا شود
+   LiveUpdate — notifyAppReady اختیاری
+   در نسخه‌های جدید @capawesome/capacitor-live-update
+   این متد وجود ندارد و پلاگین خودش مدیریت می‌کند
    ═══════════════════════════════════════════════════════ */
 
-async function notifyReady(): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
+async function notifyLiveUpdateReady(): Promise<void> {
+  try {
+    const w = window as any;
+    if (!w.Capacitor?.isNativePlatform?.()) return;
 
-  for (let i = 0; i < 20; i++) {
-    try {
-      await LiveUpdate.notifyAppReady();
-      logInfo('liveupdate', `notifyAppReady ✓ (تلاش ${i + 1})`);
-      try {
-        const curr = await LiveUpdate.getCurrentBundle();
-        logInfo('liveupdate', 'bundle فعال', curr);
-      } catch {}
-      return;
-    } catch (err: any) {
-      if (i === 19) logError('liveupdate', 'notifyAppReady ناموفق', {}, err);
-      await new Promise((r) => setTimeout(r, 100));
+    const LU = w.Capacitor?.Plugins?.LiveUpdate;
+    if (!LU) return;
+
+    // فقط اگر متد وجود داشت صدا بزن (نسخه‌های قدیمی)
+    if (typeof LU.notifyAppReady === 'function') {
+      await LU.notifyAppReady();
+      console.log('[LiveUpdate] notifyAppReady ✓');
     }
+  } catch (err) {
+    console.warn('[LiveUpdate] notify ready:', err);
   }
 }
 
-notifyReady();
+notifyLiveUpdateReady();
 installGlobalHandlers();
 
 /* ═══════════════════════════════════════════════════════ */
@@ -56,8 +55,17 @@ if (!rootElement.innerHTML) {
     <React.StrictMode>
       <ThemeProvider>
         <RouterProvider router={router} />
-        <Toaster position="top-center" dir="rtl" richColors closeButton expand visibleToasts={3}
-          toastOptions={{ style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' } }} />
+        <Toaster
+          position="top-center"
+          dir="rtl"
+          richColors
+          closeButton
+          expand
+          visibleToasts={3}
+          toastOptions={{
+            style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' },
+          }}
+        />
       </ThemeProvider>
     </React.StrictMode>
   );
