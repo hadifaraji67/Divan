@@ -213,7 +213,7 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
 
 /* ═══════════ اعمال OTA ═══════════ */
 
-export async function applyOtaUpdate(url: string): Promise<{ success: boolean; error?: string }
+export async function applyOtaUpdate(url: string): Promise<{ success: boolean; error?: string }> {
   if (!Capacitor.isNativePlatform()) {
     return { success: false, error: 'OTA فقط در APK' };
   }
@@ -228,7 +228,7 @@ export async function applyOtaUpdate(url: string): Promise<{ success: boolean; e
     console.error('[OTA] خطا:', err);
     return { success: false, error: err?.message || 'خطا در OTA' };
   }
-}
+}> {
   if (!Capacitor.isNativePlatform()) {
     return { success: false, error: 'OTA فقط در APK' };
   }
@@ -243,7 +243,7 @@ export async function applyOtaUpdate(url: string): Promise<{ success: boolean; e
     console.error('[OTA] خطا:', err);
     return { success: false, error: err?.message || 'خطا در OTA' };
   }
-}
+}> {
   const w = window as any;
   if (!w.Capacitor?.isNativePlatform?.()) {
     return { success: false, error: 'OTA فقط در APK' };
@@ -278,7 +278,7 @@ export async function applyOtaUpdate(url: string): Promise<{ success: boolean; e
 
 /* ═══════════ اعمال APK ═══════════ */
 
-export async function applyApkUpdate(url: string): Promise<{ success: boolean; error?: string }
+export async function applyApkUpdate(url: string): Promise<{ success: boolean; error?: string }> {
   try {
     const w = window as any;
     if (w.Capacitor?.Plugins?.Browser?.open) {
@@ -294,7 +294,7 @@ export async function applyApkUpdate(url: string): Promise<{ success: boolean; e
 
 /* ═══════════ بررسی وجود bundle فعال ═══════════ */
 
-export async function getActiveBundleInfo(): Promise<{ bundleId: string | null; version: string | null }
+export async function getActiveBundleInfo(): Promise<{ bundleId: string | null; version: string | null }> {
   const w = window as any;
   if (!w.Capacitor?.isNativePlatform?.()) {
     return { bundleId: null, version: null };
