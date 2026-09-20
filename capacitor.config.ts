@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
     LiveUpdate: {
       appId: "ir.divan.app",
       autoUpdateStrategy: "none",
-      readyTimeout: 10000,
+      readyTimeout: 30000,
       resetWhenUpdate: false,
     },
     SplashScreen: {

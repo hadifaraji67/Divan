@@ -5,8 +5,51 @@ import { routeTree } from './routeTree.gen';
 import { AppErrorComponent } from './lib/error-component';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
+import { installGlobalHandlers, logInfo, logError } from './lib/error-logger';
 import './styles.css';
-import { installGlobalHandlers } from './lib/error-logger';
+
+/* ═══════════════════════════════════════════════════════
+   ⚠️ CRITICAL: notifyAppReady باید قبل از هر چیز اجرا شود
+   ═══════════════════════════════════════════════════════ */
+
+async function notifyLiveUpdateReady(): Promise<void> {
+  const w = window as any;
+  if (!w.Capacitor?.isNativePlatform?.()) return;
+
+  const LiveUpdate = w.Capacitor?.Plugins?.LiveUpdate;
+  if (!LiveUpdate?.notifyAppReady) {
+    logInfo('liveupdate', 'plugin نیست');
+    return;
+  }
+
+  // تلاش ۲۰ بار با فاصله ۱۰۰ms — کل ۲ ثانیه
+  for (let i = 0; i < 20; i++) {
+    try {
+      await LiveUpdate.notifyAppReady();
+      logInfo('liveupdate', `notifyAppReady موفق (تلاش ${i + 1})`);
+
+      // ثبت bundle فعال
+      try {
+        const curr = await LiveUpdate.getCurrentBundle?.();
+        logInfo('liveupdate', 'bundle فعال', curr);
+      } catch {}
+      return;
+    } catch (err: any) {
+      if (i === 19) {
+        logError('liveupdate', 'notifyAppReady ناموفق بعد از ۲۰ تلاش', {}, err);
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+}
+
+// اجرای فوری — بدون انتظار
+notifyLiveUpdateReady();
+
+// نصب handler های سراسری
+installGlobalHandlers();
+
+/* ═══════════════════════════════════════════════════════ */
 
 const router = createRouter({
   routeTree,
@@ -19,23 +62,6 @@ declare module '@tanstack/react-router' {
     router: typeof router;
   }
 }
-
-// ⚠️ اطلاع به LiveUpdate که اپ با موفقیت لود شد
-(async () => {
-  const w = window as any;
-  if (w.Capacitor?.isNativePlatform?.() && w.Capacitor?.Plugins?.LiveUpdate) {
-    try {
-      await w.Capacitor.Plugins.LiveUpdate.notifyAppReady();
-      console.log('[LiveUpdate] notifyAppReady ✓');
-    } catch (e) {
-      console.warn('[LiveUpdate] notifyAppReady خطا:', e);
-    }
-  }
-  // لاگ پلتفرم
-  console.log('[Diwan] platform:', w.Capacitor?.platform, '| native:', w.Capacitor?.isNativePlatform?.());
-})();
-
-installGlobalHandlers();
 
 const rootElement = document.getElementById('root')!;
 
