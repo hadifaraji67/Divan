@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getLog, clearLog, subscribe, type LogEntry } from '../../lib/error-logger';
+import { APP_VERSION } from '../../lib/update/update-v2';
 
 declare const __APP_VERSION__: string;
 

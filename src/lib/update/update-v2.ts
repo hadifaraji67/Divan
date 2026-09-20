@@ -121,7 +121,13 @@ async function fetchManifest(force = false): Promise<UpdateManifest | null> {
       const data: UpdateManifest = {
         version,
         releaseNotes: rel.body || '',
-        ota: { available: true, url: zip.browser_download_url, size: zip.size || 0, minNativeVersion: '4.9.0' },
+        ota: {
+          available: true,
+          url: zip.browser_download_url,
+          size: zip.size || 0,
+          checksum: zip.digest || '',
+          minNativeVersion: '4.9.0',
+        },
         apk: { available: true, url: apk.browser_download_url, size: apk.size || 0, versionCode: computeVersionCode(version) },
         requiresNativeUpdate: false,
       };
@@ -136,6 +142,10 @@ async function fetchManifest(force = false): Promise<UpdateManifest | null> {
   }
 }
 
+
+
+
+
 function computeVersionCode(version: string): number {
   const m = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(\w+)\.(\d+))?/);
   if (!m) return 0;
@@ -144,39 +154,6 @@ function computeVersionCode(version: string): number {
   if (preType === 'beta') phase = 50 + preNum;
   else if (preType === 'rc') phase = 80 + preNum;
   else if (preType === 'alpha') phase = preNum;
-  return major * 1000000 + minor * 10000 + patch * 100 + phase;
-}
-
-function computeVersionCode(version: string): number {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(\w+)\.(\d+))?/);
-  if (!match) return 0;
-  const major = parseInt(match[1]) || 0;
-  const minor = parseInt(match[2]) || 0;
-  const patch = parseInt(match[3]) || 0;
-  const preType = match[4];
-  const preNum = parseInt(match[5] || '0');
-  let phase = 99;
-  if (preType === 'beta') phase = 50 + preNum;
-  else if (preType === 'rc') phase = 80 + preNum;
-  else if (preType === 'alpha') phase = preNum;
-  return major * 1000000 + minor * 10000 + patch * 100 + phase;
-}
-
-/** محاسبه versionCode از string نسخه */
-function computeVersionCode(version: string): number {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(\w+)\.(\d+))?/);
-  if (!match) return 0;
-  const major = parseInt(match[1]) || 0;
-  const minor = parseInt(match[2]) || 0;
-  const patch = parseInt(match[3]) || 0;
-  const preType = match[4];
-  const preNum = parseInt(match[5] || '0');
-
-  let phase = 99;
-  if (preType === 'beta') phase = 50 + preNum;
-  else if (preType === 'rc') phase = 80 + preNum;
-  else if (preType === 'alpha') phase = preNum;
-
   return major * 1000000 + minor * 10000 + patch * 100 + phase;
 }
 
@@ -205,7 +182,6 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
 
   // در حالت web (نه PWA نه native): فقط APK را نشان بده اگر وجود دارد
   const isNative = platform === 'native';
-  const isPwa = platform === 'pwa';
 
   // چک minNativeVersion — اگر اپ فعلی از حداقل نسخه native قدیمی‌تر است، OTA کار نمی‌کند
   const minNative = manifest.ota.minNativeVersion;
