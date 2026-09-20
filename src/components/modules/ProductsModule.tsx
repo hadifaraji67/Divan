@@ -3,6 +3,9 @@ import { Plus, Search, Edit, Trash2, X, Package, AlertTriangle } from 'lucide-re
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { useUndoableDelete } from '../../lib/use-undoable-delete';
+import { EmptyState } from '../shared/EmptyState';
+import { PackagePlus } from 'lucide-react';
 import { exportToCSV } from '../../lib/export';
 import { Download } from 'lucide-react';
 import { BarcodeScanner } from '../shared/BarcodeScanner';
@@ -46,9 +49,21 @@ export const ProductsModule: React.FC = () => {
       : [...prev, editing]);
     setShowForm(false);
   };
+  const deleteWithUndo = useUndoableDelete<Product>({
+    onDelete: (p) => {
+      setItems(prev => prev.filter(x => x.id !== p.id));
+    },
+    onRestore: (p) => {
+      setItems(prev => [...prev, p]);
+    },
+    getLabel: (p) => p.name || 'کالا',
+  });
+
   const remove = (id: string) => {
+    const product = items.find(p => p.id === id);
+    if (!product) return;
     if (!confirm('حذف این کالا؟')) return;
-    setItems(prev => prev.filter(p => p.id !== id));
+    deleteWithUndo(product);
   };
 
   const handleExport = async () => {

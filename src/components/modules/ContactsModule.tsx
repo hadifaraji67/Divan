@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'l
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { exportToCSV } from '../../lib/export';
 import { Download } from 'lucide-react';
 import { LocationSelector } from '../shared/LocationSelector';
