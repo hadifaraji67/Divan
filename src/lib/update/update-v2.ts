@@ -109,28 +109,73 @@ async function fetchManifest(force = false): Promise<UpdateManifest | null> {
       headers: { Accept: 'application/vnd.github+json' },
       cache: 'no-cache',
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error('[OTA] API status:', res.status);
+      return null;
+    }
 
     const releases: any[] = await res.json();
-    console.log('[OTA] releases دریافت شد:', releases.length);
 
+    // ساخت manifest از API response (بدون fetch جداگانه)
     for (const rel of releases) {
-      const asset = rel.assets?.find((a: any) => a.name === 'manifest.json');
-      if (!asset) continue;
+      const apkAsset = rel.assets?.find((a: any) => a.name?.endsWith('.apk'));
+      const zipAsset = rel.assets?.find((a: any) => a.name?.endsWith('.zip'));
 
-      const mRes = await fetch(asset.browser_download_url, { cache: 'no-cache' });
-      if (!mRes.ok) continue;
+      if (!apkAsset || !zipAsset) continue;
 
-      const data = (await mRes.json()) as UpdateManifest;
-      console.log('[OTA] manifest پیدا شد — version:', data.version);
+      const version = (rel.tag_name || rel.name || '').replace(/^v/, '');
+      if (!version) continue;
+
+      const versionCode = computeVersionCode(version);
+
+      const data: UpdateManifest = {
+        version,
+        releaseNotes: rel.body || '',
+        ota: {
+          available: true,
+          url: zipAsset.browser_download_url,
+          size: zipAsset.size || 0,
+          checksum: zipAsset.digest || '',
+          minNativeVersion: '4.9.0',
+        },
+        apk: {
+          available: true,
+          url: apkAsset.browser_download_url,
+          size: apkAsset.size || 0,
+          versionCode,
+        },
+        requiresNativeUpdate: false,
+      };
+
+      console.log('[OTA] manifest ساخته شد از API — version:', version, '| vCode:', versionCode);
       cachedManifest = { data, time: Date.now() };
       return data;
     }
+
+    console.log('[OTA] هیچ release با APK + ZIP پیدا نشد');
     return null;
-  } catch (err) {
-    console.error('[OTA] fetchManifest خطا:', err);
+  } catch (err: any) {
+    console.error('[OTA] fetchManifest خطا:', err?.message);
     return null;
   }
+}
+
+/** محاسبه versionCode از string نسخه */
+function computeVersionCode(version: string): number {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-(\w+)\.(\d+))?/);
+  if (!match) return 0;
+  const major = parseInt(match[1]) || 0;
+  const minor = parseInt(match[2]) || 0;
+  const patch = parseInt(match[3]) || 0;
+  const preType = match[4];
+  const preNum = parseInt(match[5] || '0');
+
+  let phase = 99;
+  if (preType === 'beta') phase = 50 + preNum;
+  else if (preType === 'rc') phase = 80 + preNum;
+  else if (preType === 'alpha') phase = preNum;
+
+  return major * 1000000 + minor * 10000 + patch * 100 + phase;
 }
 
 /* ═══════════ بررسی آپدیت ═══════════ */
