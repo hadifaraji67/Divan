@@ -3,6 +3,8 @@ import { Plus, Search, Edit, Trash2, X, Package, AlertTriangle } from 'lucide-re
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { BarcodeScanner } from '../shared/BarcodeScanner';
+import { Camera } from 'lucide-react';
 
 const empty = (): Product => ({
   id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
@@ -16,6 +18,7 @@ export const ProductsModule: React.FC = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product>(empty());
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => { setItems(loadData<Product[]>('products', [])); }, []);
   useEffect(() => { saveData('products', items); }, [items]);
@@ -50,6 +53,16 @@ export const ProductsModule: React.FC = () => {
 
   return (
     <div className="space-y-4" dir="rtl">
+      {showScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            setEditing({ ...editing, barcode: code });
+            setShowScanner(false);
+            notify.success('بارکد اسکن شد: ' + code);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
       {lowStock > 0 && (
         <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
           <AlertTriangle className="w-4 h-4" />
@@ -166,8 +179,20 @@ export const ProductsModule: React.FC = () => {
               </label>
               <label className="block">
                 <span className="text-xs text-slate-600 block mb-1">بارکد</span>
-                <input value={editing.barcode || ''} onChange={(e) => setEditing({ ...editing, barcode: e.target.value })}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" dir="ltr" />
+                <div className="flex gap-2">
+                  <div className="flex gap-2">
+                  <input value={editing.barcode || ''} onChange={(e) => setEditing({ ...editing, barcode: e.target.value })}
+                    className="flex-1 p-2 border rounded-lg text-sm font-mono" dir="ltr" placeholder="مثلاً: 6260123456789" />
+                  <button type="button" onClick={() => setShowScanner(true)}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1 text-xs font-bold whitespace-nowrap">
+                    <Camera className="w-4 h-4" /> اسکن
+                  </button>
+                </div>
+                  <button type="button" onClick={() => setShowScanner(true)}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-1 text-xs font-bold whitespace-nowrap">
+                    <Camera className="w-4 h-4" /> اسکن
+                  </button>
+                </div>
               </label>
               <label className="block">
                 <span className="text-xs text-slate-600 block mb-1">قیمت عمده (ریال)</span>
