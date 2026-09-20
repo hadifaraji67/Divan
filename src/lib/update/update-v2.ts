@@ -112,6 +112,7 @@ async function fetchManifest(force = false): Promise<UpdateManifest | null> {
     if (!res.ok) return null;
 
     const releases: any[] = await res.json();
+    console.log('[OTA] releases دریافت شد:', releases.length);
 
     for (const rel of releases) {
       const asset = rel.assets?.find((a: any) => a.name === 'manifest.json');
@@ -121,11 +122,13 @@ async function fetchManifest(force = false): Promise<UpdateManifest | null> {
       if (!mRes.ok) continue;
 
       const data = (await mRes.json()) as UpdateManifest;
+      console.log('[OTA] manifest پیدا شد — version:', data.version);
       cachedManifest = { data, time: Date.now() };
       return data;
     }
     return null;
-  } catch {
+  } catch (err) {
+    console.error('[OTA] fetchManifest خطا:', err);
     return null;
   }
 }
@@ -146,7 +149,9 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
   if (!manifest) return base;
 
   const latest = manifest.version.replace(/^v/, '');
+  console.log('[OTA] مقایسه:', latest, 'vs', APP_VERSION, '| platform:', platform);
   const hasUpdate = compareVersions(latest, APP_VERSION) > 0;
+  console.log('[OTA] hasUpdate:', hasUpdate);
   if (!hasUpdate) {
     return { ...base, latestVersion: latest };
   }

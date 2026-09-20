@@ -19,6 +19,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// ⚠️ اطلاع به LiveUpdate که اپ با موفقیت لود شد
+(async () => {
+  const w = window as any;
+  if (w.Capacitor?.isNativePlatform?.() && w.Capacitor?.Plugins?.LiveUpdate) {
+    try {
+      await w.Capacitor.Plugins.LiveUpdate.notifyAppReady();
+      console.log('[LiveUpdate] notifyAppReady ✓');
+    } catch (e) {
+      console.warn('[LiveUpdate] notifyAppReady خطا:', e);
+    }
+  }
+  // لاگ پلتفرم
+  console.log('[Diwan] platform:', w.Capacitor?.platform, '| native:', w.Capacitor?.isNativePlatform?.());
+})();
+
 const rootElement = document.getElementById('root')!;
 
 if (!rootElement.innerHTML) {
