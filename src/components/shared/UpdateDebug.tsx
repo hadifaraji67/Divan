@@ -1,3 +1,4 @@
+import { LiveUpdate } from '@capawesome/capacitor-live-update';
 import React, { useState, useEffect } from 'react';
 import { getLog, clearLog, subscribe, type LogEntry } from '../../lib/error-logger';
 import { APP_VERSION } from '../../lib/update/update-v2';

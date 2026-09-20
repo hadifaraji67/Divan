@@ -1,3 +1,5 @@
+import { LiveUpdate } from '@capawesome/capacitor-live-update';
+import { Capacitor } from '@capacitor/core';
 /**
  * سیستم Update v2 — OTA + APK با انتخاب کاربر
  *
@@ -212,6 +214,36 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
 /* ═══════════ اعمال OTA ═══════════ */
 
 export async function applyOtaUpdate(url: string): Promise<{ success: boolean; error?: string }> {
+  if (!Capacitor.isNativePlatform()) {
+    return { success: false, error: 'OTA فقط در APK' };
+  }
+  try {
+    const bundleId = `ota-${Date.now()}`;
+    console.log('[OTA] دانلود با bundleId:', bundleId);
+    await LiveUpdate.downloadBundle({ url, bundleId });
+    await LiveUpdate.setNextBundle({ bundleId });
+    await LiveUpdate.reload();
+    return { success: true };
+  } catch (err: any) {
+    console.error('[OTA] خطا:', err);
+    return { success: false, error: err?.message || 'خطا در OTA' };
+  }
+}> {
+  if (!Capacitor.isNativePlatform()) {
+    return { success: false, error: 'OTA فقط در APK' };
+  }
+  try {
+    const bundleId = `ota-${Date.now()}`;
+    console.log('[OTA] دانلود با bundleId:', bundleId);
+    await LiveUpdate.downloadBundle({ url, bundleId });
+    await LiveUpdate.setNextBundle({ bundleId });
+    await LiveUpdate.reload();
+    return { success: true };
+  } catch (err: any) {
+    console.error('[OTA] خطا:', err);
+    return { success: false, error: err?.message || 'خطا در OTA' };
+  }
+}> {
   const w = window as any;
   if (!w.Capacitor?.isNativePlatform?.()) {
     return { success: false, error: 'OTA فقط در APK' };

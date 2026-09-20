@@ -6,47 +6,34 @@ import { AppErrorComponent } from './lib/error-component';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
 import { installGlobalHandlers, logInfo, logError } from './lib/error-logger';
+import { Capacitor } from '@capacitor/core';
+import { LiveUpdate } from '@capawesome/capacitor-live-update';
 import './styles.css';
 
 /* ═══════════════════════════════════════════════════════
-   ⚠️ CRITICAL: notifyAppReady باید قبل از هر چیز اجرا شود
+   ⚠️ CRITICAL: notifyAppReady باید ASAP اجرا شود
    ═══════════════════════════════════════════════════════ */
 
-async function notifyLiveUpdateReady(): Promise<void> {
-  const w = window as any;
-  if (!w.Capacitor?.isNativePlatform?.()) return;
+async function notifyReady(): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
 
-  const LiveUpdate = w.Capacitor?.Plugins?.LiveUpdate;
-  if (!LiveUpdate?.notifyAppReady) {
-    logInfo('liveupdate', 'plugin نیست');
-    return;
-  }
-
-  // تلاش ۲۰ بار با فاصله ۱۰۰ms — کل ۲ ثانیه
   for (let i = 0; i < 20; i++) {
     try {
       await LiveUpdate.notifyAppReady();
-      logInfo('liveupdate', `notifyAppReady موفق (تلاش ${i + 1})`);
-
-      // ثبت bundle فعال
+      logInfo('liveupdate', `notifyAppReady ✓ (تلاش ${i + 1})`);
       try {
-        const curr = await LiveUpdate.getCurrentBundle?.();
+        const curr = await LiveUpdate.getCurrentBundle();
         logInfo('liveupdate', 'bundle فعال', curr);
       } catch {}
       return;
     } catch (err: any) {
-      if (i === 19) {
-        logError('liveupdate', 'notifyAppReady ناموفق بعد از ۲۰ تلاش', {}, err);
-      }
+      if (i === 19) logError('liveupdate', 'notifyAppReady ناموفق', {}, err);
       await new Promise((r) => setTimeout(r, 100));
     }
   }
 }
 
-// اجرای فوری — بدون انتظار
-notifyLiveUpdateReady();
-
-// نصب handler های سراسری
+notifyReady();
 installGlobalHandlers();
 
 /* ═══════════════════════════════════════════════════════ */
@@ -64,26 +51,13 @@ declare module '@tanstack/react-router' {
 }
 
 const rootElement = document.getElementById('root')!;
-
 if (!rootElement.innerHTML) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <ThemeProvider>
         <RouterProvider router={router} />
-        <Toaster
-          position="top-center"
-          dir="rtl"
-          richColors
-          closeButton
-          expand
-          visibleToasts={3}
-          toastOptions={{
-            style: {
-              fontFamily: 'Vazirmatn, sans-serif',
-              borderRadius: '12px',
-            },
-          }}
-        />
+        <Toaster position="top-center" dir="rtl" richColors closeButton expand visibleToasts={3}
+          toastOptions={{ style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' } }} />
       </ThemeProvider>
     </React.StrictMode>
   );
