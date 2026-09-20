@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive, Server } from 'lucide-react';
+import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive, Server, Info } from 'lucide-react';
 import { GeneralSettings } from '../settings/GeneralSettings';
 import { StoreSettings } from '../settings/StoreSettings';
 import { FiscalSettings } from '../settings/FiscalSettings';
@@ -8,9 +8,10 @@ import { BackupSettings } from '../settings/BackupSettings';
 import { UpdateSettings } from '../settings/UpdateSettings';
 import { ServerSettings } from '../settings/ServerSettings';
 import { LockSettings } from '../settings/LockSettings';
+import { AboutSettings } from '../settings/AboutSettings';
 import { Shield } from 'lucide-react';
 
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security';
+type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security' | 'about';
 
 const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
@@ -58,6 +59,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'update' && <UpdateSettings />}
         {active === 'server' && <ServerSettings />}
         {active === 'security' && <LockSettings />}
+        {active === 'about' && <AboutSettings />}
       </div>
     </div>
   );
