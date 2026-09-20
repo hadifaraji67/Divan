@@ -3,6 +3,8 @@ import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'l
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { exportToCSV } from '../../lib/export';
+import { Download } from 'lucide-react';
 import { LocationSelector } from '../shared/LocationSelector';
 
 const emptyContact = (): Contact => ({
@@ -66,6 +68,18 @@ export const ContactsModule: React.FC = () => {
     if (!confirm('آیا از حذف این شخص مطمئن هستید؟')) return;
     setContacts(prev => prev.filter(c => c.id !== id));
   };
+  const handleExportContacts = async () => {
+    await exportToCSV('مشتریان', filtered || items, [
+      { key: 'name', label: 'نام' },
+      { key: 'phone', label: 'تلفن' },
+      { key: 'mobile', label: 'موبایل' },
+      { key: 'email', label: 'ایمیل' },
+      { key: 'address', label: 'آدرس' },
+      { key: 'type', label: 'نوع' },
+      { key: 'balance', label: 'مانده' },
+    ]);
+  };
+
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -79,7 +93,10 @@ export const ContactsModule: React.FC = () => {
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
-        <button
+        <button onClick={handleExportContacts} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg">
+            <Download className="w-4 h-4" /> خروجی Excel
+          </button>
+          <button
           onClick={openNew}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg"
         >

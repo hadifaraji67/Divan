@@ -4,6 +4,8 @@ import type { Invoice, InvoiceLine, Contact, Product, InvoiceType } from '../../
 import { invoiceSubtotal, invoiceDiscount, invoiceTax, invoiceTotal, INVOICE_TYPES, invoiceTypeLabel, invoiceTypeRole } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { exportToCSV } from '../../lib/export';
+import { Download } from 'lucide-react';
 import { JalaliDatePicker } from '../shared/JalaliDatePicker';
 import { InvoicePrintPro } from '../print/InvoicePrintPro';
 import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '../../lib/invoice-logic';
@@ -228,6 +230,19 @@ export const InvoicesModule: React.FC = () => {
   const discount = invoiceDiscount(editing.items, editing.discountPercent);
   const tax = invoiceTax(editing.items, editing.discountPercent, editing.taxPercent);
   const total = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
+  const handleExportInvoices = async () => {
+    const { invoiceTotal } = await import('../../types/models');
+    await exportToCSV('فاکتورها', filtered || items, [
+      { key: 'number', label: 'شماره' },
+      { key: 'date', label: 'تاریخ' },
+      { key: 'type', label: 'نوع' },
+      { key: 'contactName', label: 'مشتری' },
+      { key: 'items', label: 'تعداد اقلام', format: (v) => Array.isArray(v) ? v.length : 0 },
+      { key: 'total', label: 'مبلغ کل', format: (v, row) => invoiceTotal(row.items || [], row.discountPercent || 0, row.taxPercent || 0, row.shippingCost || 0) },
+      { key: 'status', label: 'وضعیت' },
+    ]);
+  };
+
 
   return (
     <div className="space-y-4" dir="rtl">
