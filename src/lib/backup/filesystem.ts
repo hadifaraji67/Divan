@@ -19,6 +19,30 @@ const isCapacitor = (): boolean => {
 
 const BACKUP_DIR = 'Divan-Backups';
 
+const getCapacitorFilesystem = () => {
+  const w = window as any;
+  return w.Capacitor?.Plugins?.Filesystem ?? w.Capacitor?.Filesystem ?? null;
+};
+
+const getCapacitorDirectories = (): string[] => {
+  const w = window as any;
+  const dirObj =
+    w.Capacitor?.Plugins?.Directory ??
+    w.Capacitor?.Filesystem?.Directory ??
+    w.Capacitor?.Directory ??
+    {};
+
+  const dirs: string[] = [];
+  for (const key of ['External', 'Documents', 'Data', 'Cache']) {
+    const value = dirObj[key];
+    if (value != null && !dirs.includes(value)) {
+      dirs.push(value);
+    }
+  }
+
+  return dirs;
+};
+
 export async function requestStoragePermission(): Promise<boolean> {
   return true;
 }
@@ -42,21 +66,24 @@ export async function saveToDevice(
     return downloadInBrowser(filename, content, _mimeType);
   }
 
-  const w = window as any;
-  const { Filesystem, Directory, Encoding } = w.Capacitor?.Plugins || {};
-  if (!Filesystem) {
-    console.error('[FS] Filesystem plugin not available');
-    return null;
+  const filesystem = getCapacitorFilesystem();
+  const dirs = getCapacitorDirectories();
+
+  if (!filesystem || dirs.length === 0) {
+    logWarn('backup', 'Filesystem or directory API unavailable in this Capacitor environment', {
+      hasFilesystem: !!filesystem,
+      dirs,
+    });
+    return downloadInBrowser(filename, content, _mimeType);
   }
 
-  // ترتیب تلاش: External → Data → Cache
-  const dirs = [Directory.External, Directory.Data, Directory.Cache].filter(Boolean);
+  const w = window as any;
+  const { Encoding } = w.Capacitor?.Plugins || {};
 
   for (const dir of dirs) {
     try {
-      console.log('[FS] trying dir:', dir);
       const result = await withTimeout(
-        Filesystem.writeFile({
+        filesystem.writeFile({
           path: `${BACKUP_DIR}/${filename}`,
           data: content,
           directory: dir,
@@ -66,24 +93,25 @@ export async function saveToDevice(
         15000,
         `writeFile-${dir}`
       );
-      console.log('[FS] ✅ saved to', dir, result.uri);
+      logInfo('backup', 'saved backup to native dir', { dir, uri: result?.uri });
       return { path: result.uri, filename, size: content.length };
     } catch (err: any) {
       logWarn('backup', `dir failed: ${dir}`, { err: err?.message });
     }
   }
 
-  console.error('[FS] saveToDevice: all directories failed');
-  return null;
+  logError('backup', 'saveToDevice: all directories failed', { dirs });
+  return downloadInBrowser(filename, content, _mimeType);
 }
 
 export async function readFromDevice(path: string): Promise<string | null> {
   if (!isCapacitor()) return null;
   try {
     const w = window as any;
-    const { Filesystem, Encoding } = w.Capacitor?.Plugins || {};
-    if (!Filesystem) return null;
-    const result = await Filesystem.readFile({ path, encoding: Encoding?.UTF8 || 'utf8' });
+    const filesystem = getCapacitorFilesystem();
+    const { Encoding } = w.Capacitor?.Plugins || {};
+    if (!filesystem) return null;
+    const result = await filesystem.readFile({ path, encoding: Encoding?.UTF8 || 'utf8' });
     return typeof result.data === 'string' ? result.data : null;
   } catch {
     return null;
@@ -92,14 +120,16 @@ export async function readFromDevice(path: string): Promise<string | null> {
 
 export async function readBackupFile(filename: string): Promise<string | null> {
   if (!isCapacitor()) return null;
-  const w = window as any;
-  const { Filesystem, Encoding, Directory } = w.Capacitor?.Plugins || {};
-  if (!Filesystem) return null;
 
-  for (const dir of [Directory.External, Directory.Data, Directory.Cache].filter(Boolean)) {
+  const w = window as any;
+  const filesystem = getCapacitorFilesystem();
+  const { Encoding } = w.Capacitor?.Plugins || {};
+  if (!filesystem) return null;
+
+  for (const dir of getCapacitorDirectories()) {
     try {
       const result = await withTimeout(
-        Filesystem.readFile({
+        filesystem.readFile({
           path: `${BACKUP_DIR}/${filename}`,
           directory: dir,
           encoding: Encoding?.UTF8 || 'utf8',
@@ -108,21 +138,23 @@ export async function readBackupFile(filename: string): Promise<string | null> {
         `read-${dir}`
       );
       if (typeof result.data === 'string') return result.data;
-    } catch { /* next */ }
+    } catch {
+      /* next */
+    }
   }
   return null;
 }
 
 export async function listBackups(): Promise<{ name: string; uri: string; size: number; mtime: number }[]> {
   if (!isCapacitor()) return [];
-  const w = window as any;
-  const { Filesystem, Directory } = w.Capacitor?.Plugins || {};
-  if (!Filesystem) return [];
 
-  for (const dir of [Directory.External, Directory.Data, Directory.Cache].filter(Boolean)) {
+  const filesystem = getCapacitorFilesystem();
+  if (!filesystem) return [];
+
+  for (const dir of getCapacitorDirectories()) {
     try {
       const result = await withTimeout(
-        Filesystem.readdir({ path: BACKUP_DIR, directory: dir }),
+        filesystem.readdir({ path: BACKUP_DIR, directory: dir }),
         10000,
         `readdir-${dir}`
       );
@@ -135,21 +167,26 @@ export async function listBackups(): Promise<{ name: string; uri: string; size: 
           mtime: f.mtime || 0,
         }));
       }
-    } catch { /* next */ }
+    } catch {
+      /* next */
+    }
   }
   return [];
 }
 
 export async function deleteBackup(path: string): Promise<boolean> {
   if (!isCapacitor()) return false;
-  const w = window as any;
-  const { Filesystem, Directory } = w.Capacitor?.Plugins || {};
-  if (!Filesystem) return false;
-  for (const dir of [Directory.External, Directory.Data, Directory.Cache].filter(Boolean)) {
+
+  const filesystem = getCapacitorFilesystem();
+  if (!filesystem) return false;
+
+  for (const dir of getCapacitorDirectories()) {
     try {
-      await Filesystem.deleteFile({ path, directory: dir });
+      await filesystem.deleteFile({ path, directory: dir });
       return true;
-    } catch { /* next */ }
+    } catch {
+      /* next */
+    }
   }
   return false;
 }
