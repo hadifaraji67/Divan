@@ -117,7 +117,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
               <Star className="w-3.5 h-3.5" fill="currentColor" />
               {(() => { const t = todayJalali(); return formatJalaliLong(t.jy, t.jm, t.jd); })()}
             </div>
-            <h2 className="text-lg md:text-xl font-bold">به دیوان خوش آمدید ✨</h2>
+            <h2 className="text-lg md:text-xl font-bold">به دیوان خوش آمدید 🎉</h2>
             <p className="text-xs md:text-sm opacity-80 mt-1">
               {settings.storeName} — خلاصه عملکرد امروز شما ✨
             </p>
