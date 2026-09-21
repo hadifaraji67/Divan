@@ -4,6 +4,7 @@ import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { EmptyState } from '../shared/EmptyState';
+import { ContactsFormAccordion } from './ContactsFormAccordion';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { ImportDialog } from '../shared/ImportDialog';
