@@ -362,10 +362,10 @@ export const InvoicesModule: React.FC = () => {
                       className="p-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-indigo-600">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setVoidTarget(inv)} title="باطل کردن"
+                    <RBACGate permission="invoice.void">{<button onClick={() => setVoidTarget(inv)} title="باطل کردن"
                       className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600">
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </button>}</RBACGate>
                   </div>
                 </div>
               );

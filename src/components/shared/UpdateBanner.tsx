@@ -29,8 +29,10 @@ export const UpdateBanner: React.FC<Props> = ({ forceCheck }) => {
   }, []);
 
   useEffect(() => {
+    if (sessionStorage.getItem('divan_banner_checked')) return;
+    sessionStorage.setItem('divan_banner_checked', '1');
     doCheck();
-  }, [doCheck, forceCheck]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(doCheck, 1000 * 60 * 60);
