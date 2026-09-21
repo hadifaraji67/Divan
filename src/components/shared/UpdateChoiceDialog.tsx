@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Loader2, Zap, Package, Feather, Download } from 'lucide-react';
+import { X, Loader2, Zap, Package, Download } from 'lucide-react';
 import type { UpdateInfo } from '../../lib/update/update-v2';
 import { applyApkUpdate } from '../../lib/update/update-v2';
 import { notify } from '../../lib/toast';
@@ -92,37 +92,7 @@ export const UpdateChoiceDialog: React.FC<Props> = ({ info, onClose, onSuccess }
           </button>
 
           {/* LIGHT */}
-          {info.apkLightAvailable && (
-            <button
-              onClick={() => handleDownload(info.apkLightUrl, 'light')}
-              disabled={busy !== null}
-              className="w-full p-4 rounded-xl bg-gradient-to-br from-sky-500/10 to-blue-500/10 border-2 border-sky-500/30 hover:border-sky-500/60 disabled:opacity-60 text-right transition-all"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center shrink-0">
-                  {busy === 'light' ? (
-                    <Loader2 className="w-5 h-5 text-sky-600 animate-spin" />
-                  ) : (
-                    <Feather className="w-5 h-5 text-sky-600" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-bold text-sm">🪶 نسخه سبک</div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-700 dark:text-sky-400 font-bold">
-                      حجم کم
-                    </span>
-                  </div>
-                  <div className="text-[11px] opacity-70 mt-0.5">
-                    {formatSize(info.apkLightSize)} — دانلود سریع
-                  </div>
-                  <div className="text-[10px] opacity-50 mt-1">
-                    ⚠️ نیاز به Google Play Services
-                  </div>
-                </div>
-              </div>
-            </button>
-          )}
+          
 
           {/* OTA */}
           <button

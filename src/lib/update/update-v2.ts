@@ -1,6 +1,5 @@
 /**
- * Update — APK فقط
- * پشتیبانی از دو نسخه: full (کامل) + light (سبک)
+ * سیستم Update — فقط APK
  */
 
 declare const __APP_VERSION__: string;
@@ -22,9 +21,6 @@ export interface UpdateInfo {
   apkAvailable: boolean;
   apkSize?: number;
   apkUrl?: string;
-  apkLightAvailable: boolean;
-  apkLightSize?: number;
-  apkLightUrl?: string;
 }
 
 export function detectPlatform(): Platform {
@@ -65,7 +61,6 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
     currentVersion: APP_VERSION,
     platform,
     apkAvailable: false,
-    apkLightAvailable: false,
   };
 
   if (!force && cachedManifest && Date.now() - cachedTime < CACHE_MS) {
@@ -82,13 +77,11 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
     const releases: any[] = await res.json();
 
     for (const rel of releases) {
-      // full APK: فایلی که به .apk ختم می‌شود ولی -light ندارد
-      const fullApk = rel.assets?.find(
+      // APK: هر فایلی که به .apk ختم شود (بدون -light)
+      const apkAsset = rel.assets?.find(
         (a: any) => a.name?.endsWith('.apk') && !a.name?.includes('-light')
       );
-      const lightApk = rel.assets?.find((a: any) => a.name?.endsWith('-light.apk'));
-
-      if (!fullApk) continue;
+      if (!apkAsset) continue;
 
       const version = (rel.tag_name || '').replace(/^v/, '');
       if (!version) continue;
@@ -99,11 +92,8 @@ export async function checkForUpdates(force = false): Promise<UpdateInfo> {
         latestVersion: version,
         releaseNotes: rel.body || '',
         apkAvailable: true,
-        apkSize: fullApk.size,
-        apkUrl: fullApk.browser_download_url,
-        apkLightAvailable: !!lightApk,
-        apkLightSize: lightApk?.size,
-        apkLightUrl: lightApk?.browser_download_url,
+        apkSize: apkAsset.size,
+        apkUrl: apkAsset.browser_download_url,
       };
 
       cachedManifest = result;

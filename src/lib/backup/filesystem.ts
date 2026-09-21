@@ -18,6 +18,7 @@ export interface StoredBackup {
   uri: string;
   size: number;
   mtime: number;
+  path?: string;
 }
 
 const isCapacitor = (): boolean => {
@@ -179,6 +180,7 @@ export async function listBackups(): Promise<StoredBackup[]> {
           uri,
           size: f.size || 0,
           mtime: f.mtime || 0,
+          path: DIR_NAME[dir] || String(dir),
         });
       }
     } catch {}

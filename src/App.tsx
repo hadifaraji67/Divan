@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OnboardingTour } from './components/setup/OnboardingTour';
+import { BackupDiscoveryScreen } from './components/setup/BackupDiscoveryScreen';
 import Sidebar, { type ViewKey } from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import BottomNav from './components/layout/BottomNav';
@@ -66,6 +67,41 @@ const VIEW_TITLES: Record<ViewKey, string> = {
 };
 
 export const App: React.FC = () => {
+  const [showDiscovery, setShowDiscovery] = useState(false);
+
+  // ─── بررسی بکاپ در اولین بار نصب ───
+  useEffect(() => {
+    (async () => {
+      if (typeof window === 'undefined') return;
+      // چک کنیم اولین بار است یا نه
+      const hasSeenDiscovery = localStorage.getItem('divan_discovery_seen');
+      const hasData = localStorage.getItem('divan_contacts') || localStorage.getItem('divan_invoices');
+
+      if (hasSeenDiscovery || hasData) {
+        localStorage.setItem('divan_discovery_seen', '1');
+        return;
+      }
+
+      // اولین بار نصب — چک بکاپ
+      try {
+        const { listBackups } = await import('./lib/backup/filesystem');
+        const backups = await listBackups();
+        if (backups.length > 0) {
+          setShowDiscovery(true);
+        } else {
+          localStorage.setItem('divan_discovery_seen', '1');
+        }
+      } catch {
+        localStorage.setItem('divan_discovery_seen', '1');
+      }
+    })();
+  }, []);
+
+  const handleDiscoveryComplete = () => {
+    localStorage.setItem('divan_discovery_seen', '1');
+    setShowDiscovery(false);
+  };
+
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (typeof window === 'undefined') return false;
     return !localStorage.getItem('divan_onboarding_done');
@@ -152,7 +188,13 @@ export const App: React.FC = () => {
 
   return (
     <AppGuard>
-    {showOnboarding && (
+    {showDiscovery && (
+      <BackupDiscoveryScreen
+        onComplete={handleDiscoveryComplete}
+        onSkip={handleDiscoveryComplete}
+      />
+    )}
+    {showOnboarding && !showDiscovery && (
       <OnboardingTour
         onComplete={handleOnboardingComplete}
         onSkip={handleOnboardingComplete}

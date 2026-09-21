@@ -1,402 +1,299 @@
-import React, { useState, useEffect } from 'react';
-import {
-  HardDrive, Lock, Unlock, AlertTriangle, Check, Loader2,
-  ChevronLeft, FileText, Calendar, User, Package, Receipt,
-  Users, Wallet, ArrowRight, X, RefreshCw, Clock,
-} from 'lucide-react';
-import {
-  discoverBackups, loadBackupContent, formatSize, formatBackupDate,
-  categorizeBackups, dismissSuggestion, type DiscoveredBackup,
-} from '../../lib/backup/discovery';
-import { parseBackup } from '../../lib/backup/backup-core';
-import { isCapacitor } from '../../lib/backup/filesystem';
+import React, { useEffect, useState } from 'react';
+import { FolderOpen, Search, RefreshCw, AlertTriangle, HardDrive, Check } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Directory } from '@capacitor/filesystem';
+import { listBackups, readBackupFile, type StoredBackup } from '../../lib/backup/filesystem';
+import { inspectBackup, parseBackup } from '../../lib/backup/backup-core';
 import { notify } from '../../lib/toast';
-import { APP_VERSION } from '../../lib/update-service';
 
 interface Props {
   onComplete: () => void;
   onSkip: () => void;
 }
 
-type Screen = 'loading' | 'empty' | 'list' | 'password' | 'restore' | 'success';
-
 export const BackupDiscoveryScreen: React.FC<Props> = ({ onComplete, onSkip }) => {
-  const [screen, setScreen] = useState<Screen>('loading');
-  const [backups, setBackups] = useState<DiscoveredBackup[]>([]);
-  const [selected, setSelected] = useState<DiscoveredBackup | null>(null);
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(true);
+  const [backups, setBackups] = useState<StoredBackup[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
-  const [showAll, setShowAll] = useState(false);
+
+  const scan = async () => {
+    setScanning(true);
+    setError('');
+
+    try {
+      if (!Capacitor.isNativePlatform()) {
+        setError('اسکن فقط در نسخه اندروید');
+        setScanning(false);
+        return;
+      }
+
+      // ─── مرحله ۱: اسکن TRY_DIRS (Documents, External, Data) ───
+      const found = await listBackups();
+      console.log('[Discovery] found in TRY_DIRS:', found.length);
+
+      // ─── مرحله ۲: اسکن مستقیم Documents (اگر TRY_DIRS جواب نداد) ───
+      if (found.length === 0) {
+        const w = window as any;
+        const Filesystem = w.Capacitor?.Plugins?.Filesystem;
+        if (Filesystem) {
+          // تلاش مستقیم روی Documents
+          try {
+            const r = await Filesystem.readdir({
+              path: 'Divan-Backups',
+              directory: Directory.Documents,
+            });
+            const files = (r.files || []).filter((f: any) => f.name?.endsWith('.divan'));
+            console.log('[Discovery] direct Documents scan:', files.length);
+
+            for (const f of files) {
+              try {
+                const uriR = await Filesystem.getUri({
+                  path: `Divan-Backups/${f.name}`,
+                  directory: Directory.Documents,
+                });
+                found.push({
+                  name: f.name,
+                  uri: uriR.uri,
+                  size: f.size || 0,
+                  mtime: f.mtime || 0,
+                  path: 'Documents',
+                });
+              } catch {}
+            }
+          } catch (e: any) {
+            console.warn('[Discovery] direct Documents fail:', e?.message);
+          }
+        }
+      }
+
+      // ─── مرتب‌سازی ───
+      found.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+      setBackups(found);
+
+      if (found.length === 0) {
+        setError('هیچ بکاپی پیدا نشد');
+      }
+    } catch (err: any) {
+      console.error('[Discovery] error:', err);
+      setError(err?.message || 'خطا در اسکن');
+    } finally {
+      setScanning(false);
+    }
+  };
 
   useEffect(() => {
     scan();
   }, []);
 
-  const scan = async () => {
-    if (!isCapacitor()) {
-      setScreen('empty');
-      return;
-    }
-
-    setScreen('loading');
+  const formatTime = (ts: number) => {
+    if (!ts) return '';
     try {
-      const list = await discoverBackups();
-      const valid = list.filter(b => b.valid);
-      setBackups(valid);
-      setScreen(valid.length === 0 ? 'empty' : 'list');
-    } catch (err: any) {
-      setError(err.message);
-      setScreen('empty');
+      const ms = ts > 1e12 ? ts : ts * 1000;
+      return new Date(ms).toLocaleString('fa-IR');
+    } catch {
+      return '';
     }
   };
 
-  const handleSelect = (backup: DiscoveredBackup) => {
-    setSelected(backup);
-    setPassword('');
-    setError('');
-    setScreen(backup.encrypted ? 'password' : 'restore');
+  const formatSize = (bytes: number) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    return (bytes / 1024).toFixed(1) + ' KB';
   };
 
-  const handleRestore = async () => {
-    if (!selected) return;
-
-    setBusy(true);
-    setError('');
+  const handleRestore = async (backup: StoredBackup) => {
+    setRestoring(true);
+    const toastId = notify.loading('در حال بازیابی...');
 
     try {
-      const content = await loadBackupContent(selected.filename);
+      const content = await readBackupFile(backup.name);
+      notify.dismiss(toastId);
+
       if (!content) {
-        setError('فایل قابل خواندن نیست');
-        setBusy(false);
+        notify.error('خواندن فایل ناموفق');
+        setRestoring(false);
         return;
       }
 
-      const result = await parseBackup(content, password || undefined);
-
-      if (!result.success) {
-        setError(result.error || 'خطا در بازیابی');
-        setBusy(false);
+      const meta = inspectBackup(content);
+      if (!meta.valid) {
+        notify.error(meta.error || 'فایل نامعتبر');
+        setRestoring(false);
         return;
       }
 
-      setScreen('success');
-      notify.success('داده‌ها بازیابی شد');
+      if (!confirm('⚠️ داده‌های فعلی جایگزین می‌شوند. مطمئن هستید؟')) {
+        setRestoring(false);
+        return;
+      }
 
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
+      const result = await parseBackup(content);
+      if (result.success) {
+        notify.success('بازیابی موفق!');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        notify.error(result.error || 'خطا در بازیابی');
+        setRestoring(false);
+      }
     } catch (err: any) {
-      setError(err.message);
-      setBusy(false);
+      notify.dismiss(toastId);
+      notify.error(err?.message || 'خطا');
+      setRestoring(false);
     }
   };
 
-  const handleSkip = () => {
-    dismissSuggestion();
-    onSkip();
-  };
-
-  // ═══ Loading ═══
-  if (screen === 'loading') {
-    return (
-      <Shell>
-        <div className="text-center py-8">
-          <Loader2 className="w-12 h-12 text-indigo-500 mx-auto animate-spin mb-4" />
-          <h2 className="font-bold text-lg mb-2">در حال جستجو...</h2>
-          <p className="text-xs opacity-60">به دنبال بکاپ‌های قبلی در گوشی هستیم</p>
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-indigo-600 to-violet-700 z-50 flex flex-col" dir="rtl">
+      {/* Header */}
+      <div className="p-6 text-white text-center">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-white/20 flex items-center justify-center mb-3">
+          <HardDrive className="w-8 h-8" />
         </div>
-      </Shell>
-    );
-  }
+        <h1 className="text-xl font-bold mb-1">بکاپ‌های قبلی</h1>
+        <p className="text-xs opacity-80">
+          اگر قبلاً از دیوان بکاپ گرفته‌اید، الان می‌توانید بازیابی کنید
+        </p>
+      </div>
 
-  // ═══ Empty ═══
-  if (screen === 'empty') {
-    return (
-      <Shell>
-        <div className="text-center py-6">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-slate-500/10 items-center justify-center mb-4">
-            <HardDrive className="w-7 h-7 text-slate-500" />
-          </div>
-          <h2 className="font-bold text-lg mb-2">بکاپ قبلی یافت نشد</h2>
-          <p className="text-xs opacity-60 leading-relaxed mb-6">
-            {isCapacitor()
-              ? 'هیچ فایل بکاپی در حافظه گوشی پیدا نشد. اپ را تازه راه‌اندازی می‌کنیم.'
-              : 'جستجوی بکاپ فقط در اپلیکیشن اندروید کار می‌کند.'}
-          </p>
-          <button
-            onClick={handleSkip}
-            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl"
-          >
-            ادامه راه‌اندازی
-          </button>
-        </div>
-      </Shell>
-    );
-  }
-
-  // ═══ List ═══
-  if (screen === 'list') {
-    const { recent, older } = categorizeBackups(backups);
-    const showList = showAll ? backups : recent;
-
-    return (
-      <Shell wide>
-        <div className="mb-5">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold mb-3">
-            <HardDrive className="w-3.5 h-3.5" />
-            {backups.length} بکاپ یافت شد
-          </div>
-          <h2 className="font-bold text-xl mb-1">بکاپ‌های قبلی پیدا شد</h2>
-          <p className="text-xs opacity-60 leading-relaxed">
-            می‌خواهید داده‌های قبلی خود را بازیابی کنید یا از صفر شروع کنید؟
-          </p>
-        </div>
-
-        <div className="space-y-3 mb-5 max-h-[40vh] overflow-y-auto">
-          {showList.map(backup => (
-            <BackupCard
-              key={backup.filename}
-              backup={backup}
-              onSelect={() => handleSelect(backup)}
-            />
-          ))}
-
-          {!showAll && older.length > 0 && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="w-full text-xs text-indigo-600 dark:text-indigo-400 hover:underline py-2"
-            >
-              نمایش {older.length} بکاپ قدیمی‌تر
-            </button>
-          )}
-        </div>
-
-        <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-700">
-          <button
-            onClick={handleSkip}
-            className="w-full py-3 text-sm text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl"
-          >
-            شروع از صفر (بدون بازیابی)
-          </button>
-        </div>
-      </Shell>
-    );
-  }
-
-  // ═══ Password ═══
-  if (screen === 'password' && selected) {
-    return (
-      <Shell>
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-bold mb-3">
-            <Lock className="w-3.5 h-3.5" />
-            رمزنگاری‌شده
-          </div>
-          <h2 className="font-bold text-lg mb-1">رمز فایل بکاپ</h2>
-          <p className="text-xs opacity-60 leading-relaxed">
-            این فایل با رمزنگاری محافظت شده. برای بازیابی، رمز را وارد کنید.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && password && handleRestore()}
-              placeholder="رمز بکاپ..."
-              className="w-full p-4 pl-12 text-sm border-2 rounded-xl bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 focus:border-indigo-500 outline-none"
-              dir="ltr"
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-black/5"
-            >
-              {showPassword ? <Unlock className="w-4 h-4 opacity-60" /> : <Lock className="w-4 h-4 opacity-60" />}
-            </button>
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-400 text-xs leading-relaxed">
-              <AlertTriangle className="w-4 h-4 inline ml-1" /> {error}
+      {/* Content */}
+      <div className="flex-1 bg-white dark:bg-slate-900 rounded-t-3xl p-4 overflow-y-auto">
+        {/* در حال اسکن */}
+        {scanning && (
+          <div className="text-center py-12">
+            <RefreshCw className="w-10 h-10 animate-spin mx-auto mb-3 text-indigo-500" />
+            <div className="text-sm opacity-70">در حال جستجو...</div>
+            <div className="text-[10px] opacity-50 mt-2">
+              پوشه‌های Documents، External، Data اسکن می‌شوند
             </div>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setScreen('list'); setSelected(null); setError(''); }}
-              className="flex-1 py-3 text-sm hover:bg-black/5 dark:hover:bg-white/10 rounded-xl"
-            >
-              بازگشت
-            </button>
-            <button
-              onClick={handleRestore}
-              disabled={busy || !password}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl"
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              {busy ? 'در حال...' : 'بازیابی'}
-            </button>
-          </div>
-        </div>
-      </Shell>
-    );
-  }
-
-  // ═══ Restore confirm ═══
-  if (screen === 'restore' && selected) {
-    return (
-      <Shell>
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-xs font-bold mb-3">
-            <ArrowRight className="w-3.5 h-3.5" />
-            آماده بازیابی
-          </div>
-          <h2 className="font-bold text-lg mb-1">بازیابی بکاپ</h2>
-          <p className="text-xs opacity-60 leading-relaxed">
-            داده‌های این بکاپ بازیابی می‌شوند:
-          </p>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-5 space-y-2 text-sm">
-          <StatRow icon={Calendar} label="تاریخ" value={formatBackupDate(selected.mtime)} />
-          <StatRow icon={HardDrive} label="حجم" value={formatSize(selected.size)} />
-          {selected.appVersion && (
-            <StatRow icon={Package} label="نسخه" value={selected.appVersion} />
-          )}
-          {selected.stats && (
-            <>
-              <div className="border-t border-slate-200 dark:border-slate-700 my-2" />
-              <StatRow icon={Users} label="مشتریان" value={selected.stats.contacts || 0} />
-              <StatRow icon={Package} label="کالاها" value={selected.stats.products || 0} />
-              <StatRow icon={Receipt} label="فاکتورها" value={selected.stats.invoices || 0} />
-              <StatRow icon={Wallet} label="پرداخت‌ها" value={selected.stats.payments || 0} />
-            </>
-          )}
-        </div>
-
-        {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-400 text-xs mb-4">
-            <AlertTriangle className="w-4 h-4 inline ml-1" /> {error}
           </div>
         )}
 
-        <div className="space-y-2">
-          <button
-            onClick={handleRestore}
-            disabled={busy}
-            className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl"
-          >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            {busy ? 'در حال بازیابی...' : 'بله، بازیابی کن'}
-          </button>
-          <button
-            onClick={() => { setScreen('list'); setSelected(null); setError(''); }}
-            disabled={busy}
-            className="w-full py-3 text-sm text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl"
-          >
-            بازگشت
-          </button>
-        </div>
-      </Shell>
-    );
-  }
-
-  // ═══ Success ═══
-  if (screen === 'success') {
-    return (
-      <Shell>
-        <div className="text-center py-8">
-          <div className="inline-flex w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 items-center justify-center mb-4 shadow-2xl shadow-emerald-500/30">
-            <Check className="w-10 h-10 text-white" />
-          </div>
-          <h2 className="font-bold text-xl mb-2">بازیابی موفق!</h2>
-          <p className="text-xs opacity-60 mb-4">در حال بارگذاری اپ...</p>
-          <Loader2 className="w-5 h-5 text-emerald-500 animate-spin mx-auto" />
-        </div>
-      </Shell>
-    );
-  }
-
-  return null;
-};
-
-/* ═══ اجزای کمکی ═══ */
-
-const BackupCard: React.FC<{ backup: DiscoveredBackup; onSelect: () => void }> = ({ backup, onSelect }) => {
-  const stats = backup.stats || {};
-  const isRecent = Date.now() - (backup.mtime > 10000000000 ? backup.mtime : backup.mtime * 1000) < 7 * 24 * 60 * 60 * 1000;
-
-  return (
-    <button
-      onClick={onSelect}
-      className="w-full text-right p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:shadow-lg transition-all group"
-    >
-      <div className="flex items-start gap-3 mb-3">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isRecent ? 'bg-emerald-500/10' : 'bg-indigo-500/10'}`}>
-          <FileText className={`w-5 h-5 ${isRecent ? 'text-emerald-600' : 'text-indigo-500'}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="font-bold text-sm truncate">{backup.filename}</span>
-            {backup.encrypted && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold inline-flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> رمزنگاری
+        {/* خطا */}
+        {!scanning && error && (
+          <div className="text-center py-8">
+            <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-amber-500" />
+            <div className="text-sm font-bold mb-1">بکاپی پیدا نشد</div>
+            <div className="text-xs opacity-60 mb-6 leading-relaxed max-w-xs mx-auto">
+              اگر قبلاً بکاپ داشتید، فایل‌ها باید در پوشه‌ی:
+              <br />
+              <span dir="ltr" className="inline-block mt-2 px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10px]">
+                Documents/Divan-Backups
               </span>
-            )}
-          </div>
-          <div className="text-[11px] opacity-60 flex flex-wrap gap-2">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatBackupDate(backup.mtime)}
-            </span>
-            <span>{formatSize(backup.size)}</span>
-          </div>
-        </div>
-        <ChevronLeft className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:text-indigo-500 transition-all" />
-      </div>
+              <br />
+              باشد.
+            </div>
 
-      {stats && Object.keys(stats).length > 0 && (
-        <div className="grid grid-cols-4 gap-2 text-[10px] opacity-70">
-          {stats.contacts > 0 && <MiniStat label="مشتری" value={stats.contacts} />}
-          {stats.products > 0 && <MiniStat label="کالا" value={stats.products} />}
-          {stats.invoices > 0 && <MiniStat label="فاکتور" value={stats.invoices} />}
-          {stats.payments > 0 && <MiniStat label="پرداخت" value={stats.payments} />}
-        </div>
-      )}
-    </button>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={scan}
+                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                اسکن مجدد
+              </button>
+              <button
+                onClick={onSkip}
+                className="px-4 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg"
+              >
+                شروع از صفر
+              </button>
+            </div>
+
+            <div className="mt-6 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-[11px] leading-relaxed text-right max-w-sm mx-auto">
+              <div className="font-bold text-sky-700 dark:text-sky-400 mb-1">
+                💡 چرا بکاپ پیدا نشد؟
+              </div>
+              <div className="opacity-70 space-y-1">
+                <div>• اگر تازه دیوان را نصب کرده‌اید، طبیعی است</div>
+                <div>• اگر بکاپ دارید، مطمئن شوید در Documents/Divan-Backups است</div>
+                <div>• می‌توانید دستی از فایل بازیابی کنید</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* لیست بکاپ‌ها */}
+        {!scanning && !error && backups.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs opacity-70">
+                {backups.length} بکاپ پیدا شد
+              </div>
+              <button
+                onClick={scan}
+                className="text-xs text-indigo-600 flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" />
+                اسکن مجدد
+              </button>
+            </div>
+
+            {backups.map((b: StoredBackup) => (
+              <button
+                key={b.uri}
+                onClick={() => setSelected(b.uri)}
+                disabled={restoring}
+                className={`w-full p-3 rounded-xl border-2 text-right transition-all ${
+                  selected === b.uri
+                    ? 'border-indigo-500 bg-indigo-500/10'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
+                    <HardDrive className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-xs truncate" dir="ltr">
+                      {b.name}
+                    </div>
+                    <div className="text-[10px] opacity-60 mt-0.5">
+                      {formatSize(b.size)} • {formatTime(b.mtime)}
+                    </div>
+                    {b.path && (
+                      <div className="text-[9px] opacity-40 mt-0.5">
+                        پوشه: {b.path}
+                      </div>
+                    )}
+                  </div>
+                  {selected === b.uri && (
+                    <Check className="w-5 h-5 text-indigo-600 shrink-0" />
+                  )}
+                </div>
+              </button>
+            ))}
+
+            <div className="flex gap-2 pt-3">
+              <button
+                onClick={() => {
+                  const b = backups.find((x: StoredBackup) => x.uri === selected);
+                  if (b) handleRestore(b);
+                }}
+                disabled={!selected || restoring}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl"
+              >
+                {restoring ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {restoring ? 'در حال بازیابی...' : 'بازیابی'}
+              </button>
+              <button
+                onClick={onSkip}
+                disabled={restoring}
+                className="px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-xl"
+              >
+                رد کردن
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
-
-const MiniStat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
-  <div className="bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 text-center">
-    <div className="font-bold">{value}</div>
-    <div className="text-[9px] opacity-60">{label}</div>
-  </div>
-);
-
-const StatRow: React.FC<{ icon: any; label: string; value: any }> = ({ icon: Icon, label, value }) => (
-  <div className="flex justify-between items-center">
-    <div className="flex items-center gap-2 opacity-70">
-      <Icon className="w-3.5 h-3.5" />
-      <span className="text-xs">{label}</span>
-    </div>
-    <span className="text-sm font-bold">{value}</span>
-  </div>
-);
-
-const Shell: React.FC<{ children: React.ReactNode; wide?: boolean }> = ({ children, wide }) => (
-  <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-slate-950 dark:to-slate-900" dir="rtl">
-    <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8`}>
-      {children}
-      <p className="mt-4 text-center text-[10px] opacity-30">نسخه {APP_VERSION}</p>
-    </div>
-  </div>
-);
 
 export default BackupDiscoveryScreen;
