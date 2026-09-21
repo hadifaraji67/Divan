@@ -20,6 +20,7 @@ import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { formatJalaliLong, todayJalali, faMonthName } from '../../lib/jalali';
 import { UpdateBanner } from '../shared/UpdateBanner';
+import { computeTotalReceivable, computeTotalPayable } from '../../lib/invoice-payment';
 
 interface Props {
   onNavigate: (view: any, data?: any) => void;
@@ -90,9 +91,16 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
   }, [payments]);
 
   // KPI: طلب از مشتریان
+  // KPI: طلب از مشتریان (محاسبه از فاکتورها و پرداخت‌ها)
   const receivable = useMemo(
-    () => contacts.reduce((sum, c) => sum + Math.max(0, (c as any).credit || 0), 0),
-    [contacts]
+    () => computeTotalReceivable(invoices, payments),
+    [invoices, payments]
+  );
+
+  // KPI: بدهی به تأمین‌کنندگان
+  const payable = useMemo(
+    () => computeTotalPayable(invoices, payments),
+    [invoices, payments]
   );
 
   // نمودار ۷ روزه
