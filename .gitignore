@@ -25,3 +25,7 @@ android/keystore/
 *.keystore
 *.jks
 android/keystore.properties
+# Backup files — هرگز commit نشوند
+*.bak
+*.bak.*
+*.bak-*
