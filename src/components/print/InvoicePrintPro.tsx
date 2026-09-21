@@ -4,6 +4,7 @@ import type { Invoice, Contact, Product } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
+import { InvoiceQRCode } from './InvoiceQRCode';
 import { buildInvoiceText, shareInvoiceWhatsApp, shareInvoiceSMS, shareInvoiceGeneric } from '../../lib/invoice-share';
 import { MessageCircle, Send } from 'lucide-react';
 import { roundRial, calculateLineTotal } from '../../lib/format';
@@ -732,7 +733,14 @@ const ThermalReceipt: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ inv
       </div>
       <div className="border-t border-dashed border-black my-1" />
       <div className="text-center" style={{ fontSize: '10px' }}>{settings.printFooterText}</div>
-    </div>
+    
+
+      {/* QR تأیید اصالت */}
+      <div className="flex justify-center mt-4 mb-2 print:mt-2">
+        <InvoiceQRCode invoice={invoice} size={90} />
+      </div>
+
+      </div>
   );
 };
 
