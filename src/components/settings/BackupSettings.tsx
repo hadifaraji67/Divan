@@ -8,6 +8,7 @@ import { createBackup, parseBackup, inspectBackup } from '../../lib/backup/backu
 import { saveToDevice, listBackups, deleteBackup, shareFile, readBackupFile, isCapacitor, requestStoragePermission } from '../../lib/backup/filesystem';
 import { runBackup, loadBackupSettings, saveBackupSettings, type BackupSettings as BSettings } from '../../lib/backup/use-auto-backup';
 import { notify } from '../../lib/toast';
+import { shareBackupFile } from '../../lib/backup/share-helper';
 import { formatNum } from '../../lib/theme-context';
 import { useSettings } from '../../lib/theme-context';
 
@@ -161,8 +162,15 @@ export const BackupSettings: React.FC = () => {
   };
 
   const handleShare = async (backup: StoredBackup) => {
-    const ok = await shareFile(backup.uri, backup.name);
-    if (!ok) notify.error('اشتراک‌گذاری ناموفق');
+    setBusy(true);
+    try {
+      const ok = await shareBackupFile(backup.uri, backup.name);
+      if (!ok) notify.error('اشتراک‌گذاری ناموفق');
+    } catch (err: any) {
+      notify.error(err?.message || 'خطا');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const formatBytes = (bytes: number) => {
