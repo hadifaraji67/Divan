@@ -10,6 +10,7 @@ import { useEdgeSwipe } from './lib/use-swipe';
 import { useAutoBackup } from './lib/backup/use-auto-backup';
 import { startWatcher } from './lib/sync/watcher';
 import { startAutoReschedule } from './lib/cheque-reminder';
+import { listBackups } from './lib/backup/filesystem';
 
 // ماژول‌ها
 import { ContactsModule } from './components/modules/ContactsModule';
@@ -85,7 +86,7 @@ export const App: React.FC = () => {
 
       // اولین بار نصب — چک بکاپ
       try {
-        const { listBackups } = await import('./lib/backup/filesystem');
+        
         const backups = await listBackups();
         if (backups.length > 0) {
           setShowDiscovery(true);

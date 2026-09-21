@@ -35,6 +35,20 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("html2canvas")) return "vendor-html2canvas";
+            if (id.includes("react-dom") || /\/react\/|react@/.test(id)) return "vendor-react";
+            if (id.includes("@tanstack")) return "vendor-router";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("@capacitor")) return "vendor-capacitor";
+            return "vendor";
+          }
+        },
+      },
     },
+  },
 });
