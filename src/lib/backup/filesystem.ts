@@ -1,7 +1,6 @@
 /**
  * لایه دسترسی به فایل‌سیستم
  * - اولویت: Documents (عمومی) → External (اپ) → Data (خصوصی)
- * - URI واقعی برای Share
  */
 
 import { Directory, Encoding } from '@capacitor/filesystem';
@@ -38,7 +37,6 @@ const TRY_DIRS = (): Directory[] => {
   const w = window as any;
   const Filesystem = w.Capacitor?.Plugins?.Filesystem;
   if (!Filesystem) return [];
-  // اولویت: Documents → External → Data
   return [Directory.Documents, Directory.External, Directory.Data].filter(Boolean) as Directory[];
 };
 
@@ -75,9 +73,7 @@ export async function saveToDevice(
     return null;
   }
 
-  const dirs = TRY_DIRS();
-
-  for (const dir of dirs) {
+  for (const dir of TRY_DIRS()) {
     try {
       const result = await withTimeout(
         Filesystem.writeFile({
@@ -142,7 +138,7 @@ export async function readBackupFile(filename: string): Promise<string | null> {
       if (typeof result.data === 'string') return result.data;
     } catch {}
   }
-  logError('backup', 'readBackupFile fail همه پوشه‌ها', { filename });
+  logError('backup', 'readBackupFile fail', { filename });
   return null;
 }
 
@@ -222,15 +218,66 @@ export async function shareFile(uri: string, title = 'بکاپ دیوان'): Pro
 
     logInfo('backup', 'sharing', { uri });
 
-    await Share.share({
-      title,
-      url: uri,
-      dialogTitle: 'اشتراک‌گذاری بکاپ',
-    });
+    // اطمینان از فرمت file://
+    let shareUri = uri;
+    if (!uri.startsWith('file://') && !uri.startsWith('content://')) {
+      const Filesystem = getFilesystem();
+      const filename = uri.split('/').pop() || uri;
+      if (Filesystem) {
+        for (const dir of TRY_DIRS()) {
+          try {
+            const result = await Filesystem.getUri({
+              path: `${BACKUP_DIR}/${filename}`,
+              directory: dir,
+            });
+            if (result?.uri) {
+              shareUri = result.uri;
+              break;
+            }
+          } catch {}
+        }
+      }
+    }
 
-    return true;
+    // تلاش ۱: با url
+    try {
+      await Share.share({
+        title,
+        url: shareUri,
+        dialogTitle: 'اشتراک‌گذاری بکاپ',
+      });
+      logInfo('backup', 'share موفق (url)');
+      return true;
+    } catch (err1: any) {
+      logWarn('backup', 'url fail، تلاش با files', { err: err1?.message });
+
+      // تلاش ۲: با files
+      try {
+        await Share.share({
+          title,
+          files: [shareUri],
+          dialogTitle: 'اشتراک‌گذاری بکاپ',
+        });
+        logInfo('backup', 'share موفق (files)');
+        return true;
+      } catch (err2: any) {
+        // تلاش ۳: فقط متن
+        try {
+          await Share.share({
+            title,
+            text: `مسیر فایل: ${shareUri}`,
+            dialogTitle: 'اشتراک‌گذاری',
+          });
+          logInfo('backup', 'share با متن');
+          return true;
+        } catch (err3: any) {
+          logError('backup', 'share fail کامل', { uri: shareUri }, err3);
+          return false;
+        }
+      }
+    }
   } catch (err: any) {
-    logWarn('backup', 'share canceled/failed', { err: err?.message });
+    logError('backup', 'share outer fail', { uri }, err);
     return false;
   }
 }

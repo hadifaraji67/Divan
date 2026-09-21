@@ -128,7 +128,6 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk "release/divan-${VERSION}.apk"
           ls -la release/
 
       - name: پاک‌سازی dist از فایل‌های اضافی
