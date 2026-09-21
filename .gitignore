@@ -29,3 +29,7 @@ android/keystore.properties
 *.bak
 *.bak.*
 *.bak-*
+# Backup files — هرگز commit نشوند
+*.bak
+*.bak.*
+*.bak-*
