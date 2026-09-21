@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowRightLeft, Download, Edit, FileText, Filter, Package, Plus, Printer, Search, Trash2, Users, X } from 'lucide-react';
+import {ArrowRightLeft, Download, Edit, FileText, Filter, Package, Plus, Printer, Search, Trash2, Users, X, QrCode } from 'lucide-react';
+import { InvoiceQRScanner } from '../print/InvoiceQRScanner';
 import { RBACGate } from '../shared/RBACGate';
 import type { Invoice, InvoiceLine, Contact, Product, InvoiceType } from '../../types/models';
 import { invoiceSubtotal, invoiceDiscount, invoiceTax, invoiceTotal, INVOICE_TYPES, invoiceTypeLabel, invoiceTypeRole } from '../../types/models';
@@ -45,6 +46,7 @@ export const InvoicesModule: React.FC = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<InvoiceType | 'all'>('all');
   const [showForm, setShowForm] = useState(false);
+  const [showQRScan, setShowQRScan] = useState(false);
   const [editing, setEditing] = useState<Invoice>(empty());
   const [preview, setPreview] = useState<Invoice | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -246,6 +248,9 @@ export const InvoicesModule: React.FC = () => {
 
   return (
     <div className="space-y-4" dir="rtl">
+      {showQRScan && (
+        <InvoiceQRScanner onClose={() => setShowQRScan(false)} />
+      )}
 
       {/* کارت‌های آمار */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
