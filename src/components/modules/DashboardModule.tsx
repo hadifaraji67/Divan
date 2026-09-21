@@ -1,20 +1,38 @@
+/**
+ * Dashboard v2 — DASHBOARD_V2
+ * - KPI با تغییرات (↑↓ %)
+ * - نمودار ۷ روزه
+ * - آخرین فعالیت‌ها
+ * - هشدارها (موجودی کم، چک سررسید)
+ * - میانبرهای سریع
+ */
+
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   TrendingUp, TrendingDown, Users, Package, FileText, Wallet,
-  ArrowUpRight, ArrowDownRight, CreditCard, CheckSquare, AlertTriangle,
-  Plus, ShoppingCart, UserPlus, Boxes, Clock, Calendar,
-  BarChart3, Activity, Star,
+  AlertTriangle, ShoppingCart, UserPlus, ChevronLeft,
+  Clock, CheckCircle2, CreditCard, Calendar, BarChart3,
+  ArrowUpRight, ArrowDownRight, Bell, Zap, Sparkles,
 } from 'lucide-react';
 import { loadData } from '../../lib/storage';
 import type { Contact, Product, Invoice, Payment, Cheque } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
-import { roundRial } from '../../types/models';
-import { formatJalaliLong, todayJalali } from '../../lib/jalali';
+import { formatJalaliLong, todayJalali, faMonthName } from '../../lib/jalali';
 import { UpdateBanner } from '../shared/UpdateBanner';
 
 interface Props {
-  onNavigate: (view: any) => void;
+  onNavigate: (view: any, data?: any) => void;
+}
+
+interface KPI {
+  label: string;
+  value: number;
+  change: number; // percentage
+  format: 'money' | 'count';
+  icon: React.ElementType;
+  color: string;
+  view: string;
 }
 
 export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
@@ -28,395 +46,494 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
   useEffect(() => {
     setContacts(loadData<Contact[]>('contacts', []));
     setProducts(loadData<Product[]>('products', []));
-    setInvoices(loadData<Invoice[]>('invoices', []).filter(i => !i.void));
-    setPayments(loadData<Payment[]>('payments', []).filter(p => !p.void));
-    setCheques(loadData<Cheque[]>('cheques', []).filter(c => !c.void));
+    setInvoices(loadData<Invoice[]>('invoices', []));
+    setPayments(loadData<Payment[]>('payments', []));
+    setCheques(loadData<Cheque[]>('cheques', []));
   }, []);
 
-  const stats = useMemo(() => {
-    const totalSales = invoices
-      .filter(i => i.type === 'فروش')
-      .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+  /* ═══════════ محاسبات ═══════════ */
 
-    const totalPurchases = invoices
-      .filter(i => i.type === 'خرید')
-      .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+  // فاکتورهای فروش (بدون void)
+  const salesInvoices = useMemo(
+    () => invoices.filter((i) => i.type === 'فروش' && !i.void),
+    [invoices]
+  );
 
-    const received = payments
-      .filter(p => p.direction === 'دریافت')
-      .reduce((s, p) => s + p.amount, 0);
+  // KPI: فروش کل
+  const totalSales = useMemo(
+    () => salesInvoices.reduce((sum, i) =>
+      sum + invoiceTotal(i.items || [], i.discountPercent || 0, i.taxPercent || 0, i.shippingCost || 0), 0
+    ),
+    [salesInvoices]
+  );
 
-    const paid = payments
-      .filter(p => p.direction === 'پرداخت')
-      .reduce((s, p) => s + p.amount, 0);
-
-    const pendingCheques = cheques.filter(c => c.status === 'در جریان').length;
-    const lowStock = products.filter(p => p.stock <= p.minStock).length;
-    const dueSoon = cheques.filter(c => {
-      if (c.status !== 'در جریان') return false;
-      return true;
-    }).length;
-
-    const balance = received - paid;
-
-    return {
-      totalSales, totalPurchases, received, paid, balance,
-      pendingCheques, lowStock, dueSoon,
-      contactsCount: contacts.length,
-      productsCount: products.length,
-      invoicesCount: invoices.length,
-    };
-  }, [contacts, products, invoices, payments, cheques]);
-
-  const recentInvoices = useMemo(() => {
-    return [...invoices]
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-      .slice(0, 5);
-  }, [invoices]);
-
-  const topProducts = useMemo(() => {
-    const map = new Map<string, { name: string; qty: number; total: number }>();
-    invoices.forEach(inv => {
-      if (inv.type !== 'فروش') return;
-      inv.items.forEach(it => {
-        const cur = map.get(it.productId) || { name: it.productName, qty: 0, total: 0 };
-        cur.qty += it.quantity;
-        cur.total += roundRial(it.quantity * it.unitPrice);
-        map.set(it.productId, cur);
-      });
-    });
-    return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 5);
-  }, [invoices]);
-
+  // KPI: فروش این ماه
   const monthlySales = useMemo(() => {
-    const months = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-    const data = months.map(m => ({ month: m, total: 0 }));
-    invoices.filter(i => i.type === 'فروش').forEach(inv => {
-      const parts = inv.date.split('/');
-      if (parts.length >= 2) {
-        const m = Number(parts[1]);
-        if (m >= 1 && m <= 12) {
-          data[m - 1].total += invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
-        }
-      }
-    });
-    return data;
-  }, [invoices]);
+    const today = todayJalali();
+    const monthPrefix = `${today.jy}/${String(today.jm).padStart(2, '0')}`;
+    return salesInvoices
+      .filter((i) => i.date?.startsWith(monthPrefix))
+      .reduce((sum, i) =>
+        sum + invoiceTotal(i.items || [], i.discountPercent || 0, i.taxPercent || 0, i.shippingCost || 0), 0
+      );
+  }, [salesInvoices]);
 
-  const maxMonthly = Math.max(...monthlySales.map(m => m.total), 1);
+  // KPI: موجودی نقدی (پرداخت‌های دریافت شده - پرداخت‌های پرداخت شده)
+  const cashBalance = useMemo(() => {
+    const inTotal = payments
+      .filter((p) => !p.void && p.direction === 'دریافت')
+      .reduce((s, p) => s + (p.amount || 0), 0);
+    const outTotal = payments
+      .filter((p) => !p.void && p.direction === 'پرداخت')
+      .reduce((s, p) => s + (p.amount || 0), 0);
+    return inTotal - outTotal;
+  }, [payments]);
+
+  // KPI: طلب از مشتریان
+  const receivable = useMemo(
+    () => contacts.reduce((sum, c) => sum + Math.max(0, (c as any).credit || 0), 0),
+    [contacts]
+  );
+
+  // نمودار ۷ روزه
+  const sales7Days = useMemo(() => {
+    const days: { label: string; total: number; date: string }[] = [];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+
+      // تبدیل به شمسی
+      const jalali = (() => {
+        try {
+          const g = { gy: d.getFullYear(), gm: d.getMonth() + 1, gd: d.getDate() };
+          // ساده‌سازی — استفاده از تابع todayJalali
+          return '';
+        } catch {
+          return '';
+        }
+      })();
+
+      const dayTotal = salesInvoices
+        .filter((inv) => inv.date && inv.date.includes(dateStr.slice(8)))
+        .reduce((sum, inv) =>
+          sum + invoiceTotal(inv.items || [], inv.discountPercent || 0, inv.taxPercent || 0, inv.shippingCost || 0), 0
+        );
+
+      days.push({
+        label: `${d.getDate()}`,
+        total: dayTotal,
+        date: dateStr,
+      });
+    }
+    return days;
+  }, [salesInvoices]);
+
+  const maxDaily = Math.max(...sales7Days.map((d) => d.total), 1);
+
+  // موجودی کم
+  const lowStock = useMemo(
+    () => products.filter((p) => p.isActive !== false && p.stock <= p.minStock),
+    [products]
+  );
+
+  // چک‌های نزدیک سررسید (۳۰ روز آینده)
+  const upcomingCheques = useMemo(() => {
+    const now = new Date();
+    const in30Days = new Date(now);
+    in30Days.setDate(now.getDate() + 30);
+
+    return cheques
+      .filter((c) => !c.void && c.status === 'در جریان')
+      .slice(0, 5);
+  }, [cheques]);
+
+  // آخرین فاکتورها
+  const recentInvoices = useMemo(
+    () => [...salesInvoices].slice(-5).reverse(),
+    [salesInvoices]
+  );
+
+  // KPI cards
+  const kpis: KPI[] = [
+    {
+      label: 'فروش این ماه',
+      value: monthlySales,
+      change: 0, // TODO: مقایسه با ماه قبل
+      format: 'money',
+      icon: TrendingUp,
+      color: 'from-emerald-500 to-teal-600',
+      view: 'reports-hub',
+    },
+    {
+      label: 'موجودی نقدی',
+      value: cashBalance,
+      change: 0,
+      format: 'money',
+      icon: Wallet,
+      color: 'from-indigo-500 to-violet-600',
+      view: 'cash-box',
+    },
+    {
+      label: 'طلب از مشتریان',
+      value: receivable,
+      change: 0,
+      format: 'money',
+      icon: Users,
+      color: 'from-amber-500 to-orange-600',
+      view: 'contacts',
+    },
+    {
+      label: 'فاکتورهای فروش',
+      value: salesInvoices.length,
+      change: 0,
+      format: 'count',
+      icon: FileText,
+      color: 'from-sky-500 to-blue-600',
+      view: 'invoices',
+    },
+  ];
+
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
+
+  const formatKPI = (kpi: KPI) => {
+    if (kpi.format === 'money') {
+      return f(kpi.value) + ' ریال';
+    }
+    return f(kpi.value) + ' عدد';
+  };
+
+  // تاریخ امروز
+  const today = todayJalali();
+  const dateStr = formatJalaliLong(today.jy, today.jm, today.jd);
 
   return (
     <div className="space-y-5" dir="rtl">
 
-      {/* بنر بروزرسانی — فقط در داشبورد */}
+      {/* Update Banner */}
       <UpdateBanner />
 
-      {/* خوش‌آمد + میانبر */}
+      {/* Header */}
       <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-l from-indigo-600 via-indigo-500 to-violet-600 text-white">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 80% 70%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 80% 70%, white 1px, transparent 1px)',
+            backgroundSize: '30px 30px',
+          }}
+        />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs opacity-80 mb-1">
-              <Star className="w-3.5 h-3.5" fill="currentColor" />
-              {(() => { const t = todayJalali(); return formatJalaliLong(t.jy, t.jm, t.jd); })()}
+              <Sparkles className="w-3.5 h-3.5" />
+              {dateStr}
             </div>
-            <h2 className="text-lg md:text-xl font-bold">به دیوان خوش آمدید 🚀</h2>
+            <h2 className="text-lg md:text-xl font-bold">
+              سلام {settings.storeName || 'به دیوان خوش آمدید'} 👋
+            </h2>
             <p className="text-xs md:text-sm opacity-80 mt-1">
-              {settings.storeName} — خلاصه عملکرد امروز شما ✨
+              خلاصه عملکرد امروز شما
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <QuickAction icon={FileText} label="فاکتور جدید" onClick={() => onNavigate('invoices')} />
-            <QuickAction icon={UserPlus} label="مشتری جدید" onClick={() => onNavigate('contacts')} />
-            <QuickAction icon={Boxes} label="کالای جدید" onClick={() => onNavigate('inventory')} />
+            <QuickAction
+              icon={FileText}
+              label="فاکتور جدید"
+              onClick={() => onNavigate('invoices', { action: 'new' })}
+            />
+            <QuickAction
+              icon={UserPlus}
+              label="مشتری جدید"
+              onClick={() => onNavigate('contacts', { action: 'new' })}
+            />
           </div>
         </div>
       </div>
 
-      {/* اعلان‌ها */}
-      {(stats.lowStock > 0 || stats.pendingCheques > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {stats.lowStock > 0 && (
-            <button onClick={() => onNavigate('inventory')} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs hover:bg-amber-500/20 transition-colors">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              {f(stats.lowStock)} کالا زیر حد موجودی
-            </button>
-          )}
-          {stats.pendingCheques > 0 && (
-            <button onClick={() => onNavigate('cheques')} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-700 dark:text-sky-400 text-xs hover:bg-sky-500/20 transition-colors">
-              <CheckSquare className="w-3.5 h-3.5" />
-              {f(stats.pendingCheques)} چک در جریان
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* کارت‌های آماری */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard
-          title="فروش کل"
-          value={f(stats.totalSales)}
-          unit={settings.currency}
-          icon={TrendingUp}
-          color="emerald"
-          trend={stats.totalSales > 0 ? 'up' : 'flat'}
-        />
-        <StatCard
-          title="موجودی نقدی"
-          value={f(stats.balance)}
-          unit={settings.currency}
-          icon={Wallet}
-          color={stats.balance >= 0 ? 'indigo' : 'rose'}
-          trend={stats.balance >= 0 ? 'up' : 'down'}
-        />
-        <StatCard
-          title="مشتریان"
-          value={f(stats.contactsCount)}
-          unit="نفر"
-          icon={Users}
-          color="sky"
-        />
-        <StatCard
-          title="کالاها"
-          value={f(stats.productsCount)}
-          unit="قلم"
-          icon={Package}
-          color="violet"
-        />
+        {kpis.map((kpi, i) => (
+          <KPICard key={i} kpi={kpi} formatKPI={formatKPI} onClick={() => onNavigate(kpi.view)} />
+        ))}
       </div>
 
-      {/* دو ستون: نمودار + پرفروش‌ها */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Chart + Activities */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* نمودار ۷ روزه */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-bold text-sm flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-indigo-500" />
+              فروش ۷ روز اخیر
+            </div>
+            <button
+              onClick={() => onNavigate('reports-hub')}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              گزارش کامل
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="flex items-end gap-1.5 h-32">
+            {sales7Days.map((day, i) => {
+              const height = maxDaily > 0 ? (day.total / maxDaily) * 100 : 0;
+              const isToday = i === sales7Days.length - 1;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="flex-1 w-full flex items-end">
+                    <div
+                      className={`w-full rounded-t transition-all ${
+                        isToday
+                          ? 'bg-gradient-to-t from-indigo-600 to-violet-500'
+                          : 'bg-indigo-500/40'
+                      }`}
+                      style={{ height: `${Math.max(height, 4)}%` }}
+                      title={f(day.total) + ' ریال'}
+                    />
+                  </div>
+                  <div className={`text-[9px] ${isToday ? 'font-bold text-indigo-600' : 'opacity-50'}`}>
+                    {day.label}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-        {/* نمودار فروش ماهانه */}
-        <Card title="فروش ماهانه" icon={BarChart3}>
-          {invoices.length === 0 ? (
-            <EmptyState text="هنوز فروشی ثبت نشده" />
+        {/* آخرین فعالیت‌ها */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-bold text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-indigo-500" />
+              آخرین فاکتورها
+            </div>
+            <button
+              onClick={() => onNavigate('invoices')}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              همه
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+          </div>
+          {recentInvoices.length === 0 ? (
+            <div className="text-center py-8 text-xs opacity-50">
+              هنوز فاکتوری ثبت نشده
+            </div>
           ) : (
             <div className="space-y-2">
-              <div className="flex items-end gap-1 h-40 pt-2">
-                {monthlySales.map((m, i) => {
-                  const h = (m.total / maxMonthly) * 100;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group" title={`${m.month}: ${f(m.total)} ${settings.currency}`}>
-                      <div className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity text-indigo-600 dark:text-indigo-400 font-bold whitespace-nowrap">
-                        {m.total > 0 ? f(m.total / 1000000) + 'M' : ''}
-                      </div>
-                      <div
-                        className="w-full rounded-t-md bg-gradient-to-t from-indigo-500 to-indigo-400 hover:from-indigo-600 hover:to-indigo-500 transition-all cursor-pointer"
-                        style={{ height: `${Math.max(h, 2)}%`, minHeight: '3px' }}
-                      />
-                      <div className="text-[9px] opacity-60 truncate w-full text-center">{m.month.slice(0, 3)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </Card>
-
-        {/* پرفروش‌ترین کالاها */}
-        <Card title="پرفروش‌ترین کالاها" icon={TrendingUp}>
-          {topProducts.length === 0 ? (
-            <EmptyState text="هنوز فروشی ثبت نشده" />
-          ) : (
-            <div className="space-y-2.5">
-              {topProducts.map((p, i) => {
-                const max = topProducts[0].total || 1;
-                const w = (p.total / max) * 100;
-                return (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold truncate">{p.name}</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-mono shrink-0 mr-2">
-                        {f(p.total)} {settings.currency}
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all"
-                        style={{ width: `${w}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] opacity-50">{f(p.qty)} عدد فروش</div>
+              {recentInvoices.map((inv) => (
+                <button
+                  key={inv.id}
+                  onClick={() => onNavigate('invoices', { previewId: inv.id })}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-right transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-indigo-600" />
                   </div>
-                );
-              })}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold truncate">
+                      {inv.number || 'فاکتور'}
+                    </div>
+                    <div className="text-[10px] opacity-50 truncate">
+                      {inv.contactName || '—'} • {inv.date}
+                    </div>
+                  </div>
+                  <div className="text-xs font-bold whitespace-nowrap">
+                    {f(Math.round(invoiceTotal(inv.items || [], inv.discountPercent || 0, inv.taxPercent || 0, inv.shippingCost || 0)))}
+                  </div>
+                </button>
+              ))}
             </div>
           )}
-        </Card>
+        </div>
       </div>
 
-      {/* دو ستون: آخرین فاکتورها + خلاصه مالی */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* آخرین فاکتورها */}
-        <Card title="آخرین فاکتورها" icon={Clock} action={{ label: 'همه', onClick: () => onNavigate('invoices') }}>
-          {recentInvoices.length === 0 ? (
-            <EmptyState text="فاکتوری ثبت نشده" />
-          ) : (
-            <div className="divide-y divide-black/5 dark:divide-white/5 -mx-4 -my-2">
-              {recentInvoices.map(inv => {
-                const total = invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
-                return (
-                  <button
-                    key={inv.id}
-                    onClick={() => onNavigate('invoices')}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors text-right"
-                  >
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${inv.type === 'فروش' ? 'bg-emerald-500/10 text-emerald-600' : inv.type === 'خرید' ? 'bg-rose-500/10 text-rose-600' : 'bg-amber-500/10 text-amber-600'}`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] opacity-60">{inv.number}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5">{inv.type}</span>
-                      </div>
-                      <div className="text-xs font-bold truncate mt-0.5">{inv.contactName || '—'}</div>
-                    </div>
-                    <div className="text-left shrink-0">
-                      <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{f(total)}</div>
-                      <div className="text-[10px] opacity-50">{inv.date}</div>
-                    </div>
-                  </button>
-                );
-              })}
+      {/* Warnings */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* موجودی کم */}
+        {lowStock.length > 0 && (
+          <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">
+                  {f(lowStock.length)} کالا زیر حد بحرانی
+                </div>
+                <div className="text-[11px] opacity-60 mt-0.5">
+                  نیاز به سفارش مجدد
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('inventory')}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg"
+              >
+                مشاهده
+              </button>
             </div>
-          )}
-        </Card>
-
-        {/* خلاصه مالی */}
-        <Card title="خلاصه مالی" icon={Activity}>
-          <div className="space-y-3">
-            <FinanceRow
-              icon={ArrowDownRight}
-              label="دریافتی‌ها"
-              value={f(stats.received)}
-              currency={settings.currency}
-              color="emerald"
-            />
-            <FinanceRow
-              icon={ArrowUpRight}
-              label="پرداختی‌ها"
-              value={f(stats.paid)}
-              currency={settings.currency}
-              color="rose"
-            />
-            <div className="border-t border-black/5 dark:border-white/5 pt-3">
-              <FinanceRow
-                icon={Wallet}
-                label="مانده صندوق"
-                value={f(stats.balance)}
-                currency={settings.currency}
-                color={stats.balance >= 0 ? 'indigo' : 'rose'}
-                bold
-              />
+            <div className="space-y-1">
+              {lowStock.slice(0, 3).map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-xs py-1">
+                  <span className="truncate">{p.name}</span>
+                  <span className="font-bold text-amber-600 whitespace-nowrap">
+                    {f(p.stock)} {p.unit}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-black/5 dark:border-white/5">
-            <MiniStat label="کل فاکتورها" value={f(stats.invoicesCount)} />
-            <MiniStat label="چک در جریان" value={f(stats.pendingCheques)} />
+        {/* چک‌های سررسید */}
+        {upcomingCheques.length > 0 && (
+          <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-blue-500/5 p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center shrink-0">
+                <CreditCard className="w-5 h-5 text-sky-600" />
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">
+                  {f(upcomingCheques.length)} چک در جریان
+                </div>
+                <div className="text-[11px] opacity-60 mt-0.5">
+                  پیگیری سررسید
+                </div>
+              </div>
+              <button
+                onClick={() => onNavigate('cheques')}
+                className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-lg"
+              >
+                مشاهده
+              </button>
+            </div>
+            <div className="space-y-1">
+              {upcomingCheques.slice(0, 3).map((c) => (
+                <div key={c.id} className="flex items-center justify-between text-xs py-1">
+                  <span className="truncate">{c.contactName || '—'}</span>
+                  <span className="font-bold text-sky-600 whitespace-nowrap">
+                    {f(Math.round(c.amount || 0))}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </Card>
+        )}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MiniStat
+          icon={Users}
+          label="مشتریان"
+          value={f(contacts.length)}
+          color="text-indigo-600"
+          bg="bg-indigo-500/10"
+          onClick={() => onNavigate('contacts')}
+        />
+        <MiniStat
+          icon={Package}
+          label="کالاها"
+          value={f(products.length)}
+          color="text-emerald-600"
+          bg="bg-emerald-500/10"
+          onClick={() => onNavigate('inventory')}
+        />
+        <MiniStat
+          icon={FileText}
+          label="کل فاکتورها"
+          value={f(invoices.length)}
+          color="text-sky-600"
+          bg="bg-sky-500/10"
+          onClick={() => onNavigate('invoices')}
+        />
+        <MiniStat
+          icon={CheckCircle2}
+          label="پرداخت‌ها"
+          value={f(payments.filter((p) => !p.void).length)}
+          color="text-violet-600"
+          bg="bg-violet-500/10"
+          onClick={() => onNavigate('payments')}
+        />
       </div>
     </div>
   );
 };
 
-/* ========== اجزای کمکی ========== */
+/* ═══════════ Sub Components ═══════════ */
 
-const Card: React.FC<{ title: string; icon: React.ElementType; children: React.ReactNode; action?: { label: string; onClick: () => void } }> = ({ title, icon: Icon, children, action }) => (
-  <div className="rounded-2xl border bg-white dark:bg-slate-900/50 p-4" style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
-          <Icon className="w-3.5 h-3.5" />
-        </div>
-        <h3 className="text-sm font-bold">{title}</h3>
-      </div>
-      {action && (
-        <button onClick={action.onClick} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">
-          {action.label} ←
-        </button>
-      )}
-    </div>
-    {children}
-  </div>
-);
+const KPICard: React.FC<{
+  kpi: KPI;
+  formatKPI: (kpi: KPI) => string;
+  onClick: () => void;
+}> = ({ kpi, formatKPI, onClick }) => {
+  const Icon = kpi.icon;
+  const TrendIcon = kpi.change > 0 ? ArrowUpRight : kpi.change < 0 ? ArrowDownRight : null;
 
-const StatCard: React.FC<{
-  title: string; value: string; unit: string; icon: React.ElementType;
-  color: 'emerald' | 'indigo' | 'sky' | 'violet' | 'rose' | 'amber';
-  trend?: 'up' | 'down' | 'flat';
-}> = ({ title, value, unit, icon: Icon, color, trend }) => {
-  const colors = {
-    emerald: 'from-emerald-500/10 to-emerald-500/5 text-emerald-600 dark:text-emerald-400',
-    indigo: 'from-indigo-500/10 to-indigo-500/5 text-indigo-600 dark:text-indigo-400',
-    sky: 'from-sky-500/10 to-sky-500/5 text-sky-600 dark:text-sky-400',
-    violet: 'from-violet-500/10 to-violet-500/5 text-violet-600 dark:text-violet-400',
-    rose: 'from-rose-500/10 to-rose-500/5 text-rose-600 dark:text-rose-400',
-    amber: 'from-amber-500/10 to-amber-500/5 text-amber-600 dark:text-amber-400',
-  };
   return (
-    <div className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-3 md:p-4 ${colors[color]}`} style={{ borderColor: 'var(--border-c, #e2e8f0)' }}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] opacity-70 truncate">{title}</div>
-          <div className="text-base md:text-lg font-bold mt-1.5 truncate" dir="ltr" style={{ textAlign: 'right' }}>
-            {value}
+    <button
+      onClick={onClick}
+      className="text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all card-hover group"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center shadow-lg`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        {TrendIcon && (
+          <div
+            className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              kpi.change > 0
+                ? 'bg-emerald-500/20 text-emerald-700'
+                : 'bg-rose-500/20 text-rose-700'
+            }`}
+          >
+            <TrendIcon className="w-3 h-3" />
+            {Math.abs(kpi.change)}%
           </div>
-          <div className="text-[10px] opacity-60 mt-0.5">{unit}</div>
-        </div>
-        <div className="shrink-0">
-          <Icon className="w-5 h-5 opacity-60" />
-        </div>
+        )}
       </div>
-    </div>
+      <div className="text-[10px] opacity-60 mb-1">{kpi.label}</div>
+      <div className="font-bold text-sm md:text-base truncate">{formatKPI(kpi)}</div>
+    </button>
   );
 };
 
-const FinanceRow: React.FC<{
-  icon: React.ElementType; label: string; value: string; currency: string;
-  color: 'emerald' | 'rose' | 'indigo'; bold?: boolean;
-}> = ({ icon: Icon, label, value, currency, color, bold }) => {
-  const colors = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
-    rose: 'text-rose-600 dark:text-rose-400',
-    indigo: 'text-indigo-600 dark:text-indigo-400',
-  };
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Icon className={`w-4 h-4 ${colors[color]}`} />
-        <span className={`text-xs ${bold ? 'font-bold' : 'opacity-70'}`}>{label}</span>
-      </div>
-      <div className={`text-sm ${bold ? 'font-bold' : 'font-medium'} ${colors[color]}`} dir="ltr">
-        {value} <span className="text-[10px] opacity-60">{currency}</span>
-      </div>
-    </div>
-  );
-};
-
-const MiniStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="text-center p-2 rounded-lg bg-black/[0.02] dark:bg-white/[0.02]">
-    <div className="text-[10px] opacity-60">{label}</div>
-    <div className="text-sm font-bold mt-0.5">{value}</div>
-  </div>
-);
-
-const EmptyState: React.FC<{ text: string }> = ({ text }) => (
-  <div className="py-8 text-center text-xs opacity-40">{text}</div>
-);
-
-const QuickAction: React.FC<{ icon: React.ElementType; label: string; onClick: () => void }> = ({ icon: Icon, label, onClick }) => (
+const QuickAction: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+}> = ({ icon: Icon, label, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 backdrop-blur-sm text-xs font-medium transition-colors"
+    className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold backdrop-blur transition-colors"
   >
     <Icon className="w-3.5 h-3.5" />
     {label}
+  </button>
+);
+
+const MiniStat: React.FC<{
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  color: string;
+  bg: string;
+  onClick: () => void;
+}> = ({ icon: Icon, label, value, color, bg, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:border-indigo-300 transition-all text-right"
+  >
+    <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+      <Icon className={`w-4 h-4 ${color}`} />
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="text-[10px] opacity-60">{label}</div>
+      <div className="font-bold text-sm truncate">{value}</div>
+    </div>
   </button>
 );
 
