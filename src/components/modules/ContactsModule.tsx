@@ -4,6 +4,7 @@ import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { EmptyState } from '../shared/EmptyState';
+import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -207,9 +208,9 @@ export const ContactsModule: React.FC = () => {
                   <button onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600" title="ویرایش">
                     <Edit className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="p-2 rounded-lg hover:bg-rose-50 text-rose-600" title="حذف">
+                  <RBACGate permission="contact.delete"><button onClick={() => handleDelete(c.id)} className="p-2 rounded-lg hover:bg-rose-50 text-rose-600" title="حذف">
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </button></RBACGate>
                 </div>
               </div>
             ))}

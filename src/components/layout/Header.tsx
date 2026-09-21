@@ -1,5 +1,6 @@
 import React from 'react';
 import { Menu, Moon, Sun, Monitor, Bell, User, Search } from 'lucide-react';
+import { RoleBadge } from '../shared/RoleBadge';
 import { useSettings, type Theme } from '../../lib/theme-context';
 import { NotificationsPanel } from '../shared/NotificationsPanel';
 import { SyncStatus } from '../shared/SyncStatus';
@@ -37,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
       </button>
 
       <h1 className="text-sm md:text-base font-bold flex-1 truncate">{title}</h1>
+        <RoleBadge />
 
       <button
         onClick={cycleTheme}

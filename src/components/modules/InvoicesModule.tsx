@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowRightLeft, Download, Edit, FileText, Filter, Package, Plus, Printer, Search, Trash2, Users, X } from 'lucide-react';
+import { RBACGate } from '../shared/RBACGate';
 import type { Invoice, InvoiceLine, Contact, Product, InvoiceType } from '../../types/models';
 import { invoiceSubtotal, invoiceDiscount, invoiceTax, invoiceTotal, INVOICE_TYPES, invoiceTypeLabel, invoiceTypeRole } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
