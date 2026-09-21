@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OnboardingTour } from './components/setup/OnboardingTour';
+import { CommandPalette } from './components/shared/CommandPalette';
 import { BackupDiscoveryScreen } from './components/setup/BackupDiscoveryScreen';
 import Sidebar, { type ViewKey } from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -107,6 +108,24 @@ export const App: React.FC = () => {
     return !localStorage.getItem('divan_onboarding_done');
   });
 
+  const [showPalette, setShowPalette] = useState(false);
+
+  // کیبورد Ctrl+K / Cmd+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowPalette((p) => !p);
+      }
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setShowPalette(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleOnboardingComplete = () => {
     localStorage.setItem('divan_onboarding_done', '1');
     setShowOnboarding(false);
@@ -194,6 +213,11 @@ export const App: React.FC = () => {
 
   return (
     <AppGuard>
+    <CommandPalette
+      open={showPalette}
+      onClose={() => setShowPalette(false)}
+      onNavigate={(view: any) => handleSelect(view)}
+    />
     {showDiscovery && (
       <BackupDiscoveryScreen
         onComplete={handleDiscoveryComplete}
@@ -215,7 +239,11 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        <Header title={VIEW_TITLES[active]} onMenuClick={() => setSidebarOpen(true)} />
+        <Header
+          title={VIEW_TITLES[active]}
+          onMenuClick={() => setSidebarOpen(true)}
+          onOpenSearch={() => setShowPalette(true)}
+        />
 
         <div key={active} className="p-4 md:p-6 flex-1 view-enter">
           {active !== 'home' && (

@@ -1,63 +1,95 @@
-import React from 'react';
-import { Menu, Moon, Sun, Monitor, Bell, User, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, Sun, Moon, Bell, Search } from 'lucide-react';
+import { useSettings } from '../../lib/theme-context';
 import { RoleBadge } from '../shared/RoleBadge';
-import { useSettings, type Theme } from '../../lib/theme-context';
 import { NotificationsPanel } from '../shared/NotificationsPanel';
-import { SyncStatus } from '../shared/SyncStatus';
 
-interface HeaderProps {
+interface Props {
   title: string;
   onMenuClick: () => void;
+  onOpenSearch?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onMenuClick }) => {
-  const { settings, update, resolvedTheme } = useSettings();
+export const Header: React.FC<Props> = ({ title, onMenuClick, onOpenSearch }) => {
+  const { settings, update } = useSettings();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const cycleTheme = () => {
-    const order: Theme[] = ['light', 'dark', 'system'];
-    const idx = order.indexOf(settings.theme);
-    update({ theme: order[(idx + 1) % order.length] });
+    const next = settings.theme === 'light' ? 'dark' : settings.theme === 'dark' ? 'system' : 'light';
+    update({ theme: next });
   };
 
-  const ThemeIcon = settings.theme === 'system' ? Monitor : (resolvedTheme === 'dark' ? Moon : Sun);
+  const ThemeIcon = settings.theme === 'dark' ? Moon : Sun;
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-2 px-3 md:px-5 py-3 border-b backdrop-blur-md"
-      style={{
-        background: resolvedTheme === 'dark' ? 'rgba(11,18,32,0.85)' : 'rgba(255,255,255,0.85)',
-        borderColor: resolvedTheme === 'dark' ? '#1e293b' : '#e2e8f0',
-      }}
+      className="sticky top-0 z-30 flex items-center gap-2 px-3 md:px-5 py-3 border-b backdrop-blur-md bg-white/85 dark:bg-slate-900/85 border-slate-200 dark:border-slate-700"
+      dir="rtl"
     >
+      {/* Menu (Mobile) */}
       <button
         onClick={onMenuClick}
-        className="md:hidden p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        className="md:hidden p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
         aria-label="منو"
       >
         <Menu className="w-5 h-5" />
       </button>
 
+      {/* Title */}
       <h1 className="text-sm md:text-base font-bold flex-1 truncate">{title}</h1>
-        <RoleBadge />
 
+      {/* Role Badge */}
+      <RoleBadge />
+
+      {/* Search Desktop */}
+      {onOpenSearch && (
+        <button
+          onClick={onOpenSearch}
+          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs opacity-70 hover:opacity-100 transition-all"
+          title="جستجو (Ctrl+K)"
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>جستجو...</span>
+          <kbd className="text-[9px] px-1 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600">
+            Ctrl+K
+          </kbd>
+        </button>
+      )}
+
+      {/* Search Mobile */}
+      {onOpenSearch && (
+        <button
+          onClick={onOpenSearch}
+          className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 md:hidden"
+          aria-label="جستجو"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Theme Toggle */}
       <button
         onClick={cycleTheme}
-        className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-        title={`تم: ${settings.theme === 'system' ? 'سیستم' : settings.theme === 'dark' ? 'تیره' : 'روشن'}`}
+        className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
+        title={`تم: ${settings.theme || 'روشن'}`}
+        aria-label="تغییر تم"
       >
-        <ThemeIcon className="w-4 h-4" />
+        <ThemeIcon className="w-5 h-5" />
       </button>
 
-      <SyncStatus />
-
-      <NotificationsPanel onNavigate={(v) => { /* App-level navigation */ }} />
-
+      {/* Notifications */}
       <button
-        className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-        title="حساب کاربری"
+        onClick={() => setShowNotifications(!showNotifications)}
+        className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 relative"
+        aria-label="اعلان‌ها"
       >
-        <User className="w-4 h-4" />
+        <Bell className="w-5 h-5" />
       </button>
+
+      {/* Notifications Panel */}
+      {showNotifications && (
+        <NotificationsPanel />
+      )}
     </header>
   );
 };
