@@ -8,6 +8,7 @@ import { notify } from './lib/toast';
 import { useEdgeSwipe } from './lib/use-swipe';
 import { useAutoBackup } from './lib/backup/use-auto-backup';
 import { startWatcher } from './lib/sync/watcher';
+import { startAutoReschedule } from './lib/cheque-reminder';
 
 // ماژول‌ها
 import { ContactsModule } from './components/modules/ContactsModule';
@@ -118,6 +119,12 @@ export const App: React.FC = () => {
 
   // بکاپ خودکار روزانه
   useAutoBackup();
+
+  // یادآوری چک‌ها
+  useEffect(() => {
+    const stop = startAutoReschedule();
+    return () => stop();
+  }, []);
 
   // شروع watcher همگام‌سازی
   React.useEffect(() => {
