@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useSettings, type PrintPaper, type PrintMode , formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
+import { TEMPLATES } from './templates/_helpers';
 
 const ACCENTS = [
   { key: 'slate', color: '#0f172a', label: 'مشکی' },
@@ -56,6 +57,33 @@ export const PrintSettings: React.FC = () => {
           <Check className="w-4 h-4" /> ذخیره شد
         </div>
       )}
+
+      {/* قالب فاکتور */}
+      <Section icon={Layers} title="قالب فاکتور">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {TEMPLATES.map(t => {
+            const active = (settings.printTemplate || 'classic') === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => { update({ printTemplate: t.key }); flash(); }}
+                className={`p-3 rounded-xl border-2 text-center transition-all ${
+                  active
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                }`}
+              >
+                <div className="text-2xl mb-1">{t.icon}</div>
+                <div className={`text-sm font-bold ${active ? 'text-indigo-700 dark:text-indigo-400' : ''}`}>{t.name}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{t.bestFor}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[11px] text-slate-500 mt-2 px-1">
+          💡 {TEMPLATES.find(t => t.key === (settings.printTemplate || 'classic'))?.description}
+        </div>
+      </Section>
 
       {/* اندازه کاغذ */}
       <Section icon={FileText} title="اندازه کاغذ">

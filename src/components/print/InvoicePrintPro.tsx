@@ -8,6 +8,9 @@ import { InvoiceQRCode } from './InvoiceQRCode';
 import { buildInvoiceText, shareInvoiceWhatsApp, shareInvoiceSMS, shareInvoiceGeneric } from '../../lib/invoice-share';
 import { MessageCircle, Send } from 'lucide-react';
 import { roundRial, calculateLineTotal } from '../../lib/format';
+import { ModernCard } from './templates/ModernCard';
+import { ThermalReceipt as ThermalReceiptNew } from './templates/ThermalReceipt';
+import { MinimalClean } from './templates/MinimalClean';
 
 interface Props {
   invoice: Invoice;
@@ -183,13 +186,17 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
       </div>
 
       <div className="flex justify-center p-2 md:p-6">
-        {isFormal && !isThermal ? (
-          <FormalInvoice invoice={invoice} contact={contact} products={products} isA5={isA5} />
-        ) : isThermal ? (
-          <ThermalReceipt invoice={invoice} contact={contact} />
-        ) : (
-          <SimpleInvoice invoice={invoice} contact={contact} />
-        )}
+        {(() => {
+          const tpl = settings.printTemplate || 'classic';
+          if (tpl === 'modern') return <ModernCard invoice={invoice} contact={contact} products={products} />;
+          if (tpl === 'thermal') return <ThermalReceiptNew invoice={invoice} contact={contact} products={products} />;
+          if (tpl === 'minimal') return <MinimalClean invoice={invoice} contact={contact} products={products} />;
+          return isFormal && !isThermal
+            ? <FormalInvoice invoice={invoice} contact={contact} products={products} isA5={isA5} />
+            : isThermal
+            ? <ThermalReceipt invoice={invoice} contact={contact} />
+            : <SimpleInvoice invoice={invoice} contact={contact} />;
+        })()}
       </div>
 
       <style>{`
