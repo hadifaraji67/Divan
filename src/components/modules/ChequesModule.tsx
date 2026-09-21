@@ -28,6 +28,36 @@ export const ChequesModule: React.FC = () => {
   const [voidTarget, setVoidTarget] = useState<Cheque | null>(null);
 
   useEffect(() => { setItems(loadData<Cheque[]>('cheques', [])); }, []);
+
+  const inProgressStats = useMemo(() => {
+    const now = new Date();
+    const active = items.filter(ch => !ch.void && ch.status === 'در جریان');
+    const totalReceive = active.filter(ch => ch.direction === 'دریافتی').reduce((s, ch) => s + ch.amount, 0);
+    const totalPay = active.filter(ch => ch.direction === 'پرداختی').reduce((s, ch) => s + ch.amount, 0);
+    
+    // سررسید نزدیک (۷ روز)
+    const soon = active.filter(ch => {
+      if (!ch.dueDate) return false;
+      const due = new Date(ch.dueDate);
+      const diff = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff <= 7;
+    });
+    
+    // معوق (گذشته)
+    const overdue = active.filter(ch => {
+      if (!ch.dueDate) return false;
+      const due = new Date(ch.dueDate);
+      return due.getTime() < now.getTime();
+    });
+    
+    return {
+      count: active.length,
+      totalReceive,
+      totalPay,
+      soonCount: soon.length,
+      overdueCount: overdue.length,
+    };
+  }, [items]);
   useEffect(() => { saveData('cheques', items); }, [items]);
 
   const filtered = useMemo(() => {
@@ -74,7 +104,34 @@ export const ChequesModule: React.FC = () => {
   return (
     <div className="space-y-4" dir="rtl">
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="relative flex-1 min-w-[200px]">
+        {/* کارت خلاصه چک‌های در جریان */}
+      {inProgressStats.count > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+          <div className="rounded-xl p-3 bg-amber-50 border border-amber-200">
+            <div className="text-[10px] text-amber-700 mb-1">در جریان</div>
+            <div className="font-bold text-lg text-amber-900">{inProgressStats.count}</div>
+          </div>
+          <div className="rounded-xl p-3 bg-emerald-50 border border-emerald-200">
+            <div className="text-[10px] text-emerald-700 mb-1">دریافتی</div>
+            <div className="font-bold text-sm text-emerald-900 font-mono">{inProgressStats.totalReceive.toLocaleString('fa-IR')}</div>
+          </div>
+          <div className="rounded-xl p-3 bg-rose-50 border border-rose-200">
+            <div className="text-[10px] text-rose-700 mb-1">پرداختی</div>
+            <div className="font-bold text-sm text-rose-900 font-mono">{inProgressStats.totalPay.toLocaleString('fa-IR')}</div>
+          </div>
+          <div className={`rounded-xl p-3 border ${inProgressStats.overdueCount > 0 ? 'bg-red-100 border-red-300' : inProgressStats.soonCount > 0 ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="text-[10px] mb-1 text-slate-700">سررسید نزدیک / معوق</div>
+            <div className="font-bold text-lg">
+              {inProgressStats.soonCount > 0 && <span className="text-orange-700">{inProgressStats.soonCount}</span>}
+              {inProgressStats.soonCount > 0 && inProgressStats.overdueCount > 0 && <span className="text-slate-400 mx-1">/</span>}
+              {inProgressStats.overdueCount > 0 && <span className="text-red-700">{inProgressStats.overdueCount}</span>}
+              {inProgressStats.soonCount === 0 && inProgressStats.overdueCount === 0 && <span className="text-slate-400">—</span>}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جستجو..."
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm" />

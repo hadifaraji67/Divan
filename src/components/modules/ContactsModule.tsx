@@ -12,6 +12,8 @@ import { ImportDialog } from '../shared/ImportDialog';
 import { CONTACT_COLUMNS } from '../../lib/import';
 import { exportToCSV } from '../../lib/export';
 import { LocationSelector } from '../shared/LocationSelector';
+import { computeContactBalance } from '../../lib/invoice-payment';
+import type { Invoice, Payment } from '../../types/models';
 
 const emptyContact = (): Contact => ({
   id: '', code: '', type: 'حقیقی', name: '', lastName: '', companyName: '',
@@ -23,6 +25,8 @@ const emptyContact = (): Contact => ({
 
 export const ContactsModule: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -30,6 +34,8 @@ export const ContactsModule: React.FC = () => {
 
   useEffect(() => {
     setContacts(loadData<Contact[]>('contacts', []));
+    setInvoices(loadData<Invoice[]>('invoices', []));
+    setPayments(loadData<Payment[]>('payments', []));
   }, []);
 
   useEffect(() => {
@@ -44,6 +50,14 @@ export const ContactsModule: React.FC = () => {
       c.mobile.includes(q) || c.nationalId.includes(q) || c.code.includes(q)
     );
   }, [contacts, search]);
+
+  const balanceMap = useMemo(() => {
+    const map: Record<string, { receivable: number; payable: number; net: number }> = {};
+    for (const ct of contacts) {
+      map[ct.id] = computeContactBalance(ct.id, invoices, payments);
+    }
+    return map;
+  }, [contacts, invoices, payments]);
 
   const openNew = () => {
     const c = emptyContact();
@@ -204,6 +218,23 @@ export const ContactsModule: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                {(() => {
+                  const b = balanceMap[c.id];
+                  if (!b) return null;
+                  const { net } = b;
+                  if (net === 0) return (
+                    <div className="text-xs px-3 py-1.5 rounded-lg bg-slate-50 text-slate-500 font-mono">
+                      تسویه
+                    </div>
+                  );
+                  const isReceivable = net > 0;
+                  return (
+                    <div className={`text-xs px-3 py-1.5 rounded-lg font-bold font-mono ${isReceivable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}
+                      title={isReceivable ? 'طلب از مشتری' : 'بدهی به تأمین‌کننده'}>
+                      {isReceivable ? '↑' : '↓'} {Math.abs(net).toLocaleString('fa-IR')}
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-1">
                   <button onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600" title="ویرایش">
                     <Edit className="w-4 h-4" />

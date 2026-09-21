@@ -11,6 +11,7 @@ import { roundRial, calculateLineTotal } from '../../lib/format';
 import { ModernCard } from './templates/ModernCard';
 import { ThermalReceipt as ThermalReceiptNew } from './templates/ThermalReceipt';
 import { MinimalClean } from './templates/MinimalClean';
+import { TEMPLATES } from './templates/_helpers';
 
 interface Props {
   invoice: Invoice;
@@ -23,6 +24,7 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
   const { settings } = useSettings();
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
   const [saving, setSaving] = React.useState(false);
+  const [localTemplate, setLocalTemplate] = React.useState(settings.printTemplate || 'classic');
 
   const saveAsImage = async () => {
     setSaving(true);
@@ -148,10 +150,22 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
         <div className="flex items-center gap-2 text-white">
           <Printer className="w-4 h-4" />
           <span className="text-sm font-bold">
-            پیش‌نمایش فاکتور — {settings.printPaper} {isFormal ? 'رسمی' : 'غیررسمی'}
+            پیش‌نمایش — {TEMPLATES.find(t => t.key === localTemplate)?.name || 'قالب'} ({settings.printPaper})
           </span>
         </div>
         <div className="flex gap-1.5 md:gap-2">
+          <select
+            value={localTemplate}
+            onChange={(e) => setLocalTemplate(e.target.value as any)}
+            className="px-2 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg cursor-pointer outline-none"
+            title="انتخاب قالب"
+          >
+            {TEMPLATES.map(t => (
+              <option key={t.key} value={t.key} className="bg-slate-800">
+                {t.icon} {t.name}
+              </option>
+            ))}
+          </select>
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
@@ -187,7 +201,7 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
 
       <div className="flex justify-center p-2 md:p-6">
         {(() => {
-          const tpl = settings.printTemplate || 'classic';
+          const tpl = localTemplate;
           if (tpl === 'modern') return <ModernCard invoice={invoice} contact={contact} products={products} />;
           if (tpl === 'thermal') return <ThermalReceiptNew invoice={invoice} contact={contact} products={products} />;
           if (tpl === 'minimal') return <MinimalClean invoice={invoice} contact={contact} products={products} />;
