@@ -34,10 +34,7 @@ export const UpdateBanner: React.FC<Props> = ({ forceCheck }) => {
     doCheck();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(doCheck, 1000 * 60 * 60);
-    return () => clearInterval(interval);
-  }, [doCheck]);
+  // BANNER_INTERVAL_REMOVED — چک دوره‌ای حذف شد (فقط یک بار در session کافیست)
 
   if (!info || !info.available || hidden) return null;
 
