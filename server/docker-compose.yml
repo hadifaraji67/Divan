@@ -1,4 +1,9 @@
-version: '3.8'
+# ═══════════════════════════════════════════════════════════
+#  Docker Compose برای دیوان
+#  اجرا: docker compose up -d
+# ═══════════════════════════════════════════════════════════
+
+version: "3.9"
 
 services:
   postgres:
@@ -6,39 +11,65 @@ services:
     container_name: divan-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: divan_app
-      POSTGRES_PASSWORD: divan1234
-      POSTGRES_DB: divan
+      POSTGRES_DB: ${DB_NAME:-divan}
+      POSTGRES_USER: ${DB_USER:-divan_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-divan1234}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U divan_app"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-divan_app}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   server:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: divan-server
     restart: unless-stopped
-    working_dir: /app
-    command: sh -c "npm install && npm run migrate && npm start"
-    environment:
-      NODE_ENV: production
-    volumes:
-      - ./:/app
-    ports:
-      - "4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-divan}
+      DB_USER: ${DB_USER:-divan_app}
+      DB_PASSWORD: ${DB_PASSWORD:-divan1234}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30d}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-مدیر سیستم}
+      TRUST_PROXY: "1"
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - ./logs:/app/logs
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: divan-caddy
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:-divan.example.com}
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

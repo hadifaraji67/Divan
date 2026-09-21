@@ -1,0 +1,62 @@
+# ═══════════════════════════════════════════════════════════
+#  systemd service برای سرور دیوان
+#  نصب: sudo cp divan-server.service /etc/systemd/system/
+#       sudo systemctl daemon-reload
+#       sudo systemctl enable --now divan-server
+# ═══════════════════════════════════════════════════════════
+
+[Unit]
+Description=Divan Accounting Server
+Documentation=https://github.com/hadifaraji67/Divan
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=divan
+Group=divan
+WorkingDirectory=/opt/divan/server
+
+# ─── Environment ───
+Environment="NODE_ENV=production"
+EnvironmentFile=-/opt/divan/server/.env
+
+# ─── Exec ───
+ExecStart=/usr/bin/node src/index.js
+ExecReload=/bin/kill -HUP $MAINPID
+
+# ─── Restart ───
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# ─── Logging ───
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=divan-server
+
+# ─── Security Hardening ───
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/divan/server/logs
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# ─── Resource Limits ───
+LimitNOFILE=65536
+MemoryMax=512M
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target

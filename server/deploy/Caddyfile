@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════
+#  Caddy — Reverse Proxy با HTTPS خودکار
+#  مزیت: SSL خودکار، بدون نیاز به certbot
+#  نصب: curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+# ═══════════════════════════════════════════════════════════
+
+divan.example.com {     # ← دامنه خودت رو بذار
+    encode gzip zstd
+
+    # ─── Security Headers ───
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # ─── Reverse Proxy ───
+    reverse_proxy 127.0.0.1:4000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # ─── Health check ───
+    @health path /api/health
+    handle @health {
+        reverse_proxy 127.0.0.1:4000
+        log {
+            output discard
+        }
+    }
+
+    # ─── Compression ───
+    @compressible {
+        header Content-Type application/json*
+    }
+    encode @compressible gzip
+
+    log {
+        output file /var/log/caddy/divan.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

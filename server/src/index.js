@@ -4,35 +4,59 @@ import { networkInterfaces } from 'node:os';
 import { config } from './config.js';
 import { testConnection } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
-
 import authRoutes from './routes/auth.js';
 import syncRoutes from './routes/sync.js';
 
 const app = express();
 
-// ═══ Middleware ═══
-app.use(cors()); // اجازه از همه مبدأها (APK + PWA)
-app.use(express.json({ limit: '50mb' })); // برای sync حجم زیاد
+if (config.trustProxy) {
+  app.set('trust proxy', config.trustProxy);
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (config.cors.origins.includes('*')) return callback(null, true);
+    if (config.cors.origins.includes(origin)) return callback(null, true);
+    if (!config.isProd) return callback(null, true);
+
+    console.warn(`[CORS] رد شد: ${origin}`);
+    callback(new Error('CORS: مبدأ مجاز نیست'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// لاگ ساده
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
     if (req.path !== '/api/health') {
-      console.log(`${req.method} ${req.path} → ${res.statusCode} (${duration}ms)`);
+      const ip = req.ip || req.socket.remoteAddress;
+      console.log(`${req.method} ${req.path} → ${res.statusCode} (${duration}ms) [${ip}]`);
     }
   });
   next();
 });
 
-// ═══ Routes ═══
 app.get('/', (req, res) => {
   res.json({
     name: 'Divan Server',
     version: '1.0.0',
     status: 'running',
+    env: config.nodeEnv,
     docs: '/api/health',
   });
 });
@@ -43,11 +67,16 @@ app.get('/api/health', async (req, res) => {
     res.json({
       status: 'healthy',
       time: new Date().toISOString(),
+      env: config.nodeEnv,
       database: {
         connected: true,
         version: dbInfo.version.split(' ').slice(0, 2).join(' '),
       },
       uptime: Math.round(process.uptime()),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      },
     });
   } catch (err) {
     res.status(503).json({
@@ -60,74 +89,48 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 
-// ═══ Error Handlers ═══
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ═══ Start ═══
-const PORT = config.port || 4000;
-const HOST = config.host || '0.0.0.0';
-
-async function start() {
-  console.log('\n╔═══════════════════════════════════════════╗');
-  console.log('║         🚀 دیوان سرور v1.0.0              ║');
-  console.log('╚═══════════════════════════════════════════╝\n');
-
-  try {
-    console.log('📡 اتصال به PostgreSQL...');
-    const dbInfo = await testConnection();
-    console.log(`✅ دیتابیس متصل شد: ${dbInfo.version.split(' ').slice(0, 2).join(' ')}`);
-
-    // بررسی نیاز به setup
-    const { query } = await import('./db/index.js');
-    const users = await query('SELECT COUNT(*) as count FROM users');
-    const needsSetup = Number(users.rows[0].count) === 0;
-
-    if (needsSetup) {
-      console.log('\n⚠️  هیچ کاربری وجود ندارد — نیاز به راه‌اندازی اولیه');
-      console.log('   → POST /api/auth/setup با username و password\n');
+const server = app.listen(config.port, config.host, () => {
+  const nets = networkInterfaces();
+  const ips = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal) ips.push(net.address);
     }
-
-    app.listen(PORT, HOST, () => {
-      console.log(`\n✅ سرور روی http://${HOST}:${PORT} اجرا شد`);
-      console.log(`   Health: http://localhost:${PORT}/api/health`);
-      console.log(`   Auth:   http://localhost:${PORT}/api/auth`);
-      console.log(`   Sync:   http://localhost:${PORT}/api/sync\n`);
-
-      // نمایش IPهای شبکه
-      const nets = networkInterfaces();
-      const ips = [];
-      for (const name of Object.keys(nets)) {
-        for (const net of nets[name] || []) {
-          if (net.family === 'IPv4' && !net.internal) {
-            ips.push(net.address);
-          }
-        }
-      }
-      if (ips.length > 0) {
-        console.log('📡 آدرس‌های شبکه:');
-        ips.forEach(ip => console.log(`   http://${ip}:${PORT}`));
-        console.log('');
-      }
-    });
-  } catch (err) {
-    console.error('\n❌ خطا در شروع سرور:', err.message);
-    console.error('\nراه‌حل‌ها:');
-    console.error('  ۱. مطمئن شو PostgreSQL اجراست: pg_ctl -D $PREFIX/var/lib/postgresql status');
-    console.error('  ۲. Migration اجرا کن: npm run migrate');
-    console.error('  ۳. config.json را بررسی کن\n');
-    process.exit(1);
   }
+
+  console.log('');
+  console.log('╔═══════════════════════════════════════════╗');
+  console.log('║   🚀 سرور دیوان فعال شد                   ║');
+  console.log('╚═══════════════════════════════════════════╝');
+  console.log(`🌐 Local:    http://127.0.0.1:${config.port}`);
+  ips.forEach((ip) => console.log(`🌐 Network:  http://${ip}:${config.port}`));
+  console.log(`📊 Health:   http://127.0.0.1:${config.port}/api/health`);
+  console.log(`⚙️  Env:      ${config.nodeEnv}`);
+  console.log(`🔒 Proxy:    ${config.trustProxy ? 'فعال' : 'غیرفعال'}`);
+  console.log('');
+});
+
+function shutdown(signal) {
+  console.log(`\n[${signal}] خاموش شدن...`);
+  server.close(() => {
+    console.log('✅ سرور متوقف شد');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('⚠️  اجبار به خروج');
+    process.exit(1);
+  }, 10000);
 }
 
-// مدیریت خطاهای غیرمنتظره
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  shutdown('uncaughtException');
+});
 process.on('unhandledRejection', (err) => {
-  console.error('[unhandled]', err);
+  console.error('❌ Unhandled Rejection:', err);
 });
-
-process.on('SIGINT', () => {
-  console.log('\n👋 سرور متوقف شد');
-  process.exit(0);
-});
-
-start();
