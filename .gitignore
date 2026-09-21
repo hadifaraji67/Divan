@@ -33,3 +33,26 @@ android/keystore.properties
 *.bak
 *.bak.*
 *.bak-*
+
+# ═══ Divan cleanup ═══
+# backup files
+*.bak
+*.bak.*
+*.bak-*
+
+# audit reports
+audit-reports/
+
+# Android keystore
+android/keystore/
+*.keystore
+*.jks
+
+# OS
+.DS_Store
+Thumbs.db
+*~
+
+# temp
+*.tmp
+*.log
