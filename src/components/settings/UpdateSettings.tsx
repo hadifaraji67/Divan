@@ -39,16 +39,11 @@ export const UpdateSettings: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    // فقط یک بار در session چک کن
-    if (sessionStorage.getItem('divan_update_checked')) {
-      return;
-    }
-    sessionStorage.setItem('divan_update_checked', '1');
-
-    const t = setTimeout(() => doCheck(), 500);
-    return () => clearTimeout(t);
-  }, []);
+  // AUTO_CHECK_REMOVED — چک خودکار حذف شد. فقط با دکمه «بررسی به‌روزرسانی» چک کن
+  // useEffect(() => {
+  //   const t = setTimeout(() => doCheck(), 500);
+  //   return () => clearTimeout(t);
+  // }, []);
 
   const handleUpdate = () => {
     if (!info?.available) return;
