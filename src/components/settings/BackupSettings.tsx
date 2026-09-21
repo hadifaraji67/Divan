@@ -19,6 +19,34 @@ interface StoredBackup {
   mtime: number;
 }
 
+
+/* ═══════════ Google Drive Coming Soon ═══════════ */
+
+const GoogleDriveComingSoon: React.FC = () => {
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-4">
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+          <Cloud className="w-6 h-6 text-amber-600" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="font-bold text-sm">پشتیبان‌گیری ابری (Google Drive)</div>
+            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold">
+              🚧 به‌زودی
+            </span>
+          </div>
+          <div className="text-[11px] opacity-70 leading-relaxed">
+            به‌زودی می‌توانی بکاپ‌ها را به‌طور خودکار روی Google Drive خودت ذخیره کنی.
+            با اتصال به حساب گوگل، بکاپ‌ها به‌طور خودکار در فضای ابری شما ذخیره می‌شوند.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 export const BackupSettings: React.FC = () => {
   const { settings } = useSettings();
   const [config, setConfig] = useState<BSettings>(loadBackupSettings());
@@ -309,6 +337,8 @@ export const BackupSettings: React.FC = () => {
           className="hidden"
         />
       </div>
+
+        <GoogleDriveComingSoon />
 
       {/* Google Drive — به زودی */}
       <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-5">
