@@ -127,6 +127,13 @@ export const App: React.FC = () => {
       case 'cheques': return <ChequesModule />;
       case 'journal-entry': return <JournalEntryForm accounts={accounts} onSave={handleSaveJournal} />;
       case 'fiscal-year-closing': return (
+      <>
+        {showOnboarding && (
+          <OnboardingTour
+            onComplete={handleOnboardingComplete}
+            onSkip={handleOnboardingComplete}
+          />
+        )}
         <FiscalYearClosing
           accounts={accounts}
           entries={entries}
@@ -152,12 +159,6 @@ export const App: React.FC = () => {
 
   return (
     <AppGuard>
-    {showOnboarding && (
-      <OnboardingTour
-        onComplete={handleOnboardingComplete}
-        onSkip={handleOnboardingComplete}
-      />
-    )}
     <div className="flex h-screen overflow-hidden" dir="rtl">
       <Sidebar
         active={active}
