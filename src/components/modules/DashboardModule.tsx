@@ -194,6 +194,15 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       view: 'contacts',
     },
     {
+      label: 'بدهی به تأمین‌کنندگان',
+      value: payable,
+      change: 0,
+      format: 'money',
+      icon: ShoppingCart,
+      color: 'from-rose-500 to-red-600',
+      view: 'contacts',
+    },
+    {
       label: 'فاکتورهای فروش',
       value: salesInvoices.length,
       change: 0,
