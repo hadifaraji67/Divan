@@ -4,6 +4,7 @@ export type Theme = 'light' | 'dark' | 'system';
 export type FontSize = 'sm' | 'md' | 'lg';
 
 export type PrintPaper = 'A4' | 'A5' | 'thermal80' | 'thermal58';
+export type PrintTemplate = 'classic' | 'modern' | 'thermal' | 'minimal';
 export type PrintMode = 'formal' | 'informal';
 
 export interface Settings {
@@ -27,6 +28,7 @@ export interface Settings {
 
   // تنظیمات چاپ
   printPaper: PrintPaper;
+  printTemplate: PrintTemplate;
   printMode: PrintMode;
   printAccentColor: string;
   printLogo?: string;
@@ -66,6 +68,7 @@ const DEFAULTS: Settings = {
   compactMode: false,
 
   printPaper: 'A4',
+  printTemplate: 'classic',
   printMode: 'informal',
   printAccentColor: 'indigo',
   printLogo: undefined,
