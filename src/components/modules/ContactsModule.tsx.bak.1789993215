@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, Download, Edit, MapPin, Phone, Plus, Search, Trash2, Upload, User, Users, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'lucide-react';
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
-import { EmptyState } from '../shared/EmptyState';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { ImportDialog } from '../shared/ImportDialog';
 import { CONTACT_COLUMNS } from '../../lib/import';
+import { Upload } from 'lucide-react';
 import { exportToCSV } from '../../lib/export';
+import { Download } from 'lucide-react';
 import { LocationSelector } from '../shared/LocationSelector';
 
 const emptyContact = (): Contact => ({

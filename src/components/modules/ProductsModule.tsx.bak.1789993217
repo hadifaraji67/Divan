@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, Camera, Download, Edit, Package, PackagePlus, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, X, Package, AlertTriangle } from 'lucide-react';
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { isValidAmount } from '../../lib/validation';
 import { ImportDialog } from '../shared/ImportDialog';
 import { PRODUCT_COLUMNS } from '../../lib/import';
+import { Upload } from 'lucide-react';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { EmptyState } from '../shared/EmptyState';
+import { PackagePlus } from 'lucide-react';
 import { exportToCSV } from '../../lib/export';
+import { Download } from 'lucide-react';
 import { BarcodeScanner } from '../shared/BarcodeScanner';
+import { Camera } from 'lucide-react';
+
 const empty = (): Product => ({
   id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
   brand: '', unit: 'عدد', stock: 0, minStock: 0, buyPrice: 0, wholesalePrice: 0,

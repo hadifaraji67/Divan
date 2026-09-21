@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, Download, Edit, MapPin, Phone, Plus, Search, Trash2, Upload, User, Users, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'lucide-react';
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
-import { EmptyState } from '../shared/EmptyState';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
-import { ImportDialog } from '../shared/ImportDialog';
-import { CONTACT_COLUMNS } from '../../lib/import';
 import { exportToCSV } from '../../lib/export';
+import { Download } from 'lucide-react';
 import { LocationSelector } from '../shared/LocationSelector';
 
 const emptyContact = (): Contact => ({
@@ -23,7 +21,6 @@ export const ContactsModule: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<Contact>(emptyContact());
 
   useEffect(() => {
@@ -124,30 +121,6 @@ export const ContactsModule: React.FC = () => {
 
   return (
     <div className="space-y-4" dir="rtl">
-      {showImport && (
-        <ImportDialog
-          title="ورود مشتریان از Excel"
-          columns={CONTACT_COLUMNS}
-          templateName="divan-contacts-template.csv"
-          onImported={(rows) => {
-            setContacts(prev => {
-              const existing = new Set(prev.map(c => c.id));
-              const newItems = rows.map((r: any) => ({
-                ...r,
-                id: genId(),
-                type: r.type || 'حقیقی',
-                code: '',
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                balance: 0,
-              })).filter((r: any) => !existing.has(r.id));
-              return [...prev, ...newItems];
-            });
-            setShowImport(false);
-          }}
-          onClose={() => setShowImport(false)}
-        />
-      )}
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
