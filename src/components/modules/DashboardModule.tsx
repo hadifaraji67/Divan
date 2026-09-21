@@ -11,6 +11,7 @@ import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { roundRial } from '../../types/models';
 import { formatJalaliLong, todayJalali } from '../../lib/jalali';
+import { UpdateBanner } from '../shared/UpdateBanner';
 
 interface Props {
   onNavigate: (view: any) => void;
@@ -107,6 +108,9 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
 
   return (
     <div className="space-y-5" dir="rtl">
+
+      {/* بنر بروزرسانی — فقط در داشبورد */}
+      <UpdateBanner />
 
       {/* خوش‌آمد + میانبر */}
       <div className="relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-l from-indigo-600 via-indigo-500 to-violet-600 text-white">

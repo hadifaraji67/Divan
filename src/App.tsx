@@ -4,7 +4,6 @@ import { BackupDiscoveryScreen } from './components/setup/BackupDiscoveryScreen'
 import Sidebar, { type ViewKey } from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import BottomNav from './components/layout/BottomNav';
-import { UpdateBanner } from './components/shared/UpdateBanner';
 import { notify } from './lib/toast';
 import { useEdgeSwipe } from './lib/use-swipe';
 import { useAutoBackup } from './lib/backup/use-auto-backup';
@@ -228,7 +227,6 @@ export const App: React.FC = () => {
           onSelect={handleSelect}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <UpdateBanner />
       </main>
     </div>
     </AppGuard>

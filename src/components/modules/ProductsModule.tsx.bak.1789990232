@@ -3,7 +3,6 @@ import { Plus, Search, Edit, Trash2, X, Package, AlertTriangle } from 'lucide-re
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
-import { isValidAmount } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { EmptyState } from '../shared/EmptyState';
 import { PackagePlus } from 'lucide-react';
@@ -44,31 +43,7 @@ export const ProductsModule: React.FC = () => {
   };
   const openEdit = (p: Product) => { setEditing({ ...p }); setShowForm(true); };
   const save = () => {
-    // اعتبارسنجی
-    if (!editing.name?.trim()) {
-      notify.warning('نام کالا الزامی است');
-      return;
-    }
-    if (!isValidAmount(editing.buyPrice, true)) {
-      notify.warning('قیمت خرید نامعتبر');
-      return;
-    }
-    if (!isValidAmount(editing.sellPrice, true)) {
-      notify.warning('قیمت فروش نامعتبر');
-      return;
-    }
-    if (editing.stock < 0) {
-      notify.warning('موجودی نمی‌تواند منفی باشد');
-      return;
-    }
-    if (editing.minStock < 0) {
-      notify.warning('حد بحرانی نمی‌تواند منفی باشد');
-      return;
-    }
-    if (editing.taxPercent < 0 || editing.taxPercent > 100) {
-      notify.warning('درصد مالیات باید بین ۰ تا ۱۰۰ باشد');
-      return;
-    }
+    if (!editing.name.trim()) { notify.warning('نام کالا الزامی است'); return; }
     setItems(prev => prev.find(p => p.id === editing.id)
       ? prev.map(p => p.id === editing.id ? editing : p)
       : [...prev, editing]);

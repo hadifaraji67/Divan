@@ -3,7 +3,6 @@ import { Plus, Search, Edit, Trash2, X, User, Phone, MapPin, Building2 } from 'l
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
-import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { exportToCSV } from '../../lib/export';
 import { Download } from 'lucide-react';
@@ -55,49 +54,13 @@ export const ContactsModule: React.FC = () => {
   };
 
   const handleSave = () => {
-    // ─── اعتبارسنجی ───
-    if (!editing.name?.trim()) {
-      notify.warning('نام الزامی است');
-      return;
-    }
-
-    const mobileCheck = validateMobile(editing.mobile || '');
-    if (!mobileCheck.valid) {
-      notify.warning(mobileCheck.error || 'موبایل نامعتبر');
-      return;
-    }
-
-    const phoneCheck = validatePhone(editing.phone || '');
-    if (!phoneCheck.valid) {
-      notify.warning(phoneCheck.error || 'تلفن نامعتبر');
-      return;
-    }
-
-    const emailCheck = validateEmail(editing.email || '');
-    if (!emailCheck.valid) {
-      notify.warning(emailCheck.error || 'ایمیل نامعتبر');
-      return;
-    }
-
-    const nationalCheck = validateNationalId(editing.nationalId || '');
-    if (!nationalCheck.valid) {
-      notify.warning(nationalCheck.error || 'کد ملی نامعتبر');
-      return;
-    }
-
-    // ─── نرمال‌سازی ───
-    const normalized = {
-      ...editing,
-      mobile: mobileCheck.normalized || editing.mobile,
-      phone: phoneCheck.normalized || editing.phone,
-      email: emailCheck.normalized || editing.email,
-    };
-
+    if (!editing.name.trim()) { notify.warning('نام الزامی است'); return; }
+    if (!editing.mobile.trim()) { notify.warning('موبایل الزامی است'); return; }
     setContacts(prev => {
-      const exists = prev.find(c => c.id === normalized.id);
+      const exists = prev.find(c => c.id === editing.id);
       return exists
-        ? prev.map(c => c.id === normalized.id ? normalized : c)
-        : [...prev, normalized];
+        ? prev.map(c => c.id === editing.id ? editing : c)
+        : [...prev, editing];
     });
     setShowForm(false);
   };
