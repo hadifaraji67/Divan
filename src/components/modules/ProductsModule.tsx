@@ -166,7 +166,7 @@ export const ProductsModule: React.FC = () => {
           <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-lg">
             <Upload className="w-4 h-4" /> ورود از Excel
           </button>
-          <RBACGate permission="product.create"><button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
+          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
           <Plus className="w-4 h-4" /> کالای جدید
         </button>
       </div>
@@ -207,9 +207,9 @@ export const ProductsModule: React.FC = () => {
                     <td className="p-3">
                       <div className="flex gap-1">
                         <button onClick={() => openEdit(p)} className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600"><Edit className="w-4 h-4" /></button>
-                        <RBACGate permission="product.delete">
+                        
                         <button onClick={() => remove(p.id)} className="p-1.5 rounded hover:bg-rose-50 text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                      </RBACGate>
+                      
                       </div>
                     </td>
                   </tr>

@@ -1,6 +1,6 @@
 import express from 'express';
 import { query, transaction } from '../db/index.js';
-import { requireAuth } from '../middleware/auth.js';
+import {requireAuth, requireRole } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 
 const router = express.Router();

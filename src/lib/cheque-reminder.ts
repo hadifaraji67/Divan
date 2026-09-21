@@ -172,7 +172,7 @@ export async function rescheduleAllReminders(): Promise<{ scheduled: number; err
 
   for (const cheque of cheques) {
     // فقط چک‌های در انتظار
-    if (cheque.status !== 'در انتظار' && cheque.status !== 'pending' && cheque.status !== 'نزدیک سررسید') {
+    if (cheque.status !== 'در جریان') {
       continue;
     }
 
@@ -194,7 +194,7 @@ export async function rescheduleAllReminders(): Promise<{ scheduled: number; err
           {
             id: notificationId,
             title: '📋 چک نزدیک سررسید',
-            body: `چک ${cheque.number || ''} از ${cheque.contactName || 'نامشخص'} — ${cheque.amount ? cheque.amount.toLocaleString('fa-IR') : ''} ریال — سررسید: ${cheque.dueDate}`,
+            body: `چک ${cheque.chequeNumber || ''} از ${cheque.contactName || 'نامشخص'} — ${cheque.amount ? cheque.amount.toLocaleString('fa-IR') : ''} ریال — سررسید: ${cheque.dueDate}`,
             schedule: { at: reminderDate },
             sound: undefined,
             attachments: undefined,

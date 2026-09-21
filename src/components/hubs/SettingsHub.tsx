@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive, Server, Info, Bell } from 'lucide-react';
+import { Store, Printer, Calendar, Database, Palette, RefreshCw, HardDrive, Server, Info, Bell, Users, Shield } from 'lucide-react';
 import { GeneralSettings } from '../settings/GeneralSettings';
 import { StoreSettings } from '../settings/StoreSettings';
 import { FiscalSettings } from '../settings/FiscalSettings';
@@ -9,12 +9,12 @@ import { UpdateSettings } from '../settings/UpdateSettings';
 import { ServerSettings } from '../settings/ServerSettings';
 import { LockSettings } from '../settings/LockSettings';
 import { AboutSettings } from '../settings/AboutSettings';
+import { UsersSettings } from '../settings/UsersSettings';
+import { useRBAC } from '../../lib/use-rbac';
 import { ReminderSettings } from '../settings/ReminderSettings';
-import { Shield } from 'lucide-react';
+type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security' | 'reminder' | 'users' | 'about';
 
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security' | 'reminder' | 'about';
-
-const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
+const TABS_BASE: { id: Tab; title: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
   { id: 'store', title: 'اطلاعات فروشگاه', icon: Store },
   { id: 'print', title: 'تنظیمات چاپ', icon: Printer },
@@ -23,15 +23,22 @@ const TABS: { id: Tab; title: string; icon: React.ElementType }[] = [
   { id: 'update', title: 'بروزرسانی', icon: RefreshCw },
   { id: 'server', title: 'سرور و همگام‌سازی', icon: Server },
   { id: 'security', title: 'امنیت', icon: Shield },
+  { id: 'reminder', title: 'یادآوری', icon: Bell },
+  { id: 'users', title: 'کاربران', icon: Users, adminOnly: true },
+  { id: 'about', title: 'درباره', icon: Info },
 ];
 
+const TABS = TABS_BASE;
+
 export const SettingsHub: React.FC = () => {
+  const { isAdmin } = useRBAC();
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
   const [active, setActive] = useState<Tab>('general');
 
   return (
     <div className="space-y-4" dir="rtl">
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-        {TABS.map(t => {
+        {visibleTabs.map(t => {
           const Icon = t.icon;
           const isActive = active === t.id;
           return (
@@ -60,6 +67,7 @@ export const SettingsHub: React.FC = () => {
         {active === 'update' && <UpdateSettings />}
         {active === 'server' && <ServerSettings />}
         {active === 'security' && <LockSettings />}
+        {active === 'users' && isAdmin && <UsersSettings />}
         {active === 'reminder' && <ReminderSettings />}
         {active === 'about' && <AboutSettings />}
       </div>
