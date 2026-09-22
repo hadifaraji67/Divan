@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {ArrowRightLeft, Download, Edit, FileText, Filter, Package, Plus, Printer, Search, Trash2, Users, X, QrCode } from 'lucide-react';
+import {ArrowRightLeft, Edit, FileText, Filter, Package, Plus, Printer, Search, Trash2, Users, X, QrCode } from 'lucide-react';
 import { InvoiceQRScanner } from '../print/InvoiceQRScanner';
 import { RBACGate } from '../shared/RBACGate';
 import type { Invoice, InvoiceLine, Contact, Product, InvoiceType } from '../../types/models';
 import { invoiceSubtotal, invoiceDiscount, invoiceTax, invoiceTotal, INVOICE_TYPES, invoiceTypeLabel, invoiceTypeRole } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
-import { exportToCSV } from '../../lib/export';
 import { JalaliDatePicker } from '../shared/JalaliDatePicker';
 import { InvoicePrintPro } from '../print/InvoicePrintPro';
 import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '../../lib/invoice-logic';
@@ -232,18 +231,7 @@ export const InvoicesModule: React.FC = () => {
   const discount = invoiceDiscount(editing.items, editing.discountPercent);
   const tax = invoiceTax(editing.items, editing.discountPercent, editing.taxPercent);
   const total = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
-  const handleExportInvoices = async () => {
-    const { invoiceTotal } = await import('../../types/models');
-    await exportToCSV('فاکتورها', filtered || invoices, [
-      { key: 'number', label: 'شماره' },
-      { key: 'date', label: 'تاریخ' },
-      { key: 'type', label: 'نوع' },
-      { key: 'contactName', label: 'مشتری' },
-      { key: 'items', label: 'تعداد اقلام', format: (v) => String(Array.isArray(v) ? v.length : 0) },
-      { key: 'total', label: 'مبلغ کل', format: (_v, row) => String(Math.round(invoiceTotal(row.items || [], row.discountPercent || 0, row.taxPercent || 0, row.shippingCost || 0))) },
-      { key: 'status', label: 'وضعیت' },
-    ]);
-  };
+
 
 
   return (

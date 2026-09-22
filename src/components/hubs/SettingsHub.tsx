@@ -12,10 +12,12 @@ import { AboutSettings } from '../settings/AboutSettings';
 import { UsersSettings } from '../settings/UsersSettings';
 import { useRBAC } from '../../lib/use-rbac';
 import { ReminderSettings } from '../settings/ReminderSettings';
-type Tab = 'general' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security' | 'reminder' | 'users' | 'about';
+import { DataSettings } from '../settings/DataSettings';
+type Tab = 'general' | 'data' | 'store' | 'print' | 'fiscal' | 'backup' | 'update' | 'server' | 'security' | 'reminder' | 'users' | 'about';
 
 const TABS_BASE: { id: Tab; title: string; icon: React.ElementType; adminOnly?: boolean }[] = [
   { id: 'general', title: 'عمومی', icon: Palette },
+  { id: 'data', title: 'ورود و خروج داده', icon: Database },
   { id: 'store', title: 'اطلاعات فروشگاه', icon: Store },
   { id: 'print', title: 'تنظیمات چاپ', icon: Printer },
   { id: 'fiscal', title: 'سال مالی', icon: Calendar },
@@ -60,6 +62,7 @@ export const SettingsHub: React.FC = () => {
 
       <div key={active} style={{ animation: 'fadeIn 0.2s ease-out' }}>
         {active === 'general' && <GeneralSettings />}
+        {active === 'data' && <DataSettings />}
         {active === 'store' && <StoreSettings />}
         {active === 'print' && <PrintSettings />}
         {active === 'fiscal' && <FiscalSettings />}

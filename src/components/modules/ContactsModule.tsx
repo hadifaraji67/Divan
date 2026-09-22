@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, Download, Edit, MapPin, Phone, Plus, Search, Trash2, Upload, User, Users, X } from 'lucide-react';
+import { Building2, Edit, MapPin, Phone, Plus, Search, Trash2, User, Users, X } from 'lucide-react';
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
@@ -8,9 +8,7 @@ import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
-import { ImportDialog } from '../shared/ImportDialog';
 import { CONTACT_COLUMNS } from '../../lib/import';
-import { exportToCSV } from '../../lib/export';
 import { LocationSelector } from '../shared/LocationSelector';
 import { computeContactBalance } from '../../lib/invoice-payment';
 import type { Invoice, Payment } from '../../types/models';
@@ -29,7 +27,6 @@ export const ContactsModule: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<Contact>(emptyContact());
 
   useEffect(() => {
@@ -125,45 +122,11 @@ export const ContactsModule: React.FC = () => {
     if (!confirm('آیا از حذف این شخص مطمئن هستید؟')) return;
     setContacts(prev => prev.filter(c => c.id !== id));
   };
-  const handleExportContacts = async () => {
-    await exportToCSV('مشتریان', filtered || (typeof contacts !== 'undefined' ? contacts : []), [
-      { key: 'name', label: 'نام' },
-      { key: 'phone', label: 'تلفن' },
-      { key: 'mobile', label: 'موبایل' },
-      { key: 'email', label: 'ایمیل' },
-      { key: 'address', label: 'آدرس' },
-      { key: 'type', label: 'نوع' },
-      { key: 'balance', label: 'مانده' },
-    ]);
-  };
+
 
 
   return (
     <div className="space-y-4" dir="rtl">
-      {showImport && (
-        <ImportDialog
-          title="ورود مشتریان از Excel"
-          columns={CONTACT_COLUMNS}
-          templateName="divan-contacts-template.csv"
-          onImported={(rows) => {
-            setContacts(prev => {
-              const existing = new Set(prev.map(c => c.id));
-              const newItems = rows.map((r: any) => ({
-                ...r,
-                id: genId(),
-                type: r.type || 'حقیقی',
-                code: '',
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                balance: 0,
-              })).filter((r: any) => !existing.has(r.id));
-              return [...prev, ...newItems];
-            });
-            setShowImport(false);
-          }}
-          onClose={() => setShowImport(false)}
-        />
-      )}
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -174,9 +137,7 @@ export const ContactsModule: React.FC = () => {
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
-        <button onClick={handleExportContacts} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg">
-            <Download className="w-4 h-4" /> خروجی Excel
-          </button>
+        
           <button
           onClick={openNew}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg"

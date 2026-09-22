@@ -56,3 +56,6 @@ Thumbs.db
 # temp
 *.tmp
 *.log
+
+# TS build cache
+*.tsbuildinfo

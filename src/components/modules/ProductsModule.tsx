@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, Camera, Download, Edit, Package, PackagePlus, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, Camera, Edit, Package, PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { isValidAmount } from '../../lib/validation';
-import { ImportDialog } from '../shared/ImportDialog';
 import { PRODUCT_COLUMNS } from '../../lib/import';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
-import { exportToCSV } from '../../lib/export';
 import { BarcodeScanner } from '../shared/BarcodeScanner';
 const empty = (): Product => ({
   id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
@@ -22,7 +20,6 @@ export const ProductsModule: React.FC = () => {
   const [items, setItems] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<Product>(empty());
   const [showScanner, setShowScanner] = useState(false);
 
@@ -91,50 +88,11 @@ export const ProductsModule: React.FC = () => {
     deleteWithUndo(product);
   };
 
-  const handleExport = async () => {
-    await exportToCSV('کالاها', filtered, [
-      { key: 'sku', label: 'کد' },
-      { key: 'barcode', label: 'بارکد' },
-      { key: 'name', label: 'نام کالا' },
-      { key: 'category', label: 'دسته' },
-      { key: 'brand', label: 'برند' },
-      { key: 'unit', label: 'واحد' },
-      { key: 'stock', label: 'موجودی' },
-      { key: 'minStock', label: 'حد بحرانی' },
-      { key: 'buyPrice', label: 'قیمت خرید' },
-      { key: 'sellPrice', label: 'قیمت فروش' },
-      { key: 'wholesalePrice', label: 'عمده' },
-      { key: 'taxPercent', label: 'مالیات %' },
-      { key: 'location', label: 'محل' },
-      { key: 'warehouseName', label: 'انبار' },
-    ]);
-  };
 
   const lowStock = items.filter(p => p.stock <= p.minStock).length;
 
   return (
     <div className="space-y-4" dir="rtl">
-      {showImport && (
-        <ImportDialog
-          title="ورود کالاها از Excel"
-          columns={PRODUCT_COLUMNS}
-          templateName="divan-products-template.csv"
-          onImported={(rows) => {
-            setItems(prev => [
-              ...prev,
-              ...rows.map((r: any) => ({
-                ...empty(),
-                ...r,
-                id: genId(),
-                createdAt: new Date().toISOString(),
-                isActive: true,
-              })),
-            ]);
-            setShowImport(false);
-          }}
-          onClose={() => setShowImport(false)}
-        />
-      )}
       {showScanner && (
         <BarcodeScanner
           onDetected={(code) => {
@@ -159,13 +117,8 @@ export const ProductsModule: React.FC = () => {
             placeholder="جستجو: نام، کد، دسته..."
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm" />
         </div>
-        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg">
-            <Download className="w-4 h-4" />
-            خروجی Excel
-          </button>
-          <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-lg">
-            <Upload className="w-4 h-4" /> ورود از Excel
-          </button>
+        
+          
           <RBACGate permission="product.create">{<button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
           <Plus className="w-4 h-4" /> کالای جدید
         </button>}</RBACGate>
