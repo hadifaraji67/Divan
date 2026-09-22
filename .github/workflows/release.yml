@@ -150,6 +150,10 @@ jobs:
           cp server/docker-compose.yml "$SERVER_DIR/"
           cp server/README.md "$SERVER_DIR/"
           cp -r server/deploy "$SERVER_DIR/"
+          cp server/install.ps1 "$SERVER_DIR/" 2>/dev/null || true
+          cp server/uninstall.ps1 "$SERVER_DIR/" 2>/dev/null || true
+          cp server/start.ps1 "$SERVER_DIR/" 2>/dev/null || true
+          cp server/WINDOWS.md "$SERVER_DIR/" 2>/dev/null || true
           rm -rf "$SERVER_DIR/node_modules"
           tar -czf "release/divan-server-${VERSION}.tar.gz" "$SERVER_DIR"
           rm -rf "$SERVER_DIR"

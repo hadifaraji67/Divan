@@ -14,6 +14,37 @@
 
 ---
 
+## 🪟 Windows
+
+### نصب سریع
+
+```powershell
+tar -xzf divan-server-vX.X.X.tar.gz
+cd divan-server-vX.X.X
+
+# PowerShell را Admin باز کن
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\install.ps1
+```
+
+راهنمای کامل: [WINDOWS.md](./WINDOWS.md)
+
+### مدیریت
+
+```powershell
+Get-Service DivanServer
+Start-Service DivanServer
+Stop-Service DivanServer
+```
+
+### حذف
+
+```powershell
+.\uninstall.ps1
+```
+
+---
+
 ## 📦 پیش‌نیازها
 
 - Node.js 18 یا بالاتر
