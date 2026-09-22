@@ -154,6 +154,7 @@ jobs:
           cp server/uninstall.ps1 "$SERVER_DIR/" 2>/dev/null || true
           cp server/start.ps1 "$SERVER_DIR/" 2>/dev/null || true
           cp server/WINDOWS.md "$SERVER_DIR/" 2>/dev/null || true
+          cp server/Install-Divan.bat "$SERVER_DIR/" 2>/dev/null || true
           rm -rf "$SERVER_DIR/node_modules"
           tar -czf "release/divan-server-${VERSION}.tar.gz" "$SERVER_DIR"
           rm -rf "$SERVER_DIR"

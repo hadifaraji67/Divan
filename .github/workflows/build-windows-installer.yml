@@ -1,0 +1,95 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $v = "dev"
+          } else {
+            $v = "${{ github.ref_name }}"
+          }
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Install ps2exe
+        shell: pwsh
+        run: |
+          Install-Module ps2exe -Force -Scope CurrentUser
+          Import-Module ps2exe
+
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          Import-Module ps2exe
+          Invoke-PS2EXE `
+            -InputFile "server/install.ps1" `
+            -OutputFile "server/DivanSetup.exe" `
+            -noConsole `
+            -title "Divan Server Installer" `
+            -description "Divan Accounting Server Installer" `
+            -product "Divan" `
+            -company "Divan" `
+            -version "${{ steps.version.outputs.version }}"
+
+      - name: Verify EXE
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "server/DivanSetup.exe")) {
+            Write-Error "EXE not created"
+            exit 1
+          }
+          Get-Item "server/DivanSetup.exe" | Format-List
+
+      - name: Create server tarball
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $dir = "divan-server-$version"
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          Copy-Item -Recurse server/src $dir/
+          Copy-Item server/install.ps1 $dir/
+          Copy-Item server/uninstall.ps1 $dir/
+          Copy-Item server/start.ps1 $dir/
+          Copy-Item server/Install-Divan.bat $dir/
+          Copy-Item server/DivanSetup.exe $dir/
+          Copy-Item server/WINDOWS.md $dir/
+          Copy-Item server/README.md $dir/
+          Copy-Item server/package.json $dir/
+          Copy-Item server/package-lock.json $dir/ -ErrorAction SilentlyContinue
+          Copy-Item server/.env.example $dir/
+          Copy-Item server/config.example.json $dir/
+          Copy-Item server/Dockerfile $dir/
+          Copy-Item server/docker-compose.yml $dir/
+          Copy-Item -Recurse server/deploy $dir/
+          Remove-Item -Recurse -Force "$dir/node_modules" -ErrorAction SilentlyContinue
+          
+          tar -czf "divan-server-$version-windows.tar.gz" $dir
+          Remove-Item -Recurse -Force $dir
+          Get-Item "divan-server-*-windows.tar.gz" | Format-List
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            server/DivanSetup.exe
+            divan-server-*-windows.tar.gz
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
