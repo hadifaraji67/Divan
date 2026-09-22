@@ -134,6 +134,27 @@ jobs:
           echo "فایل‌های ساخته شده:"
           ls -la release/
 
+      - name: ساخت tarball سرور
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release
+          SERVER_DIR="divan-server-${VERSION}"
+          mkdir -p "$SERVER_DIR"
+          cp -r server/src "$SERVER_DIR/"
+          cp server/install.sh "$SERVER_DIR/"
+          cp server/package.json "$SERVER_DIR/"
+          cp server/package-lock.json "$SERVER_DIR/" 2>/dev/null || true
+          cp server/.env.example "$SERVER_DIR/"
+          cp server/config.example.json "$SERVER_DIR/"
+          cp server/Dockerfile "$SERVER_DIR/"
+          cp server/docker-compose.yml "$SERVER_DIR/"
+          cp server/README.md "$SERVER_DIR/"
+          cp -r server/deploy "$SERVER_DIR/"
+          rm -rf "$SERVER_DIR/node_modules"
+          tar -czf "release/divan-server-${VERSION}.tar.gz" "$SERVER_DIR"
+          rm -rf "$SERVER_DIR"
+          ls -lh release/divan-server-*.tar.gz
+
       - name: ساخت manifest.json
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -195,6 +216,7 @@ jobs:
           files: |
             release/*.apk
             release/*.zip
+            release/divan-server-*.tar.gz
             manifest.json
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
