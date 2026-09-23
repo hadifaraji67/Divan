@@ -36,25 +36,29 @@ jobs:
       - name: Build EXE
         shell: powershell
         run: |
-          Import-Module ps2exe
-          Invoke-PS2EXE `
-            -InputFile "server/install.ps1" `
-            -OutputFile "server/DivanSetup.exe" `
-            -noConsole `
-            -title "Divan Server Installer" `
-            -description "Divan Accounting Server Installer" `
-            -product "Divan" `
-            -company "Divan" `
-            -version "${{ steps.version.outputs.version }}"
-
-      - name: Verify EXE
-        shell: powershell
-        run: |
-          if (-not (Test-Path "server/DivanSetup.exe")) {
-            Write-Error "EXE not created"
+          Write-Host "=== 1. 设置 PSGallery 为受信任 ==="
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+          
+          Write-Host "=== 2. 安装 ps2exe 模块 ==="
+          Install-Module ps2exe -Force -Scope CurrentUser -AllowClobber
+          
+          Write-Host "=== 3. 导入模块并验证命令 ==="
+          Import-Module ps2exe -Force
+          Get-Command Invoke-PS2EXE | Select-Object Name, Source
+          
+          Write-Host "=== 4. 编译 EXE ==="
+          $inputFile = "server\install.ps1"
+          $outputFile = "server\DivanSetup.exe"
+          Invoke-PS2EXE -inputFile $inputFile -outputFile $outputFile -noConsole
+          
+          Write-Host "=== 5. 验证输出 ==="
+          if (Test-Path $outputFile) {
+            Get-Item $outputFile | Format-List
+            Write-Host "✅ EXE 构建成功"
+          } else {
+            Write-Error "❌ EXE 未生成"
             exit 1
           }
-          Get-Item "server/DivanSetup.exe" | Format-List
 
       - name: Create server tarball
         shell: powershell
