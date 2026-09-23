@@ -18,7 +18,7 @@ jobs:
 
       - name: Determine version
         id: version
-        shell: pwsh
+        shell: powershell
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $v = "dev"
@@ -28,13 +28,13 @@ jobs:
           echo "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Install ps2exe
-        shell: pwsh
+        shell: powershell
         run: |
           Install-Module ps2exe -Force -Scope CurrentUser
           Import-Module ps2exe
 
       - name: Build EXE
-        shell: pwsh
+        shell: powershell
         run: |
           Import-Module ps2exe
           Invoke-PS2EXE `
@@ -48,7 +48,7 @@ jobs:
             -version "${{ steps.version.outputs.version }}"
 
       - name: Verify EXE
-        shell: pwsh
+        shell: powershell
         run: |
           if (-not (Test-Path "server/DivanSetup.exe")) {
             Write-Error "EXE not created"
@@ -57,7 +57,7 @@ jobs:
           Get-Item "server/DivanSetup.exe" | Format-List
 
       - name: Create server tarball
-        shell: pwsh
+        shell: powershell
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $dir = "divan-server-$version"
