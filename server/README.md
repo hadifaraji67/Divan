@@ -14,6 +14,18 @@
 
 ---
 
+## 🇮🇷 VPS ایران
+
+برای نصب روی سرور مجازی ایرانی (آروان، پارس‌پک و...):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hadifaraji67/Divan/main/server/bootstrap.sh | sudo bash
+```
+
+راهنمای کامل: [VPS-IRAN.md](./VPS-IRAN.md)
+
+---
+
 ## 🪟 Windows
 
 ### نصب سریع
