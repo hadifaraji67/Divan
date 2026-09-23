@@ -6,6 +6,7 @@ import { BackupDiscoveryScreen } from './BackupDiscoveryScreen';
 import { getMode } from '../../lib/server/mode';
 import { serverClient } from '../../lib/server/server-client';
 import { isLockEnabled, checkStartupLock } from '../../lib/security/lock-service';
+import { useAutoLock } from '../../lib/security/use-auto-lock';
 import { shouldSuggestBackup } from '../../lib/backup/discovery';
 import { isCapacitor } from '../../lib/backup/filesystem';
 
@@ -22,6 +23,12 @@ export const AppGuard: React.FC<Props> = ({ children }) => {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [needsUnlock, setNeedsUnlock] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  // ═══ Auto-lock در طول استفاده ═══
+  useAutoLock(() => {
+    setReady(false);
+    setNeedsUnlock(true);
+  });
 
   useEffect(() => {
     checkSetup();

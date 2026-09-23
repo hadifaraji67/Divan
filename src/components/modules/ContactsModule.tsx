@@ -3,6 +3,7 @@ import { Building2, Edit, MapPin, Phone, Plus, Search, Trash2, User, Users, X } 
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { useFormDraft } from '../../lib/use-form-draft';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
@@ -27,7 +28,16 @@ export const ContactsModule: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+
   const [editing, setEditing] = useState<Contact>(emptyContact());
+
+  // Auto-save draft
+  const contactDraft = useFormDraft<Contact>(
+    'contact_new',
+    editing,
+    showForm,
+    (draft) => setEditing(draft),
+  );
 
   useEffect(() => {
     setContacts(loadData<Contact[]>('contacts', []));
@@ -115,7 +125,8 @@ export const ContactsModule: React.FC = () => {
         ? prev.map(c => c.id === normalized.id ? normalized : c)
         : [...prev, normalized];
     });
-    setShowForm(false);
+    setShowForm(false)
+    contactDraft.clearDraft();
   };
 
   const handleDelete = (id: string) => {

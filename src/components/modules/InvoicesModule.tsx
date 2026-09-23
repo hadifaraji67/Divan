@@ -15,6 +15,7 @@ import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Arch
 import { createInvoiceJournalEntry } from '../../lib/accounting';
 import type { JournalEntry } from '../../types/accounting';
 import { calculateLineTotal } from '../../lib/format';
+import { useFormDraft } from '../../lib/use-form-draft';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -54,6 +55,14 @@ export const InvoicesModule: React.FC = () => {
   const [withPayment, setWithPayment] = useState(false);
   const [payType, setPayType] = useState<'نقد' | 'کارت' | 'چک'>('نقد');
   const [payAmount, setPayAmount] = useState(0);
+
+  // Auto-save draft فرم فاکتور
+  const invoiceDraft = useFormDraft<Invoice>(
+    'invoice_new',
+    editing,
+    showForm,
+    (draft) => setEditing(draft),
+  );
 
   useEffect(() => {
     setInvoices(loadData<Invoice[]>('invoices', []));
@@ -193,6 +202,7 @@ export const InvoicesModule: React.FC = () => {
       notify.success('فاکتور به‌روزرسانی شد');
     }
     setShowForm(false);
+    invoiceDraft.clearDraft();
   };
 
   const convert = (inv: Invoice) => {
@@ -373,7 +383,7 @@ export const InvoicesModule: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl my-3 md:my-8">
             <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
               <h3 className="font-bold">{invoices.find(i => i.id === editing.id) ? 'ویرایش' : 'جدید'} — {invoiceTypeLabel(editing.type)}</h3>
-              <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-black/5"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setShowForm(false); invoiceDraft.clearDraft(); }} className="p-2 rounded-lg hover:bg-black/5"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">

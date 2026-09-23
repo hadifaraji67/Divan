@@ -3,6 +3,7 @@ import { AlertTriangle, Camera, Edit, Package, PackagePlus, Plus, Search, Trash2
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { useFormDraft } from '../../lib/use-form-draft';
 import { isValidAmount } from '../../lib/validation';
 import { PRODUCT_COLUMNS } from '../../lib/import';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -20,7 +21,16 @@ export const ProductsModule: React.FC = () => {
   const [items, setItems] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+
   const [editing, setEditing] = useState<Product>(empty());
+
+  // Auto-save draft
+  const productDraft = useFormDraft<Product>(
+    'product_new',
+    editing,
+    showForm,
+    (draft) => setEditing(draft),
+  );
   const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => { setItems(loadData<Product[]>('products', [])); }, []);

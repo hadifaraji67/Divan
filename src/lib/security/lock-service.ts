@@ -145,22 +145,53 @@ export async function verifySecret(secret: string): Promise<boolean> {
   return verifyPassword(secret, cred.hash, cred.salt, cred.iterations);
 }
 
+/**
+ * Progressive lockout: هر سری خطا، مدت قفل بیشتر می‌شه
+ * - ۵ خطا  → ۳۰ ثانیه
+ * - ۱۰ خطا → ۲ دقیقه
+ * - ۱۵ خطا → ۱۰ دقیقه
+ * - ۲۰ خطا → ۱ ساعت
+ * - ۳۰+ خطا → ۲۴ ساعت
+ */
+function calculateLockoutDuration(failedAttempts: number): number {
+  if (failedAttempts < 5) return 0;
+  if (failedAttempts < 10) return 30 * 1000;        // 30s
+  if (failedAttempts < 15) return 2 * 60 * 1000;    // 2min
+  if (failedAttempts < 20) return 10 * 60 * 1000;   // 10min
+  if (failedAttempts < 30) return 60 * 60 * 1000;   // 1hour
+  return 24 * 60 * 60 * 1000;                       // 24hours
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.ceil(ms / 1000);
+  if (s < 60) return s + ' ثانیه';
+  const m = Math.ceil(s / 60);
+  if (m < 60) return m + ' دقیقه';
+  const h = Math.ceil(m / 60);
+  return h + ' ساعت';
+}
+
 export async function unlockWithSecret(secret: string): Promise<{
   success: boolean;
   error?: string;
   lockedUntil?: string;
+  attemptsLeft?: number;
 }> {
   const state = loadState();
 
+  // چک قفل فعال
   if (state.lockedUntil) {
     const until = new Date(state.lockedUntil).getTime();
     if (Date.now() < until) {
+      const remaining = until - Date.now();
       return {
         success: false,
-        error: `قفل موقت فعال است — ${Math.ceil((until - Date.now()) / 1000)} ثانیه صبر کن`,
+        error: `قفل فعال — ${formatDuration(remaining)} دیگر تلاش کن`,
         lockedUntil: state.lockedUntil,
       };
     }
+    // زمان قفل تمام شده — پاک کن
+    delete state.lockedUntil;
   }
 
   const ok = await verifySecret(secret);
@@ -170,25 +201,30 @@ export async function unlockWithSecret(secret: string): Promise<{
     return { success: true };
   }
 
+  // خطا — افزایش شمارنده
   const failedAttempts = (state.failedAttempts || 0) + 1;
-  const newState: LockState = { ...state, failedAttempts };
+  const lockoutMs = calculateLockoutDuration(failedAttempts);
 
-  if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
-    const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString();
-    newState.lockedUntil = lockedUntil;
-    newState.failedAttempts = 0;
-    saveState(newState);
+  if (lockoutMs > 0) {
+    const lockedUntil = new Date(Date.now() + lockoutMs).toISOString();
+    saveState({
+      ...state,
+      failedAttempts,
+      lockedUntil,
+    });
     return {
       success: false,
-      error: `تلاش‌های زیاد — ${MAX_FAILED_ATTEMPTS} بار اشتباه، ${LOCKOUT_DURATION_MS / 1000} ثانیه صبر کن`,
+      error: `${failedAttempts} تلاش اشتباه — ${formatDuration(lockoutMs)} قفل شد`,
       lockedUntil,
     };
   }
 
-  saveState(newState);
+  saveState({ ...state, failedAttempts });
+  const left = 5 - failedAttempts;
   return {
     success: false,
-    error: `رمز اشتباه — ${MAX_FAILED_ATTEMPTS - failedAttempts} تلاش باقی‌مانده`,
+    error: `رمز اشتباه — ${left} تلاش باقی‌مانده`,
+    attemptsLeft: left,
   };
 }
 
