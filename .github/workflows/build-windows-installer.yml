@@ -27,38 +27,37 @@ jobs:
           }
           echo "version=$v" >> $env:GITHUB_OUTPUT
 
-      - name: Install ps2exe
+      - name: Setup Windows PowerShell 5.1
         shell: powershell
         run: |
-          Install-Module ps2exe -Force -Scope CurrentUser
-          Import-Module ps2exe
+          Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
+          Write-Host "Edition: $($PSVersionTable.PSEdition)"
 
       - name: Build EXE
         shell: powershell
         run: |
-          Write-Host "=== 1. 设置 PSGallery 为受信任 ==="
+          $ErrorActionPreference = "Stop"
+          
+          Write-Host "=== Step 1: Set PSGallery Trusted ==="
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
           
-          Write-Host "=== 2. 安装 ps2exe 模块 ==="
+          Write-Host "=== Step 2: Install ps2exe ==="
           Install-Module ps2exe -Force -Scope CurrentUser -AllowClobber
           
-          Write-Host "=== 3. 导入模块并验证命令 ==="
+          Write-Host "=== Step 3: Import ps2exe ==="
           Import-Module ps2exe -Force
-          Get-Command Invoke-PS2EXE | Select-Object Name, Source
+          Get-Command Invoke-PS2EXE
           
-          Write-Host "=== 4. 编译 EXE ==="
-          $inputFile = "server\install.ps1"
-          $outputFile = "server\DivanSetup.exe"
-          Invoke-PS2EXE -inputFile $inputFile -outputFile $outputFile -noConsole
+          Write-Host "=== Step 4: Compile EXE ==="
+          Invoke-PS2EXE -inputFile "server/install.ps1" -outputFile "server/DivanSetup.exe" -noConsole
           
-          Write-Host "=== 5. 验证输出 ==="
-          if (Test-Path $outputFile) {
-            Get-Item $outputFile | Format-List
-            Write-Host "✅ EXE 构建成功"
-          } else {
-            Write-Error "❌ EXE 未生成"
+          Write-Host "=== Step 5: Verify ==="
+          if (-not (Test-Path "server/DivanSetup.exe")) {
+            Write-Error "EXE not created!"
             exit 1
           }
+          Get-Item "server/DivanSetup.exe" | Format-List
+          Write-Host "SUCCESS: DivanSetup.exe created"
 
       - name: Create server tarball
         shell: powershell
@@ -73,9 +72,6 @@ jobs:
           Copy-Item server/Install-Divan.bat $dir/
           Copy-Item server/DivanSetup.exe $dir/
           Copy-Item server/WINDOWS.md $dir/
-          Copy-Item server/iran-preset.sh $dir/
-          Copy-Item server/bootstrap.sh $dir/
-          Copy-Item server/VPS-IRAN.md $dir/
           Copy-Item server/README.md $dir/
           Copy-Item server/package.json $dir/
           Copy-Item server/package-lock.json $dir/ -ErrorAction SilentlyContinue
@@ -84,8 +80,10 @@ jobs:
           Copy-Item server/Dockerfile $dir/
           Copy-Item server/docker-compose.yml $dir/
           Copy-Item -Recurse server/deploy $dir/
+          Copy-Item server/iran-preset.sh $dir/
+          Copy-Item server/bootstrap.sh $dir/
+          Copy-Item server/VPS-IRAN.md $dir/
           Remove-Item -Recurse -Force "$dir/node_modules" -ErrorAction SilentlyContinue
-          
           tar -czf "divan-server-$version-windows.tar.gz" $dir
           Remove-Item -Recurse -Force $dir
           Get-Item "divan-server-*-windows.tar.gz" | Format-List

@@ -3,7 +3,7 @@
 #  استفاده: PowerShell (Admin) → .\install.ps1
 # ═══════════════════════════════════════════════════════════
 
-# #Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 
 $ErrorActionPreference = 'Stop'
 
