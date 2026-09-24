@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
 import { installGlobalHandlers } from './lib/error-logger';
+import { bootstrapIndexedDB } from './lib/storage-idb';
 import './styles.css';
 
 /* ═══════════════════════════════════════════════════════
@@ -36,6 +37,8 @@ async function notifyLiveUpdateReady(): Promise<void> {
 notifyLiveUpdateReady();
 installGlobalHandlers();
 
+
+
 /* ═══════════════════════════════════════════════════════ */
 
 const router = createRouter({
@@ -50,26 +53,39 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const rootElement = document.getElementById('root')!;
-if (!rootElement.innerHTML) {
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <ThemeProvider>
-          <RouterProvider router={router} />
-          <Toaster
-            position="top-center"
-            dir="rtl"
-            richColors
-            closeButton
-            expand
-            visibleToasts={3}
-            toastOptions={{
-              style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' },
-            }}
-          />
-        </ThemeProvider>
-      </ErrorBoundary>
-    </React.StrictMode>
-  );
+function renderApp() {
+  const rootElement = document.getElementById('root')!;
+  if (!rootElement.innerHTML) {
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <RouterProvider router={router} />
+            <Toaster
+              position="top-center"
+              dir="rtl"
+              richColors
+              closeButton
+              expand
+              visibleToasts={3}
+              toastOptions={{
+                style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' },
+              }}
+            />
+          </ThemeProvider>
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+  }
 }
+
+// ═══ Bootstrap IndexedDB قبل از render ═══
+(async () => {
+  try {
+    await bootstrapIndexedDB();
+  } catch (err) {
+    console.warn('[main] IDB bootstrap failed, using localStorage', err);
+  }
+
+  renderApp();
+})();

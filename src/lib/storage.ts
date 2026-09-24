@@ -1,7 +1,19 @@
+import { idbLoadSync, idbSave, idbDelete, isIndexedDBAvailable } from './storage-idb';
+
 const PREFIX = 'divan_';
 
 export function loadData<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
+
+  // ۱. اول از cache IDB
+  if (isIndexedDBAvailable()) {
+    const cached = idbLoadSync<T>(key, fallback as any);
+    if (cached !== fallback && cached !== undefined) {
+      return cached as T;
+    }
+  }
+
+  // ۲. سپس localStorage
   try {
     const raw = localStorage.getItem(PREFIX + key);
     return raw ? JSON.parse(raw) : fallback;
@@ -12,9 +24,23 @@ export function loadData<T>(key: string, fallback: T): T {
 
 export function saveData<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
+
+  // ۱. ذخیره در IDB + cache
+  if (isIndexedDBAvailable()) {
+    idbSave(key, value);
+  }
+
+  // ۲. mirror در localStorage (با catch برای وقتی پر می‌شه)
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value));
-  } catch {}
+  } catch (err) {
+    // localStorage پر شده — IDB کافیه
+    if (isIndexedDBAvailable()) {
+      console.warn('[storage] localStorage full, using IDB only:', key);
+    } else {
+      console.error('[storage] both storage full', err);
+    }
+  }
 }
 
 export function useLocalState<T>(key: string, fallback: T) {
