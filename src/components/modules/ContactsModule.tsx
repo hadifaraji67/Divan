@@ -6,6 +6,8 @@ import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
 import { findDuplicateContact } from '../../lib/duplicate-detection';
 import { logActivity } from '../../lib/activity-log';
+import { useBulkSelect } from '../../lib/use-bulk-select';
+import { BulkActionsBar } from '../shared/BulkActionsBar';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
@@ -59,6 +61,8 @@ export const ContactsModule: React.FC = () => {
       c.mobile.includes(q) || c.nationalId.includes(q) || c.code.includes(q)
     );
   }, [contacts, search]);
+
+  const bulk = useBulkSelect(filtered, (x) => x.id);
 
   const balanceMap = useMemo(() => {
     const map: Record<string, { receivable: number; payable: number; net: number }> = {};
@@ -166,6 +170,19 @@ export const ContactsModule: React.FC = () => {
 
     setContacts(prev => prev.filter(c => c.id !== id));
   };
+  const handleBulkDelete = () => {
+    const count = bulk.count;
+    if (count === 0) return;
+    if (!confirm(`حذف ${count} شخص؟ این کار قابل بازگشت نیست.`)) return;
+    const ids = new Set(bulk.selected);
+    setContacts(prev => prev.filter(c => !ids.has(c.id)));
+    logActivity('delete', 'contact', {
+      summary: `حذف گروهی ${count} شخص`,
+      details: { count },
+    });
+    bulk.clear();
+  };
+
 
 
 
@@ -191,8 +208,18 @@ export const ContactsModule: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-3 bg-slate-50 border-b text-xs text-slate-600">
-          مجموع: {contacts.length} شخص — نمایش: {filtered.length}
+        <div className="p-3 bg-slate-50 border-b text-xs text-slate-600 flex items-center gap-3">
+          {filtered.length > 0 && (
+            <input
+              type="checkbox"
+              checked={bulk.allSelected}
+              ref={(el) => { if (el) el.indeterminate = bulk.someSelected; }}
+              onChange={bulk.toggleAll}
+              className="w-4 h-4 rounded cursor-pointer"
+              title="انتخاب همه"
+            />
+          )}
+          <span>مجموع: {contacts.length} شخص — نمایش: {filtered.length}</span>
         </div>
 
         {filtered.length === 0 ? (
@@ -202,8 +229,15 @@ export const ContactsModule: React.FC = () => {
         ) : (
           <div className="divide-y divide-slate-100">
             {filtered.map((c) => (
-              <div key={c.id} className="p-4 hover:bg-slate-50 flex flex-wrap gap-3 items-center justify-between">
+              <div key={c.id} className={`p-4 flex flex-wrap gap-3 items-center justify-between ${bulk.isSelected(c.id) ? 'bg-indigo-50/50 dark:bg-indigo-500/5' : 'hover:bg-slate-50'}`}>
                 <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+                  <input
+                    type="checkbox"
+                    checked={bulk.isSelected(c.id)}
+                    onChange={() => bulk.toggle(c.id)}
+                    className="w-4 h-4 rounded cursor-pointer shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                   <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                     {c.type === 'حقوقی' ? <Building2 className="w-5 h-5" /> : <User className="w-5 h-5" />}
                   </div>
@@ -407,6 +441,22 @@ export const ContactsModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        count={bulk.count}
+        total={filtered.length}
+        onClear={bulk.clear}
+        onSelectAll={bulk.toggleAll}
+        actions={[
+          {
+            label: 'حذف',
+            icon: Trash2,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+          },
+        ]}
+      />
+
     </div>
   );
 };

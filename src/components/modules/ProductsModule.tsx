@@ -6,6 +6,8 @@ import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
 import { findDuplicateProduct } from '../../lib/duplicate-detection';
 import { logActivity } from '../../lib/activity-log';
+import { useBulkSelect } from '../../lib/use-bulk-select';
+import { BulkActionsBar } from '../shared/BulkActionsBar';
 import { isValidAmount } from '../../lib/validation';
 import { PRODUCT_COLUMNS } from '../../lib/import';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -43,6 +45,8 @@ export const ProductsModule: React.FC = () => {
     const q = search.trim();
     return items.filter(p => p.name.includes(q) || p.sku.includes(q) || p.category.includes(q));
   }, [items, search]);
+
+  const bulk = useBulkSelect(filtered, (x) => x.id);
 
   const openNew = () => {
     const p = empty();
@@ -126,6 +130,19 @@ export const ProductsModule: React.FC = () => {
     });
     deleteWithUndo(product);
   };
+  const handleBulkDelete = () => {
+    const count = bulk.count;
+    if (count === 0) return;
+    if (!confirm(`حذف ${count} کالا؟`)) return;
+    const ids = new Set(bulk.selected);
+    setItems(prev => prev.filter(p => !ids.has(p.id)));
+    logActivity('delete', 'product', {
+      summary: `حذف گروهی ${count} کالا`,
+      details: { count },
+    });
+    bulk.clear();
+  };
+
 
 
   const lowStock = items.filter(p => p.stock <= p.minStock).length;
@@ -164,8 +181,18 @@ export const ProductsModule: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-3 bg-slate-50 border-b text-xs text-slate-600">
-          مجموع: {items.length} کالا — نمایش: {filtered.length}
+        <div className="p-3 bg-slate-50 border-b text-xs text-slate-600 flex items-center gap-3">
+          {filtered.length > 0 && (
+            <input
+              type="checkbox"
+              checked={bulk.allSelected}
+              ref={(el) => { if (el) el.indeterminate = bulk.someSelected; }}
+              onChange={bulk.toggleAll}
+              className="w-4 h-4 rounded cursor-pointer"
+              title="انتخاب همه"
+            />
+          )}
+          <span>مجموع: {items.length} کالا — نمایش: {filtered.length}</span>
         </div>
         {filtered.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm">
@@ -176,6 +203,7 @@ export const ProductsModule: React.FC = () => {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600 text-xs">
                 <tr>
+                  <th className="p-3 text-right w-10"></th>
                   <th className="p-3 text-right">کد</th>
                   <th className="p-3 text-right">نام</th>
                   <th className="p-3 text-right">دسته</th>
@@ -187,7 +215,15 @@ export const ProductsModule: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(p => (
-                  <tr key={p.id} className="hover:bg-slate-50">
+                  <tr key={p.id} className={`${bulk.isSelected(p.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50'}`}>
+                    <td className="p-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(p.id)}
+                        onChange={() => bulk.toggle(p.id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="p-3 font-mono text-xs">{p.sku}</td>
                     <td className="p-3"><div className="font-bold">{p.name}</div>{p.brand && <div className="text-[10px] opacity-60">{p.brand}</div>}{p.barcode && <div className="text-[10px] opacity-40 font-mono">{p.barcode}</div>}</td>
                     <td className="p-3 text-slate-500">{p.category || '—'}</td>
@@ -329,6 +365,22 @@ export const ProductsModule: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        count={bulk.count}
+        total={filtered.length}
+        onClear={bulk.clear}
+        onSelectAll={bulk.toggleAll}
+        actions={[
+          {
+            label: 'حذف',
+            icon: Trash2,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+          },
+        ]}
+      />
+
     </div>
   );
 };

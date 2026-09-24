@@ -4,6 +4,8 @@ import type { Cheque } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { logActivity } from '../../lib/activity-log';
+import { useBulkSelect } from '../../lib/use-bulk-select';
+import { BulkActionsBar } from '../shared/BulkActionsBar';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 const empty = (): Cheque => ({
@@ -71,6 +73,8 @@ export const ChequesModule: React.FC = () => {
     return r;
   }, [items, search, filter, showArchived]);
 
+  const bulk = useBulkSelect(filtered, (ch) => ch.id);
+
   const openNew = () => { const c = empty(); c.id = genId(); c.createdAt = new Date().toISOString(); setEditing(c); setShowForm(true); };
   const save = () => {
     if (!editing.contactName.trim()) { notify.warning('نام طرف حساب الزامی است'); return; }
@@ -131,6 +135,19 @@ export const ChequesModule: React.FC = () => {
       });
     }
   };
+  const handleBulkDelete = () => {
+    const count = bulk.count;
+    if (count === 0) return;
+    if (!confirm(`حذف ${count} چک؟`)) return;
+    const ids = new Set(bulk.selected);
+    setItems(prev => prev.filter(ch => !ids.has(ch.id)));
+    logActivity('delete', 'cheque', {
+      summary: `حذف گروهی ${count} چک`,
+      details: { count },
+    });
+    bulk.clear();
+  };
+
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -194,6 +211,16 @@ export const ChequesModule: React.FC = () => {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-600 text-xs">
                 <tr>
+                  <th className="p-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={bulk.allSelected}
+                      ref={(el) => { if (el) el.indeterminate = bulk.someSelected; }}
+                      onChange={bulk.toggleAll}
+                      className="w-4 h-4 rounded cursor-pointer"
+                      title="انتخاب همه"
+                    />
+                  </th>
                   <th className="p-3 text-right">طرف حساب</th>
                   <th className="p-3 text-right">بانک</th>
                   <th className="p-3 text-right">شماره</th>
@@ -209,7 +236,7 @@ export const ChequesModule: React.FC = () => {
                   if (showArchived) {
                     return (
                       <tr key={c.id}>
-                        <td colSpan={8} className="p-0">
+                        <td colSpan={9} className="p-0">
                           <VoidedItemCard
                             title={`چک ${c.chequeNumber} — ${c.bankName}`}
                             subtitle={`${c.contactName} — ${c.direction}`}
@@ -224,7 +251,15 @@ export const ChequesModule: React.FC = () => {
                     );
                   }
                   return (
-                  <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <tr key={c.id} className={`${bulk.isSelected(c.id) ? 'bg-indigo-50/50 dark:bg-indigo-500/5' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                    <td className="p-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(c.id)}
+                        onChange={() => bulk.toggle(c.id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="p-3 font-bold">{c.contactName}</td>
                     <td className="p-3 text-slate-600">{c.bankName}</td>
                     <td className="p-3 font-mono text-xs">{c.chequeNumber}</td>
@@ -311,6 +346,21 @@ export const ChequesModule: React.FC = () => {
           </div>
         </div>
       )}
+      <BulkActionsBar
+        count={bulk.count}
+        total={filtered.length}
+        onClear={bulk.clear}
+        onSelectAll={bulk.toggleAll}
+        actions={[
+          {
+            label: 'حذف',
+            icon: Trash2,
+            onClick: handleBulkDelete,
+            variant: 'danger',
+          },
+        ]}
+      />
+
     </div>
   );
 };
