@@ -198,9 +198,9 @@ export const App: React.FC = () => {
       case 'settings': return <SettingsHub />;
 
       // Coming Soon
-      case 'suppliers': return <ComingSoon title="تامین‌کنندگان" description="مدیریت کامل تامین‌کنندگان با تاریخچه خرید، ارزیابی و مانده حساب" icon={Users} />;
-      case 'purchase-invoices': return <ComingSoon title="فاکتور خرید" description="ثبت و مدیریت فاکتورهای خرید از تامین‌کنندگان" icon={FileText} />;
-      case 'supplier-payments': return <ComingSoon title="پرداخت به تامین‌کننده" description="مدیریت پرداخت‌ها و تسویه حساب با تامین‌کنندگان" icon={Wallet} />;
+      case 'suppliers': return <ContactsModule filterRole="تامین‌کننده" />;
+      case 'purchase-invoices': return <InvoicesModule filterType="خرید" />;
+      case 'supplier-payments': return <PaymentsModule filterDirection="پرداخت" />;
       case 'stock-movements': return <ComingSoon title="نقل و انتقال انبار" description="ثبت جابجایی کالا بین انبارها و شعب" icon={Package} />;
       case 'stock-take': return <ComingSoon title="انبارگردانی" description="شمارش موجودی و تطبیق با سیستم" icon={Package} />;
       case 'employees': return <ComingSoon title="پرسنل" description="مدیریت اطلاعات کارکنان و قراردادها" icon={Users} />;

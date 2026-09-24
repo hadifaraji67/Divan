@@ -15,7 +15,8 @@ const empty = (): Payment => ({
   bankName: '', chequeNumber: '', chequeDueDate: '', direction: 'دریافت', notes: '', createdAt: '',
 });
 
-export const PaymentsModule: React.FC = () => {
+type Props = { filterDirection?: 'دریافت' | 'پرداخت' };
+export const PaymentsModule: React.FC<Props> = ({ filterDirection }) => {
   const [items, setItems] = useState<Payment[]>([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -42,10 +43,11 @@ export const PaymentsModule: React.FC = () => {
 
   const filtered = useMemo(() => {
     let list = showArchived ? items.filter(i => i.void) : items.filter(i => !i.void);
+    if (filterDirection) list = list.filter(p => p.direction === filterDirection);
     if (!search.trim()) return list;
     const q = search.trim();
     return list.filter(p => p.contactName.includes(q) || p.refCode?.includes(q) || p.type.includes(q));
-  }, [items, search, showArchived]);
+  }, [items, search, showArchived, filterDirection]);
 
   const activeItems = items.filter(p => !p.void);
   const totalIn = activeItems.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);

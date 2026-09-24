@@ -61,9 +61,9 @@ const menuGroups: MenuGroup[] = [
     title: 'خرید',
     icon: ShoppingBag,
     items: [
-      { key: 'suppliers', title: 'تامین‌کنندگان', icon: Truck, soon: true },
-      { key: 'purchase-invoices', title: 'فاکتور خرید', icon: Receipt, soon: true },
-      { key: 'supplier-payments', title: 'پرداخت به تامین‌کننده', icon: Banknote, soon: true },
+      { key: 'suppliers', title: 'تامین‌کنندگان', icon: Truck },
+      { key: 'purchase-invoices', title: 'فاکتور خرید', icon: Receipt },
+      { key: 'supplier-payments', title: 'پرداخت به تامین‌کننده', icon: Banknote },
     ],
   },
   {

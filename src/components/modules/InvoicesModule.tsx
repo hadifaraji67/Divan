@@ -42,12 +42,13 @@ const PREFIXES: Record<InvoiceType, string> = {
   'برگشت از فروش': 'RET-',
 };
 
-export const InvoicesModule: React.FC = () => {
+type Props = { filterType?: InvoiceType };
+export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<InvoiceType | 'all'>('all');
+  const [typeFilter, setTypeFilter] = useState<InvoiceType | 'all'>(filterType ?? 'all');
   const [showForm, setShowForm] = useState(false);
   const [showQRScan, setShowQRScan] = useState(false);
   const [editing, setEditing] = useState<Invoice>(empty());

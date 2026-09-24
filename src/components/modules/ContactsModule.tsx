@@ -26,7 +26,8 @@ const emptyContact = (): Contact => ({
   roles: ['مشتری'], creditLimit: 0, notes: '', createdAt: '',
 });
 
-export const ContactsModule: React.FC = () => {
+type Props = { filterRole?: "مشتری" | "تامین‌کننده" };
+export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -54,13 +55,15 @@ export const ContactsModule: React.FC = () => {
   }, [contacts]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return contacts;
+    let list = contacts;
+    if (filterRole) list = list.filter(c => c.roles.includes(filterRole));
+    if (!search.trim()) return list;
     const q = search.trim();
-    return contacts.filter(c =>
+    return list.filter(c =>
       c.name.includes(q) || c.lastName?.includes(q) || c.companyName?.includes(q) ||
       c.mobile.includes(q) || c.nationalId.includes(q) || c.code.includes(q)
     );
-  }, [contacts, search]);
+  }, [contacts, search, filterRole]);
 
   const bulk = useBulkSelect(filtered, (x) => x.id);
 
