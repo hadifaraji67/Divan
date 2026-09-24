@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { AppErrorComponent } from './lib/error-component';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { ThemeProvider } from './lib/theme-context';
 import { Toaster } from 'sonner';
 import { installGlobalHandlers } from './lib/error-logger';
@@ -53,20 +54,22 @@ const rootElement = document.getElementById('root')!;
 if (!rootElement.innerHTML) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-        <Toaster
-          position="top-center"
-          dir="rtl"
-          richColors
-          closeButton
-          expand
-          visibleToasts={3}
-          toastOptions={{
-            style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' },
-          }}
-        />
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <RouterProvider router={router} />
+          <Toaster
+            position="top-center"
+            dir="rtl"
+            richColors
+            closeButton
+            expand
+            visibleToasts={3}
+            toastOptions={{
+              style: { fontFamily: 'Vazirmatn, sans-serif', borderRadius: '12px' },
+            }}
+          />
+        </ThemeProvider>
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

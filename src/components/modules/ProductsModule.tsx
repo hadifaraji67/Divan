@@ -4,6 +4,7 @@ import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
+import { findDuplicateProduct } from '../../lib/duplicate-detection';
 import { isValidAmount } from '../../lib/validation';
 import { PRODUCT_COLUMNS } from '../../lib/import';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -76,10 +77,20 @@ export const ProductsModule: React.FC = () => {
       notify.warning('درصد مالیات باید بین ۰ تا ۱۰۰ باشد');
       return;
     }
+    // ─── Duplicate Detection ───
+    const duplicate = findDuplicateProduct(editing, items);
+    if (duplicate) {
+      const proceed = confirm(
+        `کالای مشابه پیدا شد:\n\n${duplicate.name}\nکد: ${duplicate.sku || '—'}\nبارکد: ${duplicate.barcode || '—'}\n\nآیا باز هم ذخیره شود؟`
+      );
+      if (!proceed) return;
+    }
+
     setItems(prev => prev.find(p => p.id === editing.id)
       ? prev.map(p => p.id === editing.id ? editing : p)
       : [...prev, editing]);
     setShowForm(false);
+    productDraft.clearDraft();
   };
   const deleteWithUndo = useUndoableDelete<Product>({
     onDelete: (p) => {

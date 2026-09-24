@@ -4,6 +4,7 @@ import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
+import { findDuplicateContact } from '../../lib/duplicate-detection';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
@@ -118,6 +119,18 @@ export const ContactsModule: React.FC = () => {
       phone: phoneCheck.normalized || editing.phone,
       email: emailCheck.normalized || editing.email,
     };
+
+    // ─── Duplicate Detection ───
+    const duplicate = findDuplicateContact(normalized, contacts);
+    if (duplicate) {
+      const dupName = duplicate.type === 'حقوقی'
+        ? (duplicate.companyName || duplicate.name)
+        : [duplicate.name, duplicate.lastName].filter(Boolean).join(' ');
+      const proceed = confirm(
+        `شخص مشابه پیدا شد:\n\n${dupName}\nموبایل: ${duplicate.mobile || '—'}\n\nآیا باز هم ذخیره شود؟`
+      );
+      if (!proceed) return;
+    }
 
     setContacts(prev => {
       const exists = prev.find(c => c.id === normalized.id);
