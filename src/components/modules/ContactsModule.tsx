@@ -5,6 +5,7 @@ import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
 import { findDuplicateContact } from '../../lib/duplicate-detection';
+import { logActivity } from '../../lib/activity-log';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
@@ -138,12 +139,31 @@ export const ContactsModule: React.FC = () => {
         ? prev.map(c => c.id === normalized.id ? normalized : c)
         : [...prev, normalized];
     });
+
+    // Activity Log
+    const isEdit = contacts.some(c => c.id === normalized.id);
+    logActivity(
+      isEdit ? 'update' : 'create',
+      'contact',
+      {
+        entityId: normalized.id,
+        entityLabel: [normalized.name, normalized.lastName].filter(Boolean).join(' ') || normalized.companyName,
+        summary: isEdit ? `ویرایش شخص «${normalized.name}»` : `ایجاد شخص «${normalized.name}»`,
+      },
+    );
     setShowForm(false)
     contactDraft.clearDraft();
   };
 
   const handleDelete = (id: string) => {
     if (!confirm('آیا از حذف این شخص مطمئن هستید؟')) return;
+    const target = contacts.find(c => c.id === id);
+    logActivity('delete', 'contact', {
+      entityId: id,
+      entityLabel: target ? [target.name, target.lastName].filter(Boolean).join(' ') : '—',
+      summary: target ? `حذف شخص «${target.name}»` : 'حذف شخص',
+    });
+
     setContacts(prev => prev.filter(c => c.id !== id));
   };
 

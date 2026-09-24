@@ -5,6 +5,7 @@ import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { useFormDraft } from '../../lib/use-form-draft';
 import { findDuplicateProduct } from '../../lib/duplicate-detection';
+import { logActivity } from '../../lib/activity-log';
 import { isValidAmount } from '../../lib/validation';
 import { PRODUCT_COLUMNS } from '../../lib/import';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -86,10 +87,22 @@ export const ProductsModule: React.FC = () => {
       if (!proceed) return;
     }
 
+    const isEdit = items.some(p => p.id === editing.id);
     setItems(prev => prev.find(p => p.id === editing.id)
       ? prev.map(p => p.id === editing.id ? editing : p)
       : [...prev, editing]);
     setShowForm(false);
+
+    // Activity Log
+    logActivity(
+      isEdit ? 'update' : 'create',
+      'product',
+      {
+        entityId: editing.id,
+        entityLabel: editing.name,
+        summary: isEdit ? `ویرایش کالا «${editing.name}»` : `ایجاد کالا «${editing.name}»`,
+      },
+    );
     productDraft.clearDraft();
   };
   const deleteWithUndo = useUndoableDelete<Product>({
@@ -106,6 +119,11 @@ export const ProductsModule: React.FC = () => {
     const product = items.find(p => p.id === id);
     if (!product) return;
     if (!confirm('حذف این کالا؟')) return;
+    logActivity('delete', 'product', {
+      entityId: product.id,
+      entityLabel: product.name,
+      summary: `حذف کالا «${product.name}»`,
+    });
     deleteWithUndo(product);
   };
 

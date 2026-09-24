@@ -16,6 +16,7 @@ import { createInvoiceJournalEntry } from '../../lib/accounting';
 import type { JournalEntry } from '../../types/accounting';
 import { calculateLineTotal } from '../../lib/format';
 import { useFormDraft } from '../../lib/use-form-draft';
+import { logActivity } from '../../lib/activity-log';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -127,6 +128,12 @@ export const InvoicesModule: React.FC = () => {
         ? { ...i, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
         : i
     ));
+    logActivity('void', 'invoice', {
+      entityId: voidTarget.id,
+      entityLabel: voidTarget.number,
+      summary: `باطل کردن فاکتور ${voidTarget.number}`,
+      details: { reason },
+    });
     notify.success('فاکتور باطل شد');
     setVoidTarget(null);
   };
@@ -136,6 +143,12 @@ export const InvoicesModule: React.FC = () => {
     setInvoices(prev => prev.map(i =>
       i.id === id ? { ...i, void: false, voidedAt: undefined, voidedReason: undefined } : i
     ));
+    const target = invoices.find(i => i.id === id);
+    logActivity('restore', 'invoice', {
+      entityId: id,
+      entityLabel: target?.number,
+      summary: target ? `بازگردانی فاکتور ${target.number}` : 'بازگردانی فاکتور',
+    });
     notify.success('فاکتور بازگردانی شد');
   };
 
@@ -146,6 +159,20 @@ export const InvoicesModule: React.FC = () => {
     const inv = { ...editing, contactName: c ? (c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`) : '' };
     const isNew = !invoices.find(i => i.id === inv.id);
     setInvoices(prev => isNew ? [...prev, inv] : prev.map(i => i.id === inv.id ? inv : i));
+
+    // Activity Log
+    logActivity(
+      isNew ? 'create' : 'update',
+      'invoice',
+      {
+        entityId: inv.id,
+        entityLabel: inv.number,
+        summary: isNew
+          ? `ایجاد ${inv.type} ${inv.number} برای ${inv.contactName}`
+          : `ویرایش ${inv.type} ${inv.number}`,
+        amount: inv.items.reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice || 0), 0),
+      },
+    );
 
     if (isNew) {
       // اضافه کردن پرداخت اگر لازم است

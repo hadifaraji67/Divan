@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, X, CheckSquare, Calendar } from 'lucide-react';
 import type { Cheque } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
+import { logActivity } from '../../lib/activity-log';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
 
 const empty = (): Cheque => ({
@@ -74,10 +75,24 @@ export const ChequesModule: React.FC = () => {
   const save = () => {
     if (!editing.contactName.trim()) { notify.warning('نام طرف حساب الزامی است'); return; }
     if (editing.amount <= 0) { notify.warning('مبلغ الزامی است'); return; }
+    const isEdit = items.some(ch => ch.id === editing.id);
     setItems(prev => prev.find(c => c.id === editing.id)
       ? prev.map(c => c.id === editing.id ? editing : c)
       : [...prev, editing]);
     setShowForm(false);
+
+    logActivity(
+      isEdit ? 'update' : 'create',
+      'cheque',
+      {
+        entityId: editing.id,
+        entityLabel: editing.chequeNumber || editing.contactName,
+        summary: isEdit
+          ? `ویرایش چک ${editing.chequeNumber} — ${editing.contactName}`
+          : `ایجاد چک ${editing.chequeNumber} — ${editing.contactName}`,
+        amount: editing.amount,
+      },
+    );
   };
   const handleVoid = (reason: string) => {
     if (!voidTarget) return;
@@ -86,6 +101,13 @@ export const ChequesModule: React.FC = () => {
         ? { ...c, void: true, voidedAt: new Date().toISOString(), voidedReason: reason }
         : c
     ));
+    logActivity('void', 'cheque', {
+      entityId: voidTarget.id,
+      entityLabel: voidTarget.chequeNumber,
+      summary: `باطل کردن چک ${voidTarget.chequeNumber}`,
+      amount: voidTarget.amount,
+      details: { reason },
+    });
     notify.success('چک باطل شد');
     setVoidTarget(null);
   };
@@ -98,7 +120,16 @@ export const ChequesModule: React.FC = () => {
     notify.success('چک بازگردانی شد');
   };
   const changeStatus = (id: string, status: Cheque['status']) => {
+    const target = items.find(c => c.id === id);
     setItems(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    if (target) {
+      logActivity('status_change', 'cheque', {
+        entityId: id,
+        entityLabel: target.chequeNumber,
+        summary: `تغییر وضعیت چک ${target.chequeNumber} به «${status}»`,
+        amount: target.amount,
+      });
+    }
   };
 
   return (
