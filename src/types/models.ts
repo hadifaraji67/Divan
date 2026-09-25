@@ -68,6 +68,20 @@ export interface InvoiceLine {
   taxPercent: number;
 }
 
+export interface Attachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  /** فقط در اپ نیتیو (Capacitor) پر می‌شود — مسیر فایل واقعی روی دیسک */
+  path?: string;
+  /** فقط در اپ نیتیو — کدام Directory استفاده شده (DATA/EXTERNAL/DOCUMENTS) */
+  directory?: string;
+  /** فقط در وب/PWA پر می‌شود — چون فایل‌سیستم واقعی در دسترس نیست، خود فایل به‌صورت data URL نگه‌داری می‌شود */
+  data?: string;
+}
+
 export type InvoiceType =
   | 'فروش'
   | 'پیش‌فاکتور فروش'
@@ -113,6 +127,7 @@ export interface Invoice {
   salesPerson?: string;
   paymentTerms?: string;
   notes?: string;
+  attachments?: Attachment[];
   createdAt: string;
   void?: boolean;
   voidedAt?: string;

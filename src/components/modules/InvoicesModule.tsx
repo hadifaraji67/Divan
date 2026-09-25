@@ -19,11 +19,13 @@ import { useFormDraft } from '../../lib/use-form-draft';
 import { logActivity } from '../../lib/activity-log';
 import { useBulkSelect } from '../../lib/use-bulk-select';
 import { BulkActionsBar } from '../shared/BulkActionsBar';
+import { AttachmentManager } from '../shared/AttachmentManager';
+import type { Attachment } from '../../types/models';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
   contactId: '', contactName: '', items: [], discountPercent: 0, taxPercent: 9,
-  shippingCost: 0, notes: '', createdAt: '',
+  shippingCost: 0, notes: '', attachments: [], createdAt: '',
 });
 
 const TYPE_COLORS: Record<string, string> = {
@@ -665,6 +667,12 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
                   )}
                 </div>
               )}
+
+              <AttachmentManager
+                scopeId={editing.id || 'draft'}
+                attachments={editing.attachments || []}
+                onChange={(attachments) => setEditing(prev => ({ ...prev, attachments }))}
+              />
             </div>
 
             <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-3 justify-end">
