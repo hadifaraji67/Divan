@@ -71,6 +71,7 @@ export function invoiceTitle(invoice: Invoice): string {
     case 'فروش': return 'فاکتور فروش';
     case 'خرید': return 'فاکتور خرید';
     case 'برگشت از فروش': return 'برگشت از فروش';
+    case 'مرجوعی به تامین‌کننده': return 'مرجوعی به تامین‌کننده';
     case 'پیش‌فاکتور فروش': return 'پیش‌فاکتور فروش';
     case 'پیش‌فاکتور خرید': return 'پیش‌فاکتور خرید';
     default: return 'فاکتور';

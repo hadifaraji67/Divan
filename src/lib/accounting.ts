@@ -132,6 +132,35 @@ export function createInvoiceJournalEntry(
       debit: 0,
       credit: total,
     });
+  } else if (invoice.type === 'مرجوعی به تامین‌کننده') {
+    entryDescription = `مرجوعی به تامین‌کننده ${invoice.number} - ${invoice.contactName}`;
+    // معکوس خرید
+    // بدهکار: حساب‌های پرداختنی (کاهش بدهی ما)
+    lines.push({
+      id: '1',
+      accountId: '201',
+      description: `کاهش بدهی به ${invoice.contactName}`,
+      debit: total,
+      credit: 0,
+    });
+    // بستانکار: موجودی کالا (کاهش)
+    lines.push({
+      id: '2',
+      accountId: '103',
+      description: 'کاهش موجودی کالا',
+      debit: 0,
+      credit: netAmount,
+    });
+    // بستانکار: مالیات (اگر > 0)
+    if (taxAmount > 0) {
+      lines.push({
+        id: '3',
+        accountId: '601',
+        description: 'کاهش مالیات خرید',
+        debit: 0,
+        credit: taxAmount,
+      });
+    }
   } else {
     // پیش‌فاکتورها سند نمی‌سازند
     return {
@@ -157,6 +186,7 @@ export function createInvoiceJournalEntry(
     createdAt: new Date().toISOString(),
   } as JournalEntry;
 }
+
 
 /**
  * ساخت سند از پرداخت

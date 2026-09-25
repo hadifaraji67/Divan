@@ -32,6 +32,7 @@ const TYPE_COLORS: Record<string, string> = {
   'خرید': 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   'پیش‌فاکتور خرید': 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   'برگشت از فروش': 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  'مرجوعی به تامین‌کننده': 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
 };
 
 const PREFIXES: Record<InvoiceType, string> = {
@@ -40,6 +41,7 @@ const PREFIXES: Record<InvoiceType, string> = {
   'خرید': 'PUR-',
   'پیش‌فاکتور خرید': 'PPF-',
   'برگشت از فروش': 'RET-',
+  'مرجوعی به تامین‌کننده': 'RTN-',
 };
 
 type Props = { filterType?: InvoiceType };

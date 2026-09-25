@@ -73,7 +73,8 @@ export type InvoiceType =
   | 'پیش‌فاکتور فروش'
   | 'خرید'
   | 'پیش‌فاکتور خرید'
-  | 'برگشت از فروش';
+  | 'برگشت از فروش'
+  | 'مرجوعی به تامین‌کننده';
 
 export const INVOICE_TYPES: { value: InvoiceType; label: string; role: 'مشتری' | 'تامین‌کننده'; effect: 'decrease' | 'increase' | 'none' }[] = [
   { value: 'فروش', label: 'فاکتور فروش', role: 'مشتری', effect: 'decrease' },
@@ -81,6 +82,7 @@ export const INVOICE_TYPES: { value: InvoiceType; label: string; role: 'مشتر
   { value: 'خرید', label: 'فاکتور خرید', role: 'تامین‌کننده', effect: 'increase' },
   { value: 'پیش‌فاکتور خرید', label: 'پیش‌فاکتور خرید', role: 'تامین‌کننده', effect: 'none' },
   { value: 'برگشت از فروش', label: 'برگشت از فروش', role: 'مشتری', effect: 'increase' },
+  { value: 'مرجوعی به تامین‌کننده', label: 'مرجوعی به تامین‌کننده', role: 'تامین‌کننده', effect: 'decrease' },
 ];
 
 export function invoiceTypeLabel(type: InvoiceType): string {
