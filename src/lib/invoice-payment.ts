@@ -113,6 +113,14 @@ export function computeContactBalance(
       0,
     );
 
+  // مرجوعی به تأمین‌کننده → کاهش بدهی
+  const supplierReturnsTotal = myInvoices
+    .filter((i) => i.type === 'مرجوعی به تامین‌کننده')
+    .reduce(
+      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      0,
+    );
+
   const myPayments = payments.filter((p) => p.contactId === contactId && !p.void);
 
   // دریافت‌ها → کاهش طلب
@@ -126,7 +134,7 @@ export function computeContactBalance(
     .reduce((s, p) => s + p.amount, 0);
 
   const receivable = Math.max(0, salesTotal - returnsTotal - received);
-  const payable = Math.max(0, purchasesTotal - paid);
+  const payable = Math.max(0, purchasesTotal - supplierReturnsTotal - paid);
 
   return { receivable, payable, net: receivable - payable };
 }
@@ -167,9 +175,16 @@ export function computeTotalPayable(invoices: Invoice[], payments: Payment[]): n
       0,
     );
 
+  const supplierReturnsTotal = invoices
+    .filter((i) => i.type === 'مرجوعی به تامین‌کننده' && !i.void)
+    .reduce(
+      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      0,
+    );
+
   const paid = payments
     .filter((p) => p.direction === 'پرداخت' && !p.void)
     .reduce((s, p) => s + p.amount, 0);
 
-  return Math.max(0, purchasesTotal - paid);
+  return Math.max(0, purchasesTotal - supplierReturnsTotal - paid);
 }

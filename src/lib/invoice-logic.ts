@@ -1,6 +1,6 @@
-import type { Invoice, Payment, Product, Contact, Cheque } from '../types/models';
-import { invoiceTotal, invoiceTypeEffect } from '../types/models';
-import { loadData, loadActiveData, saveData, genId } from './storage';
+import type { Invoice, Payment, Product, Cheque } from '../types/models';
+import { invoiceTypeEffect } from '../types/models';
+import { loadData, saveData, genId } from './storage';
 
 /**
  * وقتی فاکتور ذخیره می‌شود:
@@ -101,53 +101,9 @@ export function paymentFromInvoice(invoice: Invoice, amount: number, type: 'نق
   };
 }
 
-/**
- * مانده حساب مشتری
- */
-export function customerBalance(contactId: string): { total: number; paid: number; balance: number } {
-  const invoices = loadActiveData<Invoice>('invoices', []).filter(i => i.contactId === contactId);
-  const payments = loadActiveData<Payment>('payments', []).filter(p => p.contactId === contactId);
-
-  // فاکتورهای فروش → طلب ما از مشتری
-  const salesTotal = invoices
-    .filter(i => i.type === 'فروش')
-    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-
-  // برگشت از فروش → کاهش طلب
-  const returnsTotal = invoices
-    .filter(i => i.type === 'برگشت از فروش')
-    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-
-  // پرداخت‌های دریافتی از مشتری
-  const received = payments
-    .filter(p => p.direction === 'دریافت')
-    .reduce((s, p) => s + p.amount, 0);
-
-  const total = salesTotal - returnsTotal;
-  return { total, paid: received, balance: total - received };
-}
-
-/**
- * مانده حساب تامین‌کننده
- */
-export function supplierBalance(contactId: string): { total: number; paid: number; balance: number } {
-  const invoices = loadActiveData<Invoice>('invoices', []).filter(i => i.contactId === contactId);
-  const payments = loadActiveData<Payment>('payments', []).filter(p => p.contactId === contactId);
-
-  // فاکتور خرید → بدهی ما به تامین‌کننده
-  const purchaseTotal = invoices
-    .filter(i => i.type === 'خرید')
-    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-
-  // مرجوعی به تامین‌کننده → کاهش بدهی ما
-  const returnsTotal = invoices
-    .filter(i => i.type === 'مرجوعی به تامین‌کننده')
-    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-
-  const paid = payments
-    .filter(p => p.direction === 'پرداخت')
-    .reduce((s, p) => s + p.amount, 0);
-
-  const total = purchaseTotal - returnsTotal;
-  return { total, paid, balance: total - paid };
-}
+// نکته: محاسبه مانده‌حساب مشتری/تامین‌کننده در واقعیت اینجا نیست —
+// نسخه‌ی زنده و استفاده‌شده در Dashboard/ContactsModule تابع
+// computeContactBalance در src/lib/invoice-payment.ts است.
+// دو تابع customerBalance/supplierBalance که قبلاً اینجا بودند
+// در هیچ‌جای پروژه import نمی‌شدند (کد مرده) و حذف شدند تا
+// دو نسخه‌ی موازی از یک منطق مالی وجود نداشته باشد.
