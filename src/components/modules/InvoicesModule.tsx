@@ -109,10 +109,17 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
     };
   }, [invoices]);
 
-  // مشتریان مناسب بر اساس نوع
+  // کالاها برای انتخاب در ردیف فاکتور (محبوب‌ها اول)
+  const favoriteSortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+  }, [products]);
+
+  // مشتریان مناسب بر اساس نوع (محبوب‌ها اول)
   const eligibleContacts = useMemo(() => {
     const role = invoiceTypeRole(editing.type);
-    return contacts.filter(c => c.roles.includes(role as any));
+    return contacts
+      .filter(c => c.roles.includes(role as any))
+      .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
   }, [contacts, editing.type]);
 
   const openNew = (type?: InvoiceType) => {
@@ -494,7 +501,7 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
                   <option value="">— انتخاب —</option>
                   {eligibleContacts.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`} — {c.mobile}
+                      {c.favorite ? '⭐ ' : ''}{c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`} — {c.mobile}
                     </option>
                   ))}
                 </select>
@@ -512,7 +519,7 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-3 flex flex-wrap gap-2 items-center">
                   <select id="prodSel" className="flex-1 min-w-[180px] p-2 border rounded-lg text-sm bg-white dark:bg-slate-900">
                     <option value="">— انتخاب کالا —</option>
-                    {products.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sellPrice.toLocaleString()} (موجودی: {p.stock})</option>)}
+                    {favoriteSortedProducts.map(p => <option key={p.id} value={p.id}>{p.favorite ? '⭐ ' : ''}{p.name} — {p.sellPrice.toLocaleString()} (موجودی: {p.stock})</option>)}
                   </select>
                   <input id="qtySel" type="number" defaultValue={1} min={1} className="w-20 p-2 border rounded-lg text-sm bg-white dark:bg-slate-900" />
                   <button onClick={() => {

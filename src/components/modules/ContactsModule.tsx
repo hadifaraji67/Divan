@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Building2, Edit, MapPin, Phone, Plus, Search, Trash2, User, Users, X } from 'lucide-react';
+import { Building2, Edit, MapPin, Phone, Plus, Search, Star, Trash2, User, Users, X } from 'lucide-react';
 import type { Contact } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
@@ -23,7 +23,7 @@ const emptyContact = (): Contact => ({
   nationalId: '', mobile: '', phone: '', email: '', address: '',
   province: '', county: '', city: '', postalCode: '',
   economicCode: '', website: '', birthDate: '',
-  roles: ['مشتری'], creditLimit: 0, notes: '', createdAt: '',
+  roles: ['مشتری'], favorite: false, creditLimit: 0, notes: '', createdAt: '',
 });
 
 type Props = { filterRole?: "مشتری" | "تامین‌کننده" };
@@ -32,9 +32,14 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const [editing, setEditing] = useState<Contact>(emptyContact());
+
+  const toggleFavorite = (id: string) => {
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, favorite: !c.favorite } : c));
+  };
 
   // Auto-save draft
   const contactDraft = useFormDraft<Contact>(
@@ -57,13 +62,17 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
   const filtered = useMemo(() => {
     let list = contacts;
     if (filterRole) list = list.filter(c => c.roles.includes(filterRole));
-    if (!search.trim()) return list;
-    const q = search.trim();
-    return list.filter(c =>
-      c.name.includes(q) || c.lastName?.includes(q) || c.companyName?.includes(q) ||
-      c.mobile.includes(q) || c.nationalId.includes(q) || c.code.includes(q)
-    );
-  }, [contacts, search, filterRole]);
+    if (favoritesOnly) list = list.filter(c => c.favorite);
+    if (search.trim()) {
+      const q = search.trim();
+      list = list.filter(c =>
+        c.name.includes(q) || c.lastName?.includes(q) || c.companyName?.includes(q) ||
+        c.mobile.includes(q) || c.nationalId.includes(q) || c.code.includes(q)
+      );
+    }
+    // محبوب‌ها اول
+    return [...list].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+  }, [contacts, search, filterRole, favoritesOnly]);
 
   const bulk = useBulkSelect(filtered, (x) => x.id);
 
@@ -201,7 +210,20 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
-        
+
+        <button
+          onClick={() => setFavoritesOnly(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold rounded-lg border ${
+            favoritesOnly
+              ? 'bg-amber-50 border-amber-300 text-amber-700'
+              : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+          title="فقط محبوب‌ها"
+        >
+          <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} />
+          <span className="hidden md:inline">محبوب‌ها</span>
+        </button>
+
           <button
           onClick={openNew}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg"
@@ -278,6 +300,13 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
                   );
                 })()}
                 <div className="flex gap-1">
+                  <button
+                    onClick={() => toggleFavorite(c.id)}
+                    className="p-2 rounded-lg hover:bg-amber-50"
+                    title={c.favorite ? 'حذف از محبوب‌ها' : 'افزودن به محبوب‌ها'}
+                  >
+                    <Star className={`w-4 h-4 ${c.favorite ? 'fill-amber-500 text-amber-500' : 'text-slate-300'}`} />
+                  </button>
                   <button onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600" title="ویرایش">
                     <Edit className="w-4 h-4" />
                   </button>

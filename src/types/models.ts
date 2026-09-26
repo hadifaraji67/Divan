@@ -25,6 +25,7 @@ export interface Contact {
   city?: string;
   postalCode?: string;
   roles: ('مشتری' | 'تامین‌کننده' | 'همکار' | 'پرسنل')[];
+  favorite?: boolean;
   creditLimit: number;
   economicCode?: string;
   website?: string;
@@ -53,6 +54,7 @@ export interface Product {
   warehouseName?: string;
   location?: string;
   isActive: boolean;
+  favorite?: boolean;
   createdAt: string;
 }
 

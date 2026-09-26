@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertTriangle, Camera, Edit, Package, PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Camera, Edit, Package, PackagePlus, Plus, Search, Star, Trash2, X } from 'lucide-react';
 import type { Product } from '../../types/models';
 import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
@@ -18,15 +18,20 @@ const empty = (): Product => ({
   id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
   brand: '', unit: 'عدد', stock: 0, minStock: 0, buyPrice: 0, wholesalePrice: 0,
   sellPrice: 0, taxPercent: 9, taxId: '', warehouseName: '', location: '',
-  isActive: true, createdAt: '',
+  isActive: true, favorite: false, createdAt: '',
 });
 
 export const ProductsModule: React.FC = () => {
   const [items, setItems] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const [editing, setEditing] = useState<Product>(empty());
+
+  const toggleFavorite = (id: string) => {
+    setItems(prev => prev.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p));
+  };
 
   // Auto-save draft
   const productDraft = useFormDraft<Product>(
@@ -41,10 +46,15 @@ export const ProductsModule: React.FC = () => {
   useEffect(() => { saveData('products', items); }, [items]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return items;
-    const q = search.trim();
-    return items.filter(p => p.name.includes(q) || p.sku.includes(q) || p.category.includes(q));
-  }, [items, search]);
+    let list = items;
+    if (favoritesOnly) list = list.filter(p => p.favorite);
+    if (search.trim()) {
+      const q = search.trim();
+      list = list.filter(p => p.name.includes(q) || p.sku.includes(q) || p.category.includes(q));
+    }
+    // محبوب‌ها اول
+    return [...list].sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+  }, [items, search, favoritesOnly]);
 
   const bulk = useBulkSelect(filtered, (x) => x.id);
 
@@ -173,8 +183,20 @@ export const ProductsModule: React.FC = () => {
             placeholder="جستجو: نام، کد، دسته..."
             className="w-full pr-10 pl-3 py-2.5 border border-slate-300 rounded-lg text-sm" />
         </div>
-        
-          
+
+        <button
+          onClick={() => setFavoritesOnly(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold rounded-lg border ${
+            favoritesOnly
+              ? 'bg-amber-50 border-amber-300 text-amber-700'
+              : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+          title="فقط محبوب‌ها"
+        >
+          <Star className={`w-4 h-4 ${favoritesOnly ? 'fill-amber-500 text-amber-500' : ''}`} />
+          <span className="hidden md:inline">محبوب‌ها</span>
+        </button>
+
           <RBACGate permission="product.create">{<button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg">
           <Plus className="w-4 h-4" /> کالای جدید
         </button>}</RBACGate>
@@ -204,6 +226,7 @@ export const ProductsModule: React.FC = () => {
               <thead className="bg-slate-50 text-slate-600 text-xs">
                 <tr>
                   <th className="p-3 text-right w-10"></th>
+                  <th className="p-3 text-right w-10"></th>
                   <th className="p-3 text-right">کد</th>
                   <th className="p-3 text-right">نام</th>
                   <th className="p-3 text-right">دسته</th>
@@ -223,6 +246,15 @@ export const ProductsModule: React.FC = () => {
                         onChange={() => bulk.toggle(p.id)}
                         className="w-4 h-4 rounded cursor-pointer"
                       />
+                    </td>
+                    <td className="p-3 w-10">
+                      <button
+                        onClick={() => toggleFavorite(p.id)}
+                        className="p-1 rounded hover:bg-amber-50"
+                        title={p.favorite ? 'حذف از محبوب‌ها' : 'افزودن به محبوب‌ها'}
+                      >
+                        <Star className={`w-4 h-4 ${p.favorite ? 'fill-amber-500 text-amber-500' : 'text-slate-300'}`} />
+                      </button>
                     </td>
                     <td className="p-3 font-mono text-xs">{p.sku}</td>
                     <td className="p-3"><div className="font-bold">{p.name}</div>{p.brand && <div className="text-[10px] opacity-60">{p.brand}</div>}{p.barcode && <div className="text-[10px] opacity-40 font-mono">{p.barcode}</div>}</td>
