@@ -1,6 +1,7 @@
 import type { Account, JournalEntry, JournalLine } from '../types/accounting';
 import type { Invoice, Payment } from '../types/models';
 import { invoiceTotal, roundRial } from '../types/models';
+import { logError } from './error-logger';
 
 /**
  * حساب‌های پیش‌فرض (استاندارد ایران)
@@ -175,6 +176,11 @@ export function createInvoiceJournalEntry(
     } as any;
   }
 
+  if (!isJournalEntryBalanced(lines)) {
+    logError('accounting', 'سند فاکتور نامتوازن است', { invoiceId: invoice.id, invoiceNumber: invoice.number, lines });
+    throw new Error(`سند حسابداری فاکتور ${invoice.number} متوازن نیست (بدهکار ≠ بستانکار). فاکتور ذخیره نشد.`);
+  }
+
   return {
     id: `je-${invoice.id}`,
     entryNumber,
@@ -232,6 +238,11 @@ export function createPaymentJournalEntry(
       debit: 0,
       credit: payment.amount,
     });
+  }
+
+  if (!isJournalEntryBalanced(lines)) {
+    logError('accounting', 'سند پرداخت نامتوازن است', { paymentId: payment.id, lines });
+    throw new Error('سند حسابداری پرداخت متوازن نیست (بدهکار ≠ بستانکار). پرداخت ذخیره نشد.');
   }
 
   return {

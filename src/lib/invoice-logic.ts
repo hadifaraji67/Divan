@@ -1,6 +1,6 @@
 import type { Invoice, Payment, Product, Contact, Cheque } from '../types/models';
 import { invoiceTotal, invoiceTypeEffect } from '../types/models';
-import { loadData, saveData, genId } from './storage';
+import { loadData, loadActiveData, saveData, genId } from './storage';
 
 /**
  * وقتی فاکتور ذخیره می‌شود:
@@ -66,15 +66,6 @@ export function convertToFinalInvoice(invoice: Invoice): Invoice {
 }
 
 /**
- * ثبت پرداخت روی فاکتور
- */
-export function attachPaymentToInvoice(payment: Payment) {
-  if (!payment.invoiceId) return;
-  const invoices = loadData<Invoice[]>('invoices', []);
-  saveData('invoices', invoices);
-}
-
-/**
  * تبدیل چک به پرداخت (هنگام وصول)
  */
 export function chequeToPayment(cheque: Cheque): Payment {
@@ -114,8 +105,8 @@ export function paymentFromInvoice(invoice: Invoice, amount: number, type: 'نق
  * مانده حساب مشتری
  */
 export function customerBalance(contactId: string): { total: number; paid: number; balance: number } {
-  const invoices = loadData<Invoice[]>('invoices', []).filter(i => i.contactId === contactId);
-  const payments = loadData<Payment[]>('payments', []).filter(p => p.contactId === contactId);
+  const invoices = loadActiveData<Invoice>('invoices', []).filter(i => i.contactId === contactId);
+  const payments = loadActiveData<Payment>('payments', []).filter(p => p.contactId === contactId);
 
   // فاکتورهای فروش → طلب ما از مشتری
   const salesTotal = invoices
@@ -140,16 +131,23 @@ export function customerBalance(contactId: string): { total: number; paid: numbe
  * مانده حساب تامین‌کننده
  */
 export function supplierBalance(contactId: string): { total: number; paid: number; balance: number } {
-  const invoices = loadData<Invoice[]>('invoices', []).filter(i => i.contactId === contactId);
-  const payments = loadData<Payment[]>('payments', []).filter(p => p.contactId === contactId);
+  const invoices = loadActiveData<Invoice>('invoices', []).filter(i => i.contactId === contactId);
+  const payments = loadActiveData<Payment>('payments', []).filter(p => p.contactId === contactId);
 
+  // فاکتور خرید → بدهی ما به تامین‌کننده
   const purchaseTotal = invoices
     .filter(i => i.type === 'خرید')
+    .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+
+  // مرجوعی به تامین‌کننده → کاهش بدهی ما
+  const returnsTotal = invoices
+    .filter(i => i.type === 'مرجوعی به تامین‌کننده')
     .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
 
   const paid = payments
     .filter(p => p.direction === 'پرداخت')
     .reduce((s, p) => s + p.amount, 0);
 
-  return { total: purchaseTotal, paid, balance: purchaseTotal - paid };
+  const total = purchaseTotal - returnsTotal;
+  return { total, paid, balance: total - paid };
 }

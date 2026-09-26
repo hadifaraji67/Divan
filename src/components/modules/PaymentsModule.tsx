@@ -66,10 +66,14 @@ export const PaymentsModule: React.FC<Props> = ({ filterDirection }) => {
     setItems(prev => [...prev, editing]);
 
     // ساخت سند حسابداری خودکار
-    const entries = loadData<JournalEntry[]>('journal_entries', []);
-    const je = createPaymentJournalEntry(editing, entries.length + 1);
-    if (je && je.lines && je.lines.length > 0) {
-      saveData('journal_entries', [...entries, je]);
+    try {
+      const entries = loadData<JournalEntry[]>('journal_entries', []);
+      const je = createPaymentJournalEntry(editing, entries.length + 1);
+      if (je && je.lines && je.lines.length > 0) {
+        saveData('journal_entries', [...entries, je]);
+      }
+    } catch (err: any) {
+      notify.error('خطا در ساخت سند حسابداری', err?.message || 'پرداخت ذخیره شد ولی سند مالی ساخته نشد — از بخش اسناد بررسی کنید');
     }
 
     setShowForm(false);

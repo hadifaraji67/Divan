@@ -226,11 +226,15 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
 
       // ساخت سند حسابداری خودکار (به جز پیش‌فاکتورها)
       if (!inv.type.includes('پیش‌فاکتور')) {
-        const entries = loadData<JournalEntry[]>('journal_entries', []);
-        const je = createInvoiceJournalEntry(inv, entries.length + 1);
-        if (je && je.lines && je.lines.length > 0) {
-          saveData('journal_entries', [...entries, je]);
-          notify.info(`سند حسابداری #${je.entryNumber} ساخته شد`);
+        try {
+          const entries = loadData<JournalEntry[]>('journal_entries', []);
+          const je = createInvoiceJournalEntry(inv, entries.length + 1);
+          if (je && je.lines && je.lines.length > 0) {
+            saveData('journal_entries', [...entries, je]);
+            notify.info(`سند حسابداری #${je.entryNumber} ساخته شد`);
+          }
+        } catch (err: any) {
+          notify.error('خطا در ساخت سند حسابداری', err?.message || 'فاکتور ذخیره شد ولی سند مالی ساخته نشد — از بخش اسناد بررسی کنید');
         }
       }
 

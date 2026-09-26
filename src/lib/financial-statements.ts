@@ -1,5 +1,5 @@
 import type { Account, JournalEntry, AccountType } from '../types/accounting';
-import { loadData } from './storage';
+import { loadData, saveData } from './storage';
 
 /**
  * تراز آزمایشی از دفتر روزنامه
@@ -138,6 +138,5 @@ export function loadJournalEntries(): JournalEntry[] {
 }
 
 export function saveJournalEntries(entries: JournalEntry[]): void {
-  const { saveData } = require('./storage');
   saveData('journal_entries', entries);
 }
