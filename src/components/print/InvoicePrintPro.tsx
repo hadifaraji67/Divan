@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { X, Printer, Image as ImageIcon, Share2 } from 'lucide-react';
+import { X, Printer, Image as ImageIcon, Share2, Mail } from 'lucide-react';
 import type { Invoice, Contact, Product } from '../../types/models';
 import { invoiceTotal } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
 import { InvoiceQRCode } from './InvoiceQRCode';
 import { buildInvoiceText, shareInvoiceWhatsApp, shareInvoiceSMS, shareInvoiceGeneric } from '../../lib/invoice-share';
+import { emailInvoicePdf } from '../../lib/invoice-pdf';
 import { MessageCircle, Send } from 'lucide-react';
 import { roundRial, calculateLineTotal } from '../../lib/format';
 import { ModernCard } from './templates/ModernCard';
@@ -24,6 +25,8 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
   const { settings } = useSettings();
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
   const [saving, setSaving] = React.useState(false);
+  const [emailing, setEmailing] = React.useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
   const [localTemplate, setLocalTemplate] = React.useState(settings.printTemplate || 'classic');
 
   const saveAsImage = async () => {
@@ -142,6 +145,25 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
     await shareInvoiceGeneric(text);
   };
 
+  const handleEmailInvoice = async () => {
+    if (!invoice) return;
+    const element = document.querySelector('.print-area') as HTMLElement;
+    if (!element) {
+      notify.error('عنصر فاکتور پیدا نشد');
+      return;
+    }
+    setEmailing(true);
+    setShareMenuOpen(false);
+    const loadingToast = notify.loading('در حال ساخت PDF...');
+    try {
+      const text = buildInvoiceText(invoice, contact, settings?.storeName);
+      await emailInvoicePdf(element, invoice, contact?.email, text);
+    } finally {
+      notify.dismiss(loadingToast);
+      setEmailing(false);
+    }
+  };
+
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm overflow-y-auto" dir="rtl">
@@ -190,6 +212,48 @@ export const InvoicePrintPro: React.FC<Props> = ({ invoice, contact, products = 
               </>
             )}
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setShareMenuOpen(v => !v)}
+              disabled={emailing}
+              className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg"
+            >
+              {emailing ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden md:inline">اشتراک</span>
+            </button>
+            {shareMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 w-44 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
+                <button
+                  onClick={() => { setShareMenuOpen(false); handleShareWhatsApp(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-slate-700 text-right"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> واتساپ
+                </button>
+                <button
+                  onClick={() => { setShareMenuOpen(false); handleShareSMS(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-slate-700 text-right"
+                >
+                  <Send className="w-3.5 h-3.5" /> پیامک
+                </button>
+                <button
+                  onClick={handleEmailInvoice}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-slate-700 text-right"
+                >
+                  <Mail className="w-3.5 h-3.5" /> ایمیل (PDF)
+                </button>
+                <button
+                  onClick={() => { setShareMenuOpen(false); handleShareGeneric(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white hover:bg-slate-700 text-right border-t border-slate-700"
+                >
+                  <Share2 className="w-3.5 h-3.5" /> سایر روش‌ها
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="flex items-center gap-1.5 px-2.5 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg"
