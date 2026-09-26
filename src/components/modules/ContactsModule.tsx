@@ -10,6 +10,8 @@ import { useBulkSelect } from '../../lib/use-bulk-select';
 import { BulkActionsBar } from '../shared/BulkActionsBar';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
+import { RecentItemsStrip } from '../shared/RecentItemsStrip';
+import { recordRecentItem, removeRecentItem } from '../../lib/recent-items';
 import { ContactsFormAccordion } from './ContactsFormAccordion';
 import { validateMobile, validatePhone, validateEmail, validateNationalId, validatePostalCode } from '../../lib/validation';
 import { useUndoableDelete } from '../../lib/use-undoable-delete';
@@ -93,9 +95,13 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
     setShowForm(true);
   };
 
+  const contactLabel = (c: Contact): string =>
+    c.type === 'حقوقی' ? (c.companyName || c.name) : `${c.name} ${c.lastName || ''}`.trim();
+
   const openEdit = (c: Contact) => {
     setEditing({ ...c });
     setShowForm(true);
+    recordRecentItem('contacts', c.id, contactLabel(c));
   };
 
   const handleSave = () => {
@@ -181,6 +187,7 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
     });
 
     setContacts(prev => prev.filter(c => c.id !== id));
+    removeRecentItem('contacts', id);
   };
   const handleBulkDelete = () => {
     const count = bulk.count;
@@ -231,6 +238,15 @@ export const ContactsModule: React.FC<Props> = ({ filterRole }) => {
           <Plus className="w-4 h-4" /> شخص جدید
         </button>
       </div>
+
+      <RecentItemsStrip
+        scope="contacts"
+        refreshKey={contacts.length}
+        onSelect={(id) => {
+          const c = contacts.find(x => x.id === id);
+          if (c) openEdit(c);
+        }}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-3 bg-slate-50 border-b text-xs text-slate-600 flex items-center gap-3">

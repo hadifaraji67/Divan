@@ -14,6 +14,8 @@ import { useUndoableDelete } from '../../lib/use-undoable-delete';
 import { EmptyState } from '../shared/EmptyState';
 import { RBACGate } from '../shared/RBACGate';
 import { BarcodeScanner } from '../shared/BarcodeScanner';
+import { RecentItemsStrip } from '../shared/RecentItemsStrip';
+import { recordRecentItem, removeRecentItem } from '../../lib/recent-items';
 const empty = (): Product => ({
   id: '', sku: '', barcode: '', name: '', description: '', category: '', subCategory: '',
   brand: '', unit: 'عدد', stock: 0, minStock: 0, buyPrice: 0, wholesalePrice: 0,
@@ -65,7 +67,11 @@ export const ProductsModule: React.FC = () => {
     p.createdAt = new Date().toISOString();
     setEditing(p); setShowForm(true);
   };
-  const openEdit = (p: Product) => { setEditing({ ...p }); setShowForm(true); };
+  const openEdit = (p: Product) => {
+    setEditing({ ...p });
+    setShowForm(true);
+    recordRecentItem('products', p.id, p.name);
+  };
   const save = () => {
     // اعتبارسنجی
     if (!editing.name?.trim()) {
@@ -139,6 +145,7 @@ export const ProductsModule: React.FC = () => {
       summary: `حذف کالا «${product.name}»`,
     });
     deleteWithUndo(product);
+    removeRecentItem('products', id);
   };
   const handleBulkDelete = () => {
     const count = bulk.count;
@@ -201,6 +208,15 @@ export const ProductsModule: React.FC = () => {
           <Plus className="w-4 h-4" /> کالای جدید
         </button>}</RBACGate>
       </div>
+
+      <RecentItemsStrip
+        scope="products"
+        refreshKey={items.length}
+        onSelect={(id) => {
+          const p = items.find(x => x.id === id);
+          if (p) openEdit(p);
+        }}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-3 bg-slate-50 border-b text-xs text-slate-600 flex items-center gap-3">

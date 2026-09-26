@@ -21,6 +21,8 @@ import { useBulkSelect } from '../../lib/use-bulk-select';
 import { BulkActionsBar } from '../shared/BulkActionsBar';
 import { AttachmentManager } from '../shared/AttachmentManager';
 import type { Attachment } from '../../types/models';
+import { RecentItemsStrip } from '../shared/RecentItemsStrip';
+import { recordRecentItem, removeRecentItem } from '../../lib/recent-items';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
@@ -135,7 +137,11 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
     setShowForm(true);
   };
 
-  const openEdit = (inv: Invoice) => { setEditing({ ...inv }); setShowForm(true); };
+  const openEdit = (inv: Invoice) => {
+    setEditing({ ...inv });
+    setShowForm(true);
+    recordRecentItem('invoices', inv.id, `${inv.number} — ${inv.contactName}`);
+  };
 
   const handleVoid = (reason: string) => {
     if (!voidTarget) return;
@@ -173,6 +179,7 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
     if (!confirm(`حذف ${count} فاکتور؟`)) return;
     const ids = new Set(bulk.selected);
     setInvoices(prev => prev.filter(i => !ids.has(i.id)));
+    ids.forEach(id => removeRecentItem('invoices', id));
     logActivity('delete', 'invoice', {
       summary: `حذف گروهی ${count} فاکتور`,
       details: { count },
@@ -345,6 +352,15 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
           <Plus className="w-3.5 h-3.5" /> فاکتور خرید
         </button>
       </div>
+
+      <RecentItemsStrip
+        scope="invoices"
+        refreshKey={invoices.length}
+        onSelect={(id) => {
+          const inv = invoices.find(x => x.id === id);
+          if (inv) openEdit(inv);
+        }}
+      />
 
       {/* لیست */}
       <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
