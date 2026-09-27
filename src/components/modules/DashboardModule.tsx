@@ -26,15 +26,31 @@ interface Props {
   onNavigate: (view: any, data?: any) => void;
 }
 
+export type KPIColorKey = 'turquoise' | 'ink' | 'saffron' | 'terracotta';
+
 interface KPI {
   label: string;
   value: number;
   change: number; // percentage
   format: 'money' | 'count';
   icon: React.ElementType;
-  color: string;
+  color: KPIColorKey;
   view: string;
 }
+
+/**
+ * نگاشت رنگ به کلاس‌های کامل Tailwind — عمداً به‌صورت لفظی نوشته شده
+ * (نه ساخته‌شده با template literal) چون Tailwind فقط کلاس‌هایی رو که
+ * کامل و لفظی تو کد ببینه، در خروجی نهایی می‌سازه؛ نسخه‌ی قبلی همین فایل
+ * با `${kpi.color}` این کلاس‌ها رو داینامیک می‌ساخت و در نتیجه هیچ‌وقت
+ * تولید نمی‌شدن — همون جعبه‌های خالی بدون آیکون.
+ */
+const KPI_STYLES: Record<KPIColorKey, { badge: string; border: string }> = {
+  turquoise: { badge: 'bg-turquoise', border: 'border-turquoise' },
+  ink: { badge: 'bg-ink', border: 'border-ink' },
+  saffron: { badge: 'bg-saffron', border: 'border-saffron' },
+  terracotta: { badge: 'bg-terracotta', border: 'border-terracotta' },
+};
 
 export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
   const { settings } = useSettings();
@@ -172,7 +188,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       change: 0, // TODO: مقایسه با ماه قبل
       format: 'money',
       icon: TrendingUp,
-      color: 'from-emerald-500 to-teal-600',
+      color: 'turquoise',
       view: 'reports-hub',
     },
     {
@@ -181,7 +197,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       change: 0,
       format: 'money',
       icon: Wallet,
-      color: 'from-indigo-500 to-violet-600',
+      color: 'ink',
       view: 'cash-box',
     },
     {
@@ -190,7 +206,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       change: 0,
       format: 'money',
       icon: Users,
-      color: 'from-amber-500 to-orange-600',
+      color: 'saffron',
       view: 'contacts',
     },
     {
@@ -199,7 +215,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       change: 0,
       format: 'money',
       icon: ShoppingCart,
-      color: 'from-rose-500 to-red-600',
+      color: 'terracotta',
       view: 'contacts',
     },
     {
@@ -208,7 +224,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       change: 0,
       format: 'count',
       icon: FileText,
-      color: 'from-sky-500 to-blue-600',
+      color: 'turquoise',
       view: 'invoices',
     },
   ];
@@ -489,15 +505,16 @@ const KPICard: React.FC<{
 }> = ({ kpi, formatKPI, onClick }) => {
   const Icon = kpi.icon;
   const TrendIcon = kpi.change > 0 ? ArrowUpRight : kpi.change < 0 ? ArrowDownRight : null;
+  const style = KPI_STYLES[kpi.color];
 
   return (
     <button
       onClick={onClick}
-      className="text-right p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all card-hover group"
+      className={`text-right p-4 rounded-xl border-r-4 ${style.border} border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:shadow-md transition-all card-hover group`}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center shadow-lg`}>
-          <Icon className="w-5 h-5 text-white" />
+        <div className={`w-9 h-9 rounded-lg ${style.badge} flex items-center justify-center`}>
+          <Icon className="w-4 h-4 text-white" />
         </div>
         {TrendIcon && (
           <div
