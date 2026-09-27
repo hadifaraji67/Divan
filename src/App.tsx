@@ -15,6 +15,9 @@ import { listBackups } from './lib/backup/filesystem';
 // ماژول‌ها
 import { ContactsModule } from './components/modules/ContactsModule';
 import { ProductsModule } from './components/modules/ProductsModule';
+import { WarehousesModule } from './components/modules/WarehousesModule';
+import { StockMovementsModule } from './components/modules/StockMovementsModule';
+import { StockTakeModule } from './components/modules/StockTakeModule';
 import { InvoicesModule } from './components/modules/InvoicesModule';
 import { PaymentsModule } from './components/modules/PaymentsModule';
 import { ChequesModule } from './components/modules/ChequesModule';
@@ -49,6 +52,7 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   'supplier-payments': 'پرداخت به تامین‌کننده',
   // انبار
   inventory: 'انبار و کالا',
+  warehouses: 'انبارها',
   'stock-movements': 'نقل و انتقال انبار',
   'stock-take': 'انبارگردانی',
   // مالی
@@ -182,6 +186,7 @@ export const App: React.FC = () => {
       case 'contacts': return <ContactsModule />;
       case 'invoices': return <InvoicesModule />;
       case 'inventory': return <ProductsModule />;
+      case 'warehouses': return <WarehousesModule />;
       case 'customer-club': return <CustomerClub />;
       case 'installments': return <InstallmentsModule />;
       case 'cash-box': return <CashBox />;
@@ -201,8 +206,8 @@ export const App: React.FC = () => {
       case 'suppliers': return <ContactsModule filterRole="تامین‌کننده" />;
       case 'purchase-invoices': return <InvoicesModule filterType="خرید" />;
       case 'supplier-payments': return <PaymentsModule filterDirection="پرداخت" />;
-      case 'stock-movements': return <ComingSoon title="نقل و انتقال انبار" description="ثبت جابجایی کالا بین انبارها و شعب" icon={Package} />;
-      case 'stock-take': return <ComingSoon title="انبارگردانی" description="شمارش موجودی و تطبیق با سیستم" icon={Package} />;
+      case 'stock-movements': return <StockMovementsModule />;
+      case 'stock-take': return <StockTakeModule />;
       case 'employees': return <ComingSoon title="پرسنل" description="مدیریت اطلاعات کارکنان و قراردادها" icon={Users} />;
       case 'payroll': return <ComingSoon title="حقوق و دستمزد" description="محاسبه و پرداخت حقوق ماهانه پرسنل" icon={Wallet} />;
       case 'attendance': return <ComingSoon title="حضور و غیاب" description="ثبت ورود و خروج و محاسبه کارکرد" icon={Calendar} />;

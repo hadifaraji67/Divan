@@ -16,7 +16,7 @@ export type ViewKey =
   // چرخه خرید
   | 'suppliers' | 'purchase-invoices' | 'supplier-payments'
   // انبار
-  | 'inventory' | 'stock-movements' | 'stock-take'
+  | 'inventory' | 'warehouses' | 'stock-movements' | 'stock-take'
   // مالی
   | 'journal-entry' | 'cash-box' | 'fiscal-year-closing'
   // گزارش‌ها
@@ -72,8 +72,9 @@ const menuGroups: MenuGroup[] = [
     icon: Package,
     items: [
       { key: 'inventory', title: 'کالاها', icon: Package },
-      { key: 'stock-movements', title: 'نقل و انتقال', icon: ArrowRightLeft, soon: true },
-      { key: 'stock-take', title: 'انبارگردانی', icon: ClipboardCheck, soon: true },
+      { key: 'warehouses', title: 'انبارها', icon: Factory },
+      { key: 'stock-movements', title: 'نقل و انتقال', icon: ArrowRightLeft },
+      { key: 'stock-take', title: 'انبارگردانی', icon: ClipboardCheck },
     ],
   },
   {

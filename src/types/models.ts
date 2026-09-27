@@ -158,6 +158,40 @@ export interface Payment {
   voidedReason?: string;
 }
 
+export interface Warehouse {
+  id: string;
+  name: string;
+  code: string;
+  address?: string;
+  isDefault?: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** موجودی هر کالا در هر انبار — لایه‌ی مستقل از Product.stock (که موجودی کل/بدون‌مکان است) */
+export interface WarehouseStockEntry {
+  warehouseId: string;
+  productId: string;
+  quantity: number;
+}
+
+export type StockMovementType = 'انتقال' | 'اصلاح انبارگردانی' | 'ورود اولیه';
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  productName: string;
+  type: StockMovementType;
+  fromWarehouseId?: string;
+  fromWarehouseName?: string;
+  toWarehouseId?: string;
+  toWarehouseName?: string;
+  quantity: number;
+  reason?: string;
+  date: string;
+  createdAt: string;
+}
+
 export interface Cheque {
   id: string;
   contactId: string;
