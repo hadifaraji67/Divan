@@ -1,6 +1,8 @@
 import React from 'react';
 import { Home, FileText, Users, Package, Menu } from 'lucide-react';
 import type { ViewKey } from './Sidebar';
+import { isViewEnabled } from '../../lib/licensing';
+import { useEnabledModules } from '../../lib/use-modules';
 
 interface Props {
   active: ViewKey;
@@ -16,6 +18,7 @@ const items: { key: ViewKey; label: string; icon: React.ElementType }[] = [
 ];
 
 export const BottomNav: React.FC<Props> = ({ active, onSelect, onMenuClick }) => {
+  useEnabledModules(); // برای رندر مجدد هنگام تغییر ماژول‌ها
   return (
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t bottom-nav-safe"
@@ -26,7 +29,7 @@ export const BottomNav: React.FC<Props> = ({ active, onSelect, onMenuClick }) =>
       }}
     >
       <div className="flex justify-around items-stretch py-1.5 px-2">
-        {items.map((it) => {
+        {items.filter((it) => isViewEnabled(it.key)).map((it) => {
           const Icon = it.icon;
           const isActive = active === it.key;
           return (

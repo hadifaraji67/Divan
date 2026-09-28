@@ -6,6 +6,7 @@ import Sidebar, { type ViewKey } from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import BottomNav from './components/layout/BottomNav';
 import { notify } from './lib/toast';
+import { isViewEnabled } from './lib/licensing';
 import { useEdgeSwipe } from './lib/use-swipe';
 import { useAutoBackup } from './lib/backup/use-auto-backup';
 import { startWatcher } from './lib/sync/watcher';
@@ -163,6 +164,11 @@ export const App: React.FC = () => {
   });
 
   const handleSelect = (key: ViewKey) => {
+    if (!isViewEnabled(key)) {
+      notify.warning('این ماژول برای سازمان شما فعال نیست', 'از تنظیمات ← ماژول‌ها می‌توانید آن را فعال کنید');
+      setSidebarOpen(false);
+      return;
+    }
     setActive(key);
     setSidebarOpen(false);
   };
@@ -181,7 +187,9 @@ export const App: React.FC = () => {
   };
 
   const renderView = () => {
-    switch (active) {
+    // اگر ماژول صفحه‌ی جاری در همین لحظه غیرفعال شد، به داشبورد برگرد
+    const current: ViewKey = isViewEnabled(active) ? active : 'home';
+    switch (current) {
       case 'home': return <DashboardModule onNavigate={(v: any) => handleSelect(v)} />;
       case 'contacts': return <ContactsModule />;
       case 'invoices': return <InvoicesModule />;

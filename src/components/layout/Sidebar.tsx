@@ -7,6 +7,8 @@ import {
   ArrowRightLeft, Truck, Banknote, Receipt, UserPlus,
 } from 'lucide-react';
 import { APP_VERSION } from '../../lib/update-service';
+import { useEnabledModules } from '../../lib/use-modules';
+import type { ModuleKey } from '../../lib/licensing';
 
 export type ViewKey =
   // داشبورد
@@ -42,7 +44,7 @@ interface MenuGroup {
   items: MenuItem[];
 }
 
-const menuGroups: MenuGroup[] = [
+const allMenuGroups: MenuGroup[] = [
   {
     id: 'sales',
     title: 'فروش',
@@ -133,6 +135,9 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ active, onSelect, isOpen, onClose }) => {
   // همه بسته به صورت پیش‌فرض
+  const enabledModules = useEnabledModules();
+  // گروه‌هایی که ماژولشان غیرفعال است پنهان می‌شوند (گروه system همیشه هست)
+  const menuGroups = allMenuGroups.filter(g => g.id === 'system' || enabledModules.includes(g.id as ModuleKey));
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
