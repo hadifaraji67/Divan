@@ -16,7 +16,7 @@
     "preview:restart": "node scripts/preview.mjs restart",
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
-    "test": "node --test 'scripts/**/*.test.mjs'",
+    "test": "tsx --test 'scripts/**/*.test.mjs'",
     "lint": "eslint .",
     "format": "prettier --write .",
     "build:apk": "vite build && npx cap sync android"
@@ -64,9 +64,10 @@
     "globals": "^15.15.0",
     "lightningcss": "^1.28.0",
     "prettier": "^3.4.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.2.0"
   },
-  "version": "5.0.0-beta.98"
+  "version": "5.0.0-beta.99"
 }
