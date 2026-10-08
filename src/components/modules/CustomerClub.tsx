@@ -54,7 +54,7 @@ export const CustomerClub: React.FC = () => {
       .filter(c => c.roles.includes('مشتری'))
       .map(c => {
         const custInvoices = invoices.filter(i => i.contactId === c.id && i.type === 'فروش');
-        const totalPurchase = custInvoices.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+        const totalPurchase = custInvoices.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
         const paid = payments.filter(p => p.contactId === c.id && p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
         const level = getLevel(totalPurchase);
         const points = Math.floor(totalPurchase / 100000); // هر ۱۰۰ هزار ریال = ۱ امتیاز

@@ -42,7 +42,7 @@ export const CustomerLedger: React.FC = () => {
 
     // فاکتورها
     invoices.filter(i => i.contactId === selected.id).forEach(inv => {
-      const t = invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+      const t = invoiceTotal(inv.items, inv.shippingCost);
       if (inv.type === 'فروش') {
         rows.push({ date: inv.date, description: `فاکتور فروش ${inv.number}`, type: 'invoice', debit: t, credit: 0, ref: inv.number });
       } else if (inv.type === 'برگشت از فروش') {

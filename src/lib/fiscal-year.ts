@@ -67,11 +67,11 @@ export function fiscalYearSummary(startYear: number, startMonth: number, startDa
   const sales = filteredInvoices.filter(i => i.type === 'فروش');
   const purchases = filteredInvoices.filter(i => i.type === 'خرید');
 
-  const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-  const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+  const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
+  const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
   const received = filteredPayments.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
   const paid = filteredPayments.filter(p => p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
-  const taxTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, 0, i.taxPercent, 0) * 0, 0); // placeholder
+  const taxTotal = 0; // placeholder — هنوز پیاده نشده
 
   return {
     salesTotal,

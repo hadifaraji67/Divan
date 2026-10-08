@@ -6,12 +6,7 @@ import { invoiceTotal } from '../types/models';
 import { formatNum } from './theme-context';
 
 export function buildInvoiceText(invoice: Invoice, contact?: Contact, storeName?: string): string {
-  const total = invoiceTotal(
-    invoice.items,
-    invoice.discountPercent || 0,
-    invoice.taxPercent || 0,
-    invoice.shippingCost || 0
-  );
+  const total = invoiceTotal(invoice.items, invoice.shippingCost || 0);
 
   const lines: string[] = [];
   lines.push(`🧾 *فاکتور ${invoice.type}*`);

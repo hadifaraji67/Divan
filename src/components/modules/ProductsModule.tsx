@@ -275,7 +275,7 @@ export const ProductsModule: React.FC = () => {
                     <td className="p-3 font-mono text-xs">{p.sku}</td>
                     <td className="p-3"><div className="font-bold">{p.name}</div>{p.brand && <div className="text-[10px] opacity-60">{p.brand}</div>}{p.barcode && <div className="text-[10px] opacity-40 font-mono">{p.barcode}</div>}</td>
                     <td className="p-3 text-slate-500">{p.category || '—'}</td>
-                    <td className={`p-3 font-bold ${p.stock <= p.minStock ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    <td className={`p-3 font-bold ${p.stock < 0 ? 'text-rose-600' : p.stock <= p.minStock ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {p.stock} {p.unit}
                     </td>
                     <td className="p-3 text-slate-600">{p.buyPrice.toLocaleString()}</td>

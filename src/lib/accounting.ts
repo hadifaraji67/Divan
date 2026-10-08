@@ -1,6 +1,6 @@
 import type { Account, JournalEntry, JournalLine } from '../types/accounting';
 import type { Invoice, Payment } from '../types/models';
-import { invoiceTotal, roundRial } from '../types/models';
+import { invoiceTotal, invoiceTax, roundRial } from '../types/models';
 import { logError } from './error-logger';
 
 /**
@@ -39,13 +39,8 @@ export function createInvoiceJournalEntry(
   invoice: Invoice,
   entryNumber: number,
 ): JournalEntry {
-  const total = invoiceTotal(invoice.items, invoice.discountPercent, invoice.taxPercent, invoice.shippingCost);
-  const taxAmount = roundRial(invoice.items.reduce((s, it) => {
-    const lineTotal = roundRial(it.quantity * it.unitPrice);
-    const discountAmt = roundRial((lineTotal * it.discountPercent) / 100);
-    const afterDiscount = roundRial(lineTotal - discountAmt);
-    return s + roundRial((afterDiscount * it.taxPercent) / 100);
-  }, 0));
+  const total = invoiceTotal(invoice.items, invoice.shippingCost);
+  const taxAmount = invoiceTax(invoice.items);
   const netAmount = roundRial(total - taxAmount);
 
   const lines: JournalLine[] = [];

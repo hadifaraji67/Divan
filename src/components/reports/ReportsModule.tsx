@@ -54,8 +54,8 @@ export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'cust
     const sales = filtered.filter(i => i.type === 'فروش');
     const purchases = filtered.filter(i => i.type === 'خرید');
 
-    const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-    const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+    const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
+    const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
 
     const received = payments.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
     const paid = payments.filter(p => p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
@@ -89,7 +89,7 @@ export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'cust
     sales.forEach(inv => {
       const c = custMap.get(inv.contactId) || { name: inv.contactName, count: 0, total: 0, paid: 0 };
       c.count += 1;
-      c.total += invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+      c.total += invoiceTotal(inv.items, inv.shippingCost);
       custMap.set(inv.contactId, c);
     });
     payments.filter(p => p.direction === 'دریافت').forEach(p => {
@@ -106,7 +106,7 @@ export const ReportsModule: React.FC<{ defaultTab?: 'sales' | 'products' | 'cust
       if (p.length >= 2) {
         const m = Number(p[1]);
         if (m >= 1 && m <= 12) {
-          monthly[m - 1].total += invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+          monthly[m - 1].total += invoiceTotal(inv.items, inv.shippingCost);
           monthly[m - 1].count += 1;
         }
       }

@@ -25,7 +25,7 @@ export const SuppliersDebt: React.FC = () => {
       .filter(c => c.roles.includes('تامین‌کننده'))
       .map(c => {
         const purchaseInvoices = invoices.filter(i => i.contactId === c.id && i.type === 'خرید');
-        const total = purchaseInvoices.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+        const total = purchaseInvoices.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
         const paid = payments.filter(p => p.contactId === c.id && p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
         const balance = total - paid;
         return {

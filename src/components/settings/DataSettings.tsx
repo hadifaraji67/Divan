@@ -64,7 +64,7 @@ export const DataSettings: React.FC = () => {
       { key: 'type', label: 'نوع' },
       { key: 'contactName', label: 'مشتری' },
       { key: 'items', label: 'تعداد اقلام', format: (v: any) => String(Array.isArray(v) ? v.length : 0) },
-      { key: 'total', label: 'مبلغ کل', format: (_: any, row: any) => String(Math.round(invoiceTotal(row.items || [], row.discountPercent || 0, row.taxPercent || 0, row.shippingCost || 0))) },
+      { key: 'total', label: 'مبلغ کل', format: (_: any, row: any) => String(Math.round(invoiceTotal(row.items || [], row.shippingCost || 0))) },
     ]);
   };
 

@@ -35,12 +35,7 @@ export interface InvoiceQRPayload {
 }
 
 export function computeInvoiceHash(invoice: Invoice): string {
-  const total = invoiceTotal(
-    invoice.items || [],
-    invoice.discountPercent || 0,
-    invoice.taxPercent || 0,
-    invoice.shippingCost || 0
-  );
+  const total = invoiceTotal(invoice.items || [], invoice.shippingCost || 0);
   const parts = [
     invoice.id || '',
     invoice.number || '',
@@ -52,12 +47,7 @@ export function computeInvoiceHash(invoice: Invoice): string {
 }
 
 export function buildInvoiceQRPayload(invoice: Invoice): InvoiceQRPayload {
-  const total = invoiceTotal(
-    invoice.items || [],
-    invoice.discountPercent || 0,
-    invoice.taxPercent || 0,
-    invoice.shippingCost || 0
-  );
+  const total = invoiceTotal(invoice.items || [], invoice.shippingCost || 0);
   return {
     a: 'divan',
     t: 'inv',

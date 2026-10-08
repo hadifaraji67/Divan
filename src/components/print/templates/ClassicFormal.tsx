@@ -178,7 +178,7 @@ export const ClassicFormal: React.FC<TemplateProps> = ({ invoice, contact, produ
             )}
             {totals.taxAmount > 0 && settings.showTax && (
               <tr>
-                <td className="p-1 font-bold" style={{ border: '1px solid #000', background: '#f5f5f5' }}>مالیات ({f(invoice.taxPercent)}%):</td>
+                <td className="p-1 font-bold" style={{ border: '1px solid #000', background: '#f5f5f5' }}>مالیات ({f(totals.afterDiscount > 0 ? (totals.taxAmount / totals.afterDiscount) * 100 : 0)}%):</td>
                 <td className="p-1 text-left font-mono" style={{ border: '1px solid #000' }} dir="ltr">{f(totals.taxAmount)}</td>
               </tr>
             )}

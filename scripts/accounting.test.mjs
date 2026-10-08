@@ -11,10 +11,9 @@ function sumDebit(lines) { return lines.reduce((s, l) => s + (l.debit || 0), 0);
 function sumCredit(lines) { return lines.reduce((s, l) => s + (l.credit || 0), 0); }
 function byAccount(lines, accountId) { return lines.filter(l => l.accountId === accountId); }
 
-// نکته: createInvoiceJournalEntry مبلغ کل را از invoice.taxPercent (سطح فاکتور)
-// حساب می‌کند، ولی taxAmount را جداگانه از item.taxPercent (سطح ردیف) جمع می‌زند.
-// برای این‌که فیکسچرها رفتار واقعی و امروزِ کد را توصیف کنند، این دو باید یکی باشند؛
-// ناسازگاری بین این دو خودش یک باگ واقعی است که پایین‌تر مستند شده.
+// توجه: تخفیف/مالیات فقط از خودِ هر ردیف خوانده می‌شود — دیگر هیچ فیلد
+// discountPercent/taxPercent سطح فاکتور وجود ندارد (رفع‌شده بعد از این‌که
+// ناسازگاری بین نرخ سطح فاکتور و نرخ سطح ردیف باعث ثبت غلط درآمد/مالیات می‌شد).
 function baseInvoice(overrides) {
   return {
     id: 'inv-1',
@@ -25,8 +24,6 @@ function baseInvoice(overrides) {
     items: [
       { productId: 'p1', productName: 'کالا', unit: 'عدد', quantity: 2, unitPrice: 100000, discountPercent: 0, taxPercent: 9 },
     ],
-    discountPercent: 0,
-    taxPercent: 9,
     shippingCost: 0,
     createdAt: '2026-01-01',
     ...overrides,
@@ -54,7 +51,7 @@ test('سند فروش: بدهکار مشتری (۱۰۲) و بستانکار در
   const inv = baseInvoice({ type: 'فروش' });
   const je = createInvoiceJournalEntry(inv, 1);
   const total = sumDebit(byAccount(je.lines, '102'));
-  assert.equal(total, 218000); // subtotal 200000 + 9% مالیات
+  assert.equal(total, 218000); // subtotal 200000 + 9% مالیات هر ردیف
   assert.equal(sumCredit(byAccount(je.lines, '401')), 200000);
   assert.equal(sumCredit(byAccount(je.lines, '601')), 18000);
 });
@@ -69,10 +66,7 @@ test('سند خرید: بدهکار موجودی کالا (۱۰۳) و بستان
 test('سند «مرجوعی به تامین‌کننده» دقیقاً معکوس سند خرید است', () => {
   const purchase = createInvoiceJournalEntry(baseInvoice({ type: 'خرید' }), 1);
   const supplierReturn = createInvoiceJournalEntry(baseInvoice({ type: 'مرجوعی به تامین‌کننده' }), 2);
-
-  // جایی که خرید بدهکار بود (۱۰۳)، مرجوعی باید بستانکار همان مبلغ باشد
   assert.equal(sumDebit(byAccount(purchase.lines, '103')), sumCredit(byAccount(supplierReturn.lines, '103')));
-  // جایی که خرید بستانکار بود (۲۰۱)، مرجوعی باید بدهکار همان مبلغ باشد
   assert.equal(sumCredit(byAccount(purchase.lines, '201')), sumDebit(byAccount(supplierReturn.lines, '201')));
 });
 
@@ -109,22 +103,29 @@ test('سند پرداخت «پرداخت»: بدهکار بدهی تامین‌�
   assert.equal(sumCredit(byAccount(je.lines, '10101')), 30000);
 });
 
-test('یافته: اگر taxPercent سطح فاکتور با taxPercent ردیف‌ها فرق کند، درآمد/مالیات اشتباه تفکیک می‌شود (سند هنوز متوازن است، ولی غلط)', () => {
-  // invoice.taxPercent=0 ولی ردیف taxPercent=9 دارد — دقیقاً چیزی که UI اجازه می‌دهد
-  // (InvoicesModule یک input برای taxPercent سطح فاکتور و یک input جدا برای هر ردیف دارد)
-  const inv = baseInvoice({ type: 'فروش', taxPercent: 0 });
+test('رگرسیون: هر ردیف نرخ مالیات/تخفیف خودش را دارد و دیگر هیچ نرخ سطح فاکتوری برای ناسازگاری وجود ندارد', () => {
+  // قبلاً یک فیلد discountPercent/taxPercent جدا روی خودِ Invoice بود که با نرخ
+  // هر ردیف می‌توانست فرق کند و باعث ثبت غلط درآمد/مالیات می‌شد (سند هنوز متوازن
+  // می‌ماند چون netAmount = total - taxAmount تعریف شده بود، ولی تفکیک غلط بود).
+  // حالا چون این فیلد از تایپ Invoice حذف شده، این سناریو اصلاً قابل‌ساخت نیست:
+  // دو ردیف با نرخ‌های متفاوت را می‌سازیم و مطمئن می‌شویم total دقیقاً با جمع
+  // درآمد+مالیات واقعیِ همان دو ردیف برابر است.
+  const inv = baseInvoice({
+    type: 'فروش',
+    items: [
+      { productId: 'p1', productName: 'کالای معاف', unit: 'عدد', quantity: 1, unitPrice: 100000, discountPercent: 0, taxPercent: 0 },
+      { productId: 'p2', productName: 'کالای مشمول', unit: 'عدد', quantity: 1, unitPrice: 100000, discountPercent: 0, taxPercent: 9 },
+    ],
+  });
   const je = createInvoiceJournalEntry(inv, 1);
-
-  const customerOwes = sumDebit(byAccount(je.lines, '102')); // از invoice.taxPercent (=0) محاسبه می‌شود
+  const customerOwes = sumDebit(byAccount(je.lines, '102'));
   const revenue = sumCredit(byAccount(je.lines, '401'));
   const taxBooked = sumCredit(byAccount(je.lines, '601'));
 
-  assert.equal(customerOwes, 200000, 'چون سطح فاکتور taxPercent=0 است، مشتری فقط ۲۰۰۰۰۰ بدهکار می‌شود');
-  // ولی taxAmount داخلی از روی taxPercent=9 هر ردیف محاسبه شده، پس بخشی از همین ۲۰۰۰۰۰
-  // به‌اشتباه «مالیات» حساب می‌شود و درآمد واقعی کمتر از چیزی که باید باشد ثبت می‌شود:
-  assert.equal(taxBooked, 18000, 'مالیات ثبت‌شده از نرخ ردیف می‌آید، نه نرخ فاکتور');
-  assert.equal(revenue, 182000, 'درآمد واقعی باید ۲۰۰۰۰۰ باشد، ولی چون taxAmount از منبع دیگری آمده، کمتر ثبت می‌شود');
-  assert.notEqual(revenue, customerOwes, 'وقتی مالیات صفر باید باشد، درآمد باید برابر کل مبلغ باشد — اینجا نیست');
+  assert.equal(customerOwes, 209000); // 100000 (معاف) + 100000*1.09 (مشمول)
+  assert.equal(taxBooked, 9000);      // فقط از ردیف دوم
+  assert.equal(revenue, 200000);      // کل subtotal، بدون کسر اشتباه
+  assert.equal(revenue + taxBooked, customerOwes);
 });
 
 test('calculateAccountBalance سند باطل‌شده را نادیده می‌گیرد', () => {

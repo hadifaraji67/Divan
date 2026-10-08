@@ -129,12 +129,7 @@ export const InvoiceQRScanner: React.FC<Props> = ({ onClose }) => {
               <DetailRow label="مشتری" value={result.invoice.contactName || '—'} />
               <DetailRow
                 label="مبلغ"
-                value={`${invoiceTotal(
-                  result.invoice.items || [],
-                  result.invoice.discountPercent || 0,
-                  result.invoice.taxPercent || 0,
-                  result.invoice.shippingCost || 0
-                ).toLocaleString('fa-IR')} ریال`}
+                value={`${invoiceTotal(result.invoice.items || [], result.invoice.shippingCost || 0).toLocaleString('fa-IR')} ریال`}
               />
               <DetailRow label="نوع" value={result.invoice.type || '—'} />
             </div>

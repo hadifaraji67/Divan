@@ -8,7 +8,7 @@ import { loadData, saveData, genId } from '../../lib/storage';
 import { notify } from '../../lib/toast';
 import { JalaliDatePicker } from '../shared/JalaliDatePicker';
 import { InvoicePrintPro } from '../print/InvoicePrintPro';
-import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice } from '../../lib/invoice-logic';
+import { applyInvoiceEffects, convertToFinalInvoice, paymentFromInvoice, checkStockAvailability } from '../../lib/invoice-logic';
 import { getInvoicePaymentInfo, payStatusLabel, payStatusColor, payStatusEmoji } from '../../lib/invoice-payment';
 import type { Payment } from '../../types/models';
 import { ArchiveToggle, VoidedItemCard, VoidConfirmDialog } from '../shared/Archive';
@@ -26,7 +26,7 @@ import { recordRecentItem, removeRecentItem } from '../../lib/recent-items';
 
 const empty = (): Invoice => ({
   id: '', number: '', type: 'فروش', date: new Date().toLocaleDateString('fa-IR'),
-  contactId: '', contactName: '', items: [], discountPercent: 0, taxPercent: 9,
+  contactId: '', contactName: '', items: [],
   shippingCost: 0, notes: '', attachments: [], createdAt: '',
 });
 
@@ -194,6 +194,16 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
     const c = contacts.find(x => x.id === editing.contactId);
     const inv = { ...editing, contactName: c ? (c.type === 'حقوقی' ? c.companyName || c.name : `${c.name} ${c.lastName || ''}`) : '' };
     const isNew = !invoices.find(i => i.id === inv.id);
+
+    if (isNew) {
+      const shortages = checkStockAvailability(inv, products);
+      if (shortages.length > 0) {
+        const lines = shortages.map(s => `• ${s.productName}: موجود ${s.available.toLocaleString()} — درخواستی ${s.requested.toLocaleString()}`).join('\n');
+        const proceed = confirm(`موجودی این کالاها کافی نیست:\n${lines}\n\nبا این حال فاکتور ثبت شود؟ (موجودی منفی می‌شود)`);
+        if (!proceed) return;
+      }
+    }
+
     setInvoices(prev => isNew ? [...prev, inv] : prev.map(i => i.id === inv.id ? inv : i));
 
     // Activity Log
@@ -275,6 +285,13 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
   const convert = (inv: Invoice) => {
     if (!confirm('این پیش‌فاکتور به فاکتور قطعی تبدیل شود؟')) return;
     const newInv = convertToFinalInvoice(inv);
+
+    const shortages = checkStockAvailability(newInv, products);
+    if (shortages.length > 0) {
+      const lines = shortages.map(s => `• ${s.productName}: موجود ${s.available.toLocaleString()} — درخواستی ${s.requested.toLocaleString()}`).join('\n');
+      if (!confirm(`موجودی این کالاها کافی نیست:\n${lines}\n\nبا این حال تبدیل شود؟ (موجودی منفی می‌شود)`)) return;
+    }
+
     setInvoices(prev => [newInv, ...prev]);
     applyInvoiceEffects(newInv);
     notify.success(`تبدیل شد به ${newInv.type}`);
@@ -299,15 +316,15 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
 
   useEffect(() => {
     if (withPayment && payAmount === 0) {
-      const t = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
+      const t = invoiceTotal(editing.items, editing.shippingCost);
       setPayAmount(t);
     }
   }, [withPayment, editing.items.length]);
 
   const subtotal = invoiceSubtotal(editing.items);
-  const discount = invoiceDiscount(editing.items, editing.discountPercent);
-  const tax = invoiceTax(editing.items, editing.discountPercent, editing.taxPercent);
-  const total = invoiceTotal(editing.items, editing.discountPercent, editing.taxPercent, editing.shippingCost);
+  const discount = invoiceDiscount(editing.items);
+  const tax = invoiceTax(editing.items);
+  const total = invoiceTotal(editing.items, editing.shippingCost);
 
 
 
@@ -381,7 +398,7 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.map(inv => {
-              const t = invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+              const t = invoiceTotal(inv.items, inv.shippingCost);
               const isPre = inv.type === 'پیش‌فاکتور فروش' || inv.type === 'پیش‌فاکتور خرید';
               const canConvert = isPre;
               
@@ -601,21 +618,12 @@ export const InvoicesModule: React.FC<Props> = ({ filterType }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                 <label className="block">
-                  <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">تخفیف کل (%)</span>
-                  <input type="number" value={editing.discountPercent} onChange={(e) => setEditing({ ...editing, discountPercent: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900" dir="ltr" />
-                </label>
-                <label className="block">
-                  <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">مالیات (%)</span>
-                  <input type="number" value={editing.taxPercent} onChange={(e) => setEditing({ ...editing, taxPercent: Number(e.target.value) })}
-                    className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900" dir="ltr" />
-                </label>
-                <label className="block">
                   <span className="text-xs text-slate-600 dark:text-slate-400 block mb-1">هزینه ارسال</span>
                   <input type="number" value={editing.shippingCost} onChange={(e) => setEditing({ ...editing, shippingCost: Number(e.target.value) })}
                     className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900" dir="ltr" />
                 </label>
               </div>
+              <p className="text-[11px] text-slate-400 mt-1">تخفیف و مالیات هر ردیف از خودِ همان ردیف کالا تنظیم می‌شود.</p>
 
               <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-sm space-y-1">
                 <div className="flex justify-between"><span>جمع اقلام:</span><b>{subtotal.toLocaleString()}</b></div>

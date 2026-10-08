@@ -222,7 +222,7 @@ export const PaymentsModule: React.FC<Props> = ({ filterDirection }) => {
                     value={editing.invoiceId || ''}
                     onChange={(e) => {
                       const inv = allInvoices.find(i => i.id === e.target.value);
-                      setEditing({ ...editing, invoiceId: e.target.value, amount: inv ? invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost) : editing.amount });
+                      setEditing({ ...editing, invoiceId: e.target.value, amount: inv ? invoiceTotal(inv.items, inv.shippingCost) : editing.amount });
                     }}
                     className="w-full p-2.5 border rounded-lg text-sm bg-white dark:bg-slate-900"
                   >

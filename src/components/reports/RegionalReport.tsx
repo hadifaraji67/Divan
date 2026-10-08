@@ -25,7 +25,7 @@ export const RegionalReport: React.FC = () => {
       const region = c?.[groupBy] || 'نامشخص';
       const cur = map.get(region) || { name: region, count: 0, total: 0, customers: new Set<string>() };
       cur.count += 1;
-      cur.total += invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+      cur.total += invoiceTotal(inv.items, inv.shippingCost);
       cur.customers.add(inv.contactId);
       map.set(region, cur);
     });

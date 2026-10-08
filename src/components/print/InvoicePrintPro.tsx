@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Printer, Image as ImageIcon, Share2, Mail } from 'lucide-react';
 import type { Invoice, Contact, Product } from '../../types/models';
-import { invoiceTotal } from '../../types/models';
+import { invoiceTotal, invoiceDiscount, invoiceTax } from '../../types/models';
 import { useSettings, formatNum } from '../../lib/theme-context';
 import { notify } from '../../lib/toast';
 import { InvoiceQRCode } from './InvoiceQRCode';
@@ -655,9 +655,12 @@ const SimpleInvoice: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ invo
   const f = (n: number) => formatNum(Math.round(n), settings.persianNumbers);
 
   const subtotal = roundRial(invoice.items.reduce((s, it) => s + roundRial(it.quantity * it.unitPrice), 0));
-  const discount = roundRial((subtotal * invoice.discountPercent) / 100);
-  const tax = roundRial(((subtotal - discount) * invoice.taxPercent) / 100);
-  const total = subtotal - discount + tax + invoice.shippingCost;
+  const discount = invoiceDiscount(invoice.items);
+  const tax = invoiceTax(invoice.items);
+  const total = invoiceTotal(invoice.items, invoice.shippingCost);
+  // نرخ موثر برای نمایش — چون هر ردیف می‌تواند درصد تخفیف/مالیات خودش را داشته باشد
+  const effectiveDiscountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+  const effectiveTaxPercent = (subtotal - discount) > 0 ? (tax / (subtotal - discount)) * 100 : 0;
 
   const docLabel = invoice.type === 'پیش‌فاکتور فروش' ? 'پیش‌فاکتور' : invoice.type === 'خرید' ? 'فاکتور خرید' : invoice.type === 'برگشت از فروش' ? 'برگشت از فروش' : 'فاکتور فروش';
   const accent = '#4f46e5';
@@ -736,10 +739,10 @@ const SimpleInvoice: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ invo
         <div className="space-y-1.5 text-xs">
           <div className="flex justify-between"><span className="text-slate-500">جمع اقلام:</span><span className="font-mono font-bold">{f(subtotal)}</span></div>
           {settings.showDiscount && discount > 0 && (
-            <div className="flex justify-between text-rose-600"><span>تخفیف ({f(invoice.discountPercent)}%):</span><span className="font-mono font-bold">-{f(discount)}</span></div>
+            <div className="flex justify-between text-rose-600"><span>تخفیف ({f(effectiveDiscountPercent)}%):</span><span className="font-mono font-bold">-{f(discount)}</span></div>
           )}
           {settings.showTax && tax > 0 && (
-            <div className="flex justify-between text-amber-600"><span>مالیات ({f(invoice.taxPercent)}%):</span><span className="font-mono font-bold">+{f(tax)}</span></div>
+            <div className="flex justify-between text-amber-600"><span>مالیات ({f(effectiveTaxPercent)}%):</span><span className="font-mono font-bold">+{f(tax)}</span></div>
           )}
           {settings.showShipping && invoice.shippingCost > 0 && (
             <div className="flex justify-between text-sky-600"><span>هزینه ارسال:</span><span className="font-mono font-bold">+{f(invoice.shippingCost)}</span></div>
@@ -778,9 +781,12 @@ const ThermalReceipt: React.FC<{ invoice: Invoice; contact?: Contact }> = ({ inv
   const width = settings.printPaper === 'thermal58' ? '58mm' : '80mm';
 
   const subtotal = roundRial(invoice.items.reduce((s, it) => s + roundRial(it.quantity * it.unitPrice), 0));
-  const discount = roundRial((subtotal * invoice.discountPercent) / 100);
-  const tax = roundRial(((subtotal - discount) * invoice.taxPercent) / 100);
-  const total = subtotal - discount + tax + invoice.shippingCost;
+  const discount = invoiceDiscount(invoice.items);
+  const tax = invoiceTax(invoice.items);
+  const total = invoiceTotal(invoice.items, invoice.shippingCost);
+  // نرخ موثر برای نمایش — چون هر ردیف می‌تواند درصد تخفیف/مالیات خودش را داشته باشد
+  const effectiveDiscountPercent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+  const effectiveTaxPercent = (subtotal - discount) > 0 ? (tax / (subtotal - discount)) * 100 : 0;
 
   return (
     <div className="print-area bg-white text-black p-3 font-mono" style={{ width, fontSize: '11px' }}>

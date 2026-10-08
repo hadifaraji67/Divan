@@ -36,7 +36,7 @@ export const PurchaseSalesReport: React.FC = () => {
 
   const stats = useMemo(() => {
     const sum = (type: string) => filtered.filter(i => i.type === type)
-      .reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+      .reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
     const sales = sum('فروش');
     const preSales = sum('پیش‌فاکتور فروش');
     const purchases = sum('خرید');
@@ -54,7 +54,7 @@ export const PurchaseSalesReport: React.FC = () => {
       if (p.length < 2) return;
       const m = Number(toEn(p[1]));
       if (m < 1 || m > 12) return;
-      const t = invoiceTotal(inv.items, inv.discountPercent, inv.taxPercent, inv.shippingCost);
+      const t = invoiceTotal(inv.items, inv.shippingCost);
       if (inv.type === 'فروش') data[m - 1].sales += t;
       else if (inv.type === 'خرید') data[m - 1].purchases += t;
     });

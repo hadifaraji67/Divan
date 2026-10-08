@@ -79,7 +79,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
   // KPI: فروش کل
   const totalSales = useMemo(
     () => salesInvoices.reduce((sum, i) =>
-      sum + invoiceTotal(i.items || [], i.discountPercent || 0, i.taxPercent || 0, i.shippingCost || 0), 0
+      sum + invoiceTotal(i.items || [], i.shippingCost || 0), 0
     ),
     [salesInvoices]
   );
@@ -91,7 +91,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
     return salesInvoices
       .filter((i) => i.date?.startsWith(monthPrefix))
       .reduce((sum, i) =>
-        sum + invoiceTotal(i.items || [], i.discountPercent || 0, i.taxPercent || 0, i.shippingCost || 0), 0
+        sum + invoiceTotal(i.items || [], i.shippingCost || 0), 0
       );
   }, [salesInvoices]);
 
@@ -143,7 +143,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
       const dayTotal = salesInvoices
         .filter((inv) => inv.date && inv.date.includes(dateStr.slice(8)))
         .reduce((sum, inv) =>
-          sum + invoiceTotal(inv.items || [], inv.discountPercent || 0, inv.taxPercent || 0, inv.shippingCost || 0), 0
+          sum + invoiceTotal(inv.items || [], inv.shippingCost || 0), 0
         );
 
       days.push({
@@ -375,7 +375,7 @@ export const DashboardModule: React.FC<Props> = ({ onNavigate }) => {
                     </div>
                   </div>
                   <div className="text-xs font-bold whitespace-nowrap">
-                    {f(Math.round(invoiceTotal(inv.items || [], inv.discountPercent || 0, inv.taxPercent || 0, inv.shippingCost || 0)))}
+                    {f(Math.round(invoiceTotal(inv.items || [], inv.shippingCost || 0)))}
                   </div>
                 </button>
               ))}

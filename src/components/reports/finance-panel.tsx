@@ -22,8 +22,8 @@ export const FinancePanel: React.FC = () => {
   const stats = useMemo(() => {
     const sales = invoices.filter(i => i.type === 'فروش');
     const purchases = invoices.filter(i => i.type === 'خرید');
-    const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
-    const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+    const salesTotal = sales.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
+    const purchaseTotal = purchases.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
     const received = payments.filter(p => p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
     const paid = payments.filter(p => p.direction === 'پرداخت').reduce((s, p) => s + p.amount, 0);
 

@@ -101,7 +101,7 @@ export function getNotifications(): AppNotification[] {
   // ۳. مشتریان بدهکار
   contacts.filter(c => c.roles.includes('مشتری')).forEach(c => {
     const sales = invoices.filter(i => i.contactId === c.id && i.type === 'فروش');
-    const total = sales.reduce((s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost), 0);
+    const total = sales.reduce((s, i) => s + invoiceTotal(i.items, i.shippingCost), 0);
     const paid = payments.filter(p => p.contactId === c.id && p.direction === 'دریافت').reduce((s, p) => s + p.amount, 0);
     const balance = total - paid;
     if (balance > 0 && c.creditLimit > 0 && balance > c.creditLimit * 0.8) {

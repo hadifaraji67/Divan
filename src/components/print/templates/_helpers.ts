@@ -29,16 +29,11 @@ export const TEMPLATES: TemplateMeta[] = [
 
 export function computeTotals(invoice: Invoice) {
   const subtotal = invoiceSubtotal(invoice.items);
-  const discount = invoiceDiscount(invoice.items, invoice.discountPercent);
+  const discount = invoiceDiscount(invoice.items);
   const afterDiscount = subtotal - discount;
-  const tax = invoiceTax(invoice.items, invoice.discountPercent, invoice.taxPercent);
+  const tax = invoiceTax(invoice.items);
   const shipping = roundRial(invoice.shippingCost || 0);
-  const total = invoiceTotal(
-    invoice.items,
-    invoice.discountPercent,
-    invoice.taxPercent,
-    invoice.shippingCost,
-  );
+  const total = invoiceTotal(invoice.items, invoice.shippingCost);
 
   return {
     subtotal,

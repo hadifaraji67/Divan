@@ -11,7 +11,7 @@ function inv(overrides) {
   return {
     id: 'i1', number: 'N1', date: '2026-01-01', contactId: 'c1', contactName: 'طرف‌حساب',
     items: [{ productId: 'p1', productName: 'کالا', unit: 'عدد', quantity: 1, unitPrice: 100000, discountPercent: 0, taxPercent: 0 }],
-    discountPercent: 0, taxPercent: 0, shippingCost: 0, createdAt: '2026-01-01',
+    shippingCost: 0, createdAt: '2026-01-01',
     ...overrides,
   };
 }

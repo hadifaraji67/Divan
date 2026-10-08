@@ -2,6 +2,37 @@ import type { Invoice, Payment, Product, Cheque } from '../types/models';
 import { invoiceTypeEffect } from '../types/models';
 import { loadData, saveData, genId } from './storage';
 
+export interface StockShortage {
+  productId: string;
+  productName: string;
+  available: number;
+  requested: number;
+}
+
+/**
+ * بررسی کمبود موجودی قبل از ثبت فاکتور — فقط برای فاکتورهایی که اثر «کاهش»
+ * روی موجودی دارند (فروش، مرجوعی به تامین‌کننده). باید قبل از applyInvoiceEffects
+ * صدا زده شود تا کاربر قبل از ثبت، از کمبود مطلع و تصمیم‌گیرنده باشد.
+ */
+export function checkStockAvailability(invoice: Invoice, products: Product[]): StockShortage[] {
+  if (invoiceTypeEffect(invoice.type) !== 'decrease') return [];
+
+  const byProduct = new Map<string, number>();
+  for (const line of invoice.items) {
+    byProduct.set(line.productId, (byProduct.get(line.productId) || 0) + line.quantity);
+  }
+
+  const shortages: StockShortage[] = [];
+  for (const [productId, requested] of byProduct) {
+    const product = products.find(p => p.id === productId);
+    if (!product) continue;
+    if (product.stock < requested) {
+      shortages.push({ productId, productName: product.name, available: product.stock, requested });
+    }
+  }
+  return shortages;
+}
+
 /**
  * وقتی فاکتور ذخیره می‌شود:
  * - موجودی کالاها بر اساس نوع فاکتور تغییر می‌کند
@@ -9,6 +40,11 @@ import { loadData, saveData, genId } from './storage';
  *   - خرید: افزایش
  *   - برگشت از فروش: افزایش
  *   - پیش‌فاکتورها: بدون تغییر
+ *
+ * نکته: موجودی دیگر در صفر «چسبانده» نمی‌شود. اگر کاربر صریحاً فروش بیش از
+ * موجودی را تایید کند (بعد از هشدار checkStockAvailability)، موجودی منفی
+ * می‌شود — چون منفی‌شدن یک سیگنال صادق از فروش‌افزون است؛ چسباندن به صفر
+ * این اطلاعات را کاملاً پنهان می‌کرد.
  */
 export function applyInvoiceEffects(invoice: Invoice, payments?: Payment[], cheques?: Cheque[]) {
   const effect = invoiceTypeEffect(invoice.type);
@@ -21,7 +57,7 @@ export function applyInvoiceEffects(invoice: Invoice, payments?: Payment[], cheq
       if (lines.length === 0) return p;
       const qtyDelta = lines.reduce((s, l) => s + l.quantity, 0);
       const newStock = effect === 'decrease'
-        ? Math.max(0, p.stock - qtyDelta)
+        ? p.stock - qtyDelta
         : p.stock + qtyDelta;
       return { ...p, stock: newStock };
     });

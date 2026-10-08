@@ -122,8 +122,6 @@ export interface Invoice {
   contactId: string;
   contactName: string;
   items: InvoiceLine[];
-  discountPercent: number;
-  taxPercent: number;
   shippingCost: number;
   warehouseName?: string;
   salesPerson?: string;
@@ -244,27 +242,37 @@ export function invoiceSubtotal(items: InvoiceLine[]): number {
 }
 
 /**
- * تخفیف — رند شده
+ * تخفیف — همیشه از درصد تخفیف خودِ هر ردیف محاسبه می‌شود، نه یک درصد واحد
+ * سطح کل فاکتور (قبلاً این‌جوری نبود و باعث ناسازگاری با سند حسابداری می‌شد
+ * که از همان ابتدا تخفیف/مالیات را per-line حساب می‌کرد — رجوع کنید به
+ * scripts/accounting.test.mjs برای تست مستندکننده‌ی این باگ)
  */
-export function invoiceDiscount(items: InvoiceLine[], discountPercent: number): number {
-  return roundRial((invoiceSubtotal(items) * Number(discountPercent || 0)) / 100);
+export function invoiceDiscount(items: InvoiceLine[]): number {
+  return roundRial(items.reduce((sum, it) => {
+    const lineTotal = roundRial(it.quantity * it.unitPrice);
+    return sum + roundRial((lineTotal * Number(it.discountPercent || 0)) / 100);
+  }, 0));
 }
 
 /**
- * مالیات — رند شده
+ * مالیات — از درصد مالیات خودِ هر ردیف، بعد از کسر تخفیف همان ردیف
  */
-export function invoiceTax(items: InvoiceLine[], discountPercent: number, taxPercent: number): number {
-  const after = invoiceSubtotal(items) - invoiceDiscount(items, discountPercent);
-  return roundRial((after * Number(taxPercent || 0)) / 100);
+export function invoiceTax(items: InvoiceLine[]): number {
+  return roundRial(items.reduce((sum, it) => {
+    const lineTotal = roundRial(it.quantity * it.unitPrice);
+    const discountAmt = roundRial((lineTotal * Number(it.discountPercent || 0)) / 100);
+    const afterDiscount = roundRial(lineTotal - discountAmt);
+    return sum + roundRial((afterDiscount * Number(it.taxPercent || 0)) / 100);
+  }, 0));
 }
 
 /**
  * مبلغ نهایی — رند شده
  */
-export function invoiceTotal(items: InvoiceLine[], discountPercent: number, taxPercent: number, shipping: number): number {
+export function invoiceTotal(items: InvoiceLine[], shipping: number): number {
   const subtotal = invoiceSubtotal(items);
-  const discount = invoiceDiscount(items, discountPercent);
-  const tax = invoiceTax(items, discountPercent, taxPercent);
+  const discount = invoiceDiscount(items);
+  const tax = invoiceTax(items);
   const ship = roundRial(Number(shipping) || 0);
   return roundRial(subtotal - discount + tax + ship);
 }

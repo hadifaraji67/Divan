@@ -20,7 +20,7 @@ export interface InvoicePaymentInfo {
  * - پیش‌فاکتورها همیشه پرداخت‌نشده در نظر گرفته می‌شوند
  */
 export function getInvoicePaymentInfo(invoice: Invoice, allPayments: Payment[]): InvoicePaymentInfo {
-  const total = invoiceTotal(invoice.items, invoice.discountPercent, invoice.taxPercent, invoice.shippingCost);
+  const total = invoiceTotal(invoice.items, invoice.shippingCost);
 
   // پیش‌فاکتورها: پرداخت نمی‌گیرند
   if (invoice.type === 'پیش‌فاکتور فروش' || invoice.type === 'پیش‌فاکتور خرید') {
@@ -93,7 +93,7 @@ export function computeContactBalance(
   const salesTotal = myInvoices
     .filter((i) => i.type === 'فروش')
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
@@ -101,7 +101,7 @@ export function computeContactBalance(
   const returnsTotal = myInvoices
     .filter((i) => i.type === 'برگشت از فروش')
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
@@ -109,7 +109,7 @@ export function computeContactBalance(
   const purchasesTotal = myInvoices
     .filter((i) => i.type === 'خرید')
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
@@ -117,7 +117,7 @@ export function computeContactBalance(
   const supplierReturnsTotal = myInvoices
     .filter((i) => i.type === 'مرجوعی به تامین‌کننده')
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
@@ -146,14 +146,14 @@ export function computeTotalReceivable(invoices: Invoice[], payments: Payment[])
   const salesTotal = invoices
     .filter((i) => i.type === 'فروش' && !i.void)
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
   const returnsTotal = invoices
     .filter((i) => i.type === 'برگشت از فروش' && !i.void)
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
@@ -171,14 +171,14 @@ export function computeTotalPayable(invoices: Invoice[], payments: Payment[]): n
   const purchasesTotal = invoices
     .filter((i) => i.type === 'خرید' && !i.void)
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
   const supplierReturnsTotal = invoices
     .filter((i) => i.type === 'مرجوعی به تامین‌کننده' && !i.void)
     .reduce(
-      (s, i) => s + invoiceTotal(i.items, i.discountPercent, i.taxPercent, i.shippingCost),
+      (s, i) => s + invoiceTotal(i.items, i.shippingCost),
       0,
     );
 
